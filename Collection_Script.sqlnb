@@ -88,5 +88,5 @@ cells:
       WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_';"
     languageId: oracle-sql
   - kind: 2
-    value: SELECT * FROM OMS.MANIOBRAS
+    value: SELECT * FROM OMS.MANIOBRAS;
     languageId: oracle-sql

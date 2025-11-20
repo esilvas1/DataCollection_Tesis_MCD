@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recopilación de Información - Proyecto SAIDI/SAIFI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #2c3e50; 
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 { 
+            color: #34495e; 
+            margin-top: 30px;
+        }
+        h3 { 
+            color: #7f8c8d; 
+            margin-top: 25px;
+        }
+        .sql-code {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', Consolas, monospace;
+            font-size: 14px;
+            margin: 15px 0;
+            border-left: 4px solid #61dafb;
+            white-space: pre;
+        }
+        .keyword { color: #c678dd; font-weight: bold; }
+        .string { color: #98c379; }
+        .function { color: #61dafb; }
+        .number { color: #d19a66; }
+        .markdown-content {
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #ecf0f1;
+            margin: 30px 0;
+        }
+        strong {
+            color: #2c3e50;
+        }
+        .section-title {
+            background-color: #34495e;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 30px;
+        }
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+<div class="markdown-content">
+<h1>Recopilación de Información del Proyecto\r</h1>
+<p>\r</p>
+<p>## Desarrollo de Metodología Basada en Métodos de Ciencia de Datos para
+      Predecir Indicadores de Calidad del Servicio (SAIDI y SAIFI)\r</p>
+<p>\r</p>
+<p>### Objetivo del Proyecto\r</p>
+<p>Desarrollar una metodología predictiva basada en ciencia de datos para
+      anticipar los indicadores de calidad del servicio eléctrico SAIDI (System
+      Average Interruption Duration Index) y SAIFI (System Average Interruption
+      Frequency Index) en redes de distribución eléctrica de una empresa de
+      energía en el Norte de Santander.\r</p>
+<p>\r</p>
+<hr>\r
+<p>\r</p>
+<p>### Información General\r</p>
+<p>\r</p>
+<strong>Empresa:</strong> Empresa de Energía Eléctrica - Norte de Santander  \r
+<strong>Base de Datos:</strong> BRAE (Base de Datos de Registro de Afectaciones
+      Eléctricas)  \r
+<strong>Periodo de Análisis:</strong> 2020 - 2025  \r
+<strong>Fuente de Datos:</strong> Sistema de Gestión de Calidad
+</div>
+<div class="markdown-content">
+<h3>Consulta de eventos del sistema de distribución de la energía</h3>
+      électrica
+</div>
+
+        <div class="sql-code"><span class="keyword">SELECT</span> FDD_CODIGOEVENTO <span class="keyword">AS</span> ID_EVENTO\r
+
+      \t  ,FDD_FINICIAL <span class="keyword">AS</span> FECHA_INICIO\r
+
+      \t  ,FDD_FFINAL <span class="keyword">AS</span> FECHA_FIN\r
+
+      \t  ,<span class="function">ROUND</span>((<span class="function">TO_DATE</span>(<span class="function">TO_CHAR</span>(FDD_FFINAL   ,<span class='string'>'YYYY-MM-DD
+      HH24:MI:SS'</span>),<span class='string'>'YYYY-MM-DD HH24:MI:SS'</span>) - \r
+
+      \t          <span class="function">TO_DATE</span>(<span class="function">TO_CHAR</span>(FDD_FINICIAL ,<span class='string'>'YYYY-MM-DD
+      HH24:MI:SS'</span>),<span class='string'>'YYYY-MM-DD HH24:MI:SS'</span>)) * <span class="number">24</span> * <span class="number">60</span>,<span class="number">3</span>) <span class="keyword">AS</span>
+      DURACION_EVENTO_MIN\r
+
+      \t  ,'</div>
+
+        <div class="section-title">
+            <h3 style="margin: 0;">📝 Consulta 2</h3>
+        </div>
+
+        <div class="sql-code"><span class="keyword">SELECT</span> * \r
+
+      <span class="keyword">FROM</span> OMS.INTERUPC\r
+
+      <span class="keyword">LEFT</span> <span class="keyword">JOIN</span> OMS.MANIOBRAS <span class="keyword">ON</span> INTERUPC.MINICIAL = MANIOBRAS.CODE\r
+
+      <span class="keyword">WHERE</span> <span class="function">TO_CHAR</span>(INTERUPC.FINICIAL, <span class='string'>'YYYY'</span>) <span class="keyword">LIKE</span> <span class='string'>'202_'</span>;</div>
+
+        <hr>
+        <footer style="text-align: center; color: #7f8c8d; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1;">
+            <p><strong>Pontificia Universidad Javeriana</strong></p>
+            <p>Applied Project I - Grupo EPM</p>
+            <p>Norte de Santander, Colombia</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Generado el 20 de November de 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
