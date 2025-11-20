@@ -1,0 +1,92 @@
+cells:
+  - kind: 1
+    value: "# Recopilación de Información del Proyecto\r
+
+      \r
+
+      ## Desarrollo de Metodología Basada en Métodos de Ciencia de Datos para
+      Predecir Indicadores de Calidad del Servicio (SAIDI y SAIFI)\r
+
+      \r
+
+      ### Objetivo del Proyecto\r
+
+      Desarrollar una metodología predictiva basada en ciencia de datos para
+      anticipar los indicadores de calidad del servicio eléctrico SAIDI (System
+      Average Interruption Duration Index) y SAIFI (System Average Interruption
+      Frequency Index) en redes de distribución eléctrica de una empresa de
+      energía en el Norte de Santander.\r
+
+      \r
+
+      ---\r
+
+      \r
+
+      ### Información General\r
+
+      \r
+
+      **Empresa:** Empresa de Energía Eléctrica - Norte de Santander  \r
+
+      **Base de Datos:** BRAE (Base de Datos de Registro de Afectaciones
+      Eléctricas)  \r
+
+      **Periodo de Análisis:** 2020 - 2025  \r
+
+      **Fuente de Datos:** Sistema de Gestión de Calidad\r\n"
+    languageId: markdown
+  - kind: 1
+    value: "### Consulta de eventos del sistema de distribución de la energía
+      électrica"
+    languageId: markdown
+  - kind: 2
+    value: "SELECT FDD_CODIGOEVENTO AS ID_EVENTO\r
+
+      \t  ,FDD_FINICIAL AS FECHA_INICIO\r
+
+      \t  ,FDD_FFINAL AS FECHA_FIN\r
+
+      \t  ,ROUND((TO_DATE(TO_CHAR(FDD_FFINAL   ,'YYYY-MM-DD
+      HH24:MI:SS'),'YYYY-MM-DD HH24:MI:SS') - \r
+
+      \t          TO_DATE(TO_CHAR(FDD_FINICIAL ,'YYYY-MM-DD
+      HH24:MI:SS'),'YYYY-MM-DD HH24:MI:SS')) * 24 * 60,3) AS
+      DURACION_EVENTO_MIN\r
+
+      \t  ,'' AS ELEMENTO_FALLADO\r
+
+      \t  ,FDD_CODIGOELEMENTO AS ELEMENTO_AFECTADO\r
+
+      \t  ,FDD_CAUSA AS ID_CAUSA_OR\r
+
+      \t  ,FDD_CAUSA_CREG  AS ID_CAUSA_CREG\r
+
+      \t  ,FDD_CAUSA_SSPD AS ID_CAUSA_SSPD\r
+
+      \t  ,FDD_PERIODO_TC1 AS MES_PERIODO\r
+
+      \t  ,FDD_EXCLUSION AS CAUSAS_PENALIZABLES\r
+
+      FROM BRAE.QA_TFDDREGISTRO\r
+
+      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') LIKE '202_'\r
+
+      AND FDD_EXCLUSION = 'NO EXCLUIDA'\r
+
+      AND FDD_CAUSA_SSPD NOT IN (1)\r
+
+      AND FDD_FFINAL IS NOT NULL;"
+    languageId: oracle-sql
+  - kind: 2
+    value: "SELECT * \r
+
+      FROM OMS.INTERUPC\r
+
+      LEFT JOIN OMS.MANIOBRAS ON INTERUPC.MINICIAL = MANIOBRAS.CODE\r
+
+      WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_';"
+    languageId: oracle-sql
+  - kind: 2
+    value: SELECT * FROM OMS.MANIOBRAS
+    languageId: oracle-sql
