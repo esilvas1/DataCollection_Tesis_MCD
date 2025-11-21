@@ -243,7 +243,7 @@ def generate_html(cells, output_file):
 def main():
     """Función principal"""
     sqlnb_file = 'Collection_Script.sqlnb'
-    html_file = 'DATA/Collection_Script.html'
+    html_file = 'Collection_Script.html'
     
     print("🔄 Actualizando HTML desde archivo .sqlnb...")
     print(f"📂 Leyendo: {sqlnb_file}")

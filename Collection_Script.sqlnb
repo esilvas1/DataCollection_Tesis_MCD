@@ -40,6 +40,9 @@ cells:
     value: "### Consulta de eventos del sistema de distribución de la energía
       électrica"
     languageId: markdown
+  - kind: 1
+    value: "Salida: EventosSDL.csv"
+    languageId: markdown
   - kind: 2
     value: "SELECT FDD_CODIGOEVENTO AS ID_EVENTO\r
 
@@ -70,7 +73,7 @@ cells:
 
       FROM BRAE.QA_TFDDREGISTRO\r
 
-      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') LIKE '202_'\r
+      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') LIKE '202_' \r
 
       AND FDD_EXCLUSION = 'NO EXCLUIDA'\r
 
