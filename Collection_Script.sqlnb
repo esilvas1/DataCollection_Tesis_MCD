@@ -81,15 +81,36 @@ cells:
 
       AND FDD_FFINAL IS NOT NULL;"
     languageId: oracle-sql
+  - kind: 1
+    value: Exportada!!
+    languageId: markdown
   - kind: 2
-    value: "SELECT * \r
+    value: "SELECT DISTINCT MINICIAL as CODIGO_MANIOBRA\r
+
+      , MFINAL AS CODIGO_MANIOBRA_FINAL\r
+
+      , TYPEEQUIP AS TIPO_EQUIPO\r
+
+      , BREAKER AS ELEMENTO_FALLADO\r
+
+      FROM OMS.INTERUPC\r
+
+      LEFT JOIN OMS.MANIOBRAS ON INTERUPC.MINICIAL = MANIOBRAS.CODE\r
+
+      WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_'\r
+
+      AND TIPO != 'PRUEBA'\r
+
+      AND CAUSA != 'PRUEBA'\r
+
+      AND INTERUPC.TYPEEQUIP != 'Transformer';"
+    languageId: oracle-sql
+  - kind: 2
+    value: "SELECT *\r
 
       FROM OMS.INTERUPC\r
 
       LEFT JOIN OMS.MANIOBRAS ON INTERUPC.MINICIAL = MANIOBRAS.CODE\r
 
       WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_';"
-    languageId: oracle-sql
-  - kind: 2
-    value: SELECT * FROM OMS.MANIOBRAS;
     languageId: oracle-sql

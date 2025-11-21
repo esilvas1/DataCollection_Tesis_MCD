@@ -111,6 +111,9 @@
 <h3>Consulta de eventos del sistema de distribución de la energía</h3>
       électrica
 </div>
+<div class="markdown-content">
+<p>Salida: EventosSDL.csv</p>
+</div>
 
         <div class="sql-code"><span class="keyword">SELECT</span> FDD_CODIGOEVENTO <span class="keyword">AS</span> ID_EVENTO\r
 
@@ -131,7 +134,31 @@
             <h3 style="margin: 0;">📝 Consulta 2</h3>
         </div>
 
-        <div class="sql-code"><span class="keyword">SELECT</span> * \r
+        <div class="sql-code"><span class="keyword">SELECT</span> DISTINCT MINICIAL <span class="keyword">AS</span> CODIGO_MANIOBRA\r
+
+      , MFINAL <span class="keyword">AS</span> CODIGO_MANIOBRA_FINAL\r
+
+      , TYPEEQUIP <span class="keyword">AS</span> TIPO_EQUIPO\r
+
+      , BREAKER <span class="keyword">AS</span> ELEMENTO_FALLADO\r
+
+      <span class="keyword">FROM</span> OMS.INTERUPC\r
+
+      <span class="keyword">LEFT</span> <span class="keyword">JOIN</span> OMS.MANIOBRAS <span class="keyword">ON</span> INTERUPC.MINICIAL = MANIOBRAS.CODE\r
+
+      <span class="keyword">WHERE</span> <span class="function">TO_CHAR</span>(INTERUPC.FINICIAL, <span class='string'>'YYYY'</span>) <span class="keyword">LIKE</span> <span class='string'>'202_'</span>\r
+
+      <span class="keyword">AND</span> TIPO != <span class='string'>'PRUEBA'</span>\r
+
+      <span class="keyword">AND</span> CAUSA != <span class='string'>'PRUEBA'</span>\r
+
+      <span class="keyword">AND</span> INTERUPC.TYPEEQUIP != <span class='string'>'Transformer'</span>;</div>
+
+        <div class="section-title">
+            <h3 style="margin: 0;">📝 Consulta 3</h3>
+        </div>
+
+        <div class="sql-code"><span class="keyword">SELECT</span> *\r
 
       <span class="keyword">FROM</span> OMS.INTERUPC\r
 
