@@ -41,7 +41,7 @@ cells:
       électrica"
     languageId: markdown
   - kind: 1
-    value: "Salida: EventosSDL.csv"
+    value: "# Salida: EventosSDL.csv"
     languageId: markdown
   - kind: 2
     value: "SELECT FDD_CODIGOEVENTO AS ID_EVENTO\r
@@ -50,46 +50,45 @@ cells:
 
       \t  ,FDD_FFINAL AS FECHA_FIN\r
 
-      \t  ,ROUND((TO_DATE(TO_CHAR(FDD_FFINAL   ,'YYYY-MM-DD
-      HH24:MI:SS'),'YYYY-MM-DD HH24:MI:SS') - \r
-
-      \t          TO_DATE(TO_CHAR(FDD_FINICIAL ,'YYYY-MM-DD
-      HH24:MI:SS'),'YYYY-MM-DD HH24:MI:SS')) * 24 * 60,3) AS
-      DURACION_EVENTO_MIN\r
-
       \t  ,'' AS ELEMENTO_FALLADO\r
 
       \t  ,FDD_CODIGOELEMENTO AS ELEMENTO_AFECTADO\r
 
-      \t  ,FDD_CAUSA AS ID_CAUSA_OR\r
-
-      \t  ,FDD_CAUSA_CREG  AS ID_CAUSA_CREG\r
-
-      \t  ,FDD_CAUSA_SSPD AS ID_CAUSA_SSPD\r
-
-      \t  ,FDD_PERIODO_TC1 AS MES_PERIODO\r
-
-      \t  ,FDD_EXCLUSION AS CAUSAS_PENALIZABLES\r
-
       FROM BRAE.QA_TFDDREGISTRO\r
 
-      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') LIKE '202_' \r
+      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024',
+      '2025')  \r
 
       AND FDD_EXCLUSION = 'NO EXCLUIDA'\r
 
       AND FDD_CAUSA_SSPD NOT IN (1)\r
 
-      AND FDD_FFINAL IS NOT NULL;"
+      AND FDD_FFINAL IS NOT NULL\r
+
+      AND ROWNUM <= 5;"
     languageId: oracle-sql
   - kind: 1
-    value: Exportada!!
+    value: Exportada!!, para la siguiente consulta conectar a base de datos OMS
     languageId: markdown
+  - kind: 2
+    value: SELECT * FROM QA_TFDDREGISTRO;
+    languageId: oracle-sql
+  - kind: 2
+    value: "UPDATE QA_TFDDREGISTRO\r
+
+      SET FDD_APROBADO = NULL\r
+
+      WHERE FDD_APROBADO IN ('N','S', 'NA');"
+    languageId: oracle-sql
+  - kind: 2
+    value: COMMIT;
+    languageId: oracle-sql
   - kind: 2
     value: "SELECT DISTINCT MINICIAL as CODIGO_MANIOBRA\r
 
-      , MFINAL AS CODIGO_MANIOBRA_FINAL\r
+      --, MFINAL AS CODIGO_MANIOBRA_FINAL\r
 
-      , TYPEEQUIP AS TIPO_EQUIPO\r
+      --, TYPEEQUIP AS TIPO_EQUIPO\r
 
       , BREAKER AS ELEMENTO_FALLADO\r
 
@@ -97,7 +96,7 @@ cells:
 
       LEFT JOIN OMS.MANIOBRAS ON INTERUPC.MINICIAL = MANIOBRAS.CODE\r
 
-      WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_'\r
+      WHERE TO_NUMBER(TO_CHAR(INTERUPC.FINICIAL, 'YYYY')) >= 2019\r
 
       AND TIPO != 'PRUEBA'\r
 
@@ -105,6 +104,9 @@ cells:
 
       AND INTERUPC.TYPEEQUIP != 'Transformer';"
     languageId: oracle-sql
+  - kind: 1
+    value: Para la siguiente consulta conectar a base de datos OMS.
+    languageId: markdown
   - kind: 2
     value: "SELECT *\r
 
@@ -113,4 +115,106 @@ cells:
       LEFT JOIN OMS.MANIOBRAS ON INTERUPC.MINICIAL = MANIOBRAS.CODE\r
 
       WHERE TO_CHAR(INTERUPC.FINICIAL, 'YYYY') LIKE '202_';"
+    languageId: oracle-sql
+  - kind: 1
+    value: "# A continuación el resultado de los indicadores SAIDI y SAIFI
+      reportados a la SSPD, pertenecientes al OR "
+    languageId: markdown
+  - kind: 2
+    value: SELECT * FROM QA_TCS1;
+    languageId: oracle-sql
+  - kind: 1
+    value: "# SAIDI y SAIFI calculado por circuito (Alimentador) periodos 2021 - 2025"
+    languageId: markdown
+  - kind: 2
+    value: "SELECT TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM') as periodo,
+      tt2_nombre_circuito--tc1_gc\r
+
+      ,round (SUM (C.CSU_DIUM),2) as UIxTI, SUM(C.CSU_FIUM) as UI, round(
+      count(C.CSU_NIU),0) as Usuarios_total\r
+
+      , round (SUM (C.CSU_DIUM)/count(C.CSU_NIU),2) as saidi , round (SUM
+      (C.CSU_FIUM)/count(C.CSU_NIU),2) as saifi \r
+
+      --,diugj, (case when C.CSU_DIU > diugj then 'Incumple' else 'Cumple' END)
+      \r
+
+      FROM BRAE.QA_TCSU C\r
+
+      LEFT JOIN BRAE.QA_TTC1 U ON (C.CSU_NIU||TO_CHAR
+      (C.CSU_PERIODO_OP,'YYYYMM') = U.TC1_TC1||U.TC1_PERIODO)\r
+
+      left join BRAE.QA_TTT2_REGISTRO on tt2_codigoelemento = tc1_codconex\r
+
+      --left join (select * from BRAE.QA_TMETAS_CALINDIVIDUAL where periodo =
+      '2025' and nt = '1') mt on tc1_gc = to_char (mt.grupo015)\r
+
+      WHERE TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM') >= '202101'\r
+
+      AND U.TC1_TIPCONEX ='T'\r
+
+      AND U.TC1_CODCONEX NOT LIKE ('ALPM%')\r
+
+      and tc1_nt = 1\r
+
+      --and tt2_nombre_circuito in ('SARC2','CULC2','SRQC1','SRQC2','SRQC3')\r
+
+      GROUP BY TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM'),tt2_nombre_circuito--tc1_gc\r
+
+      --,diugj,  (case when C.CSU_DIU > diugj then 'Incumple' else 'Cumple' END)
+      \r
+
+      order by  TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM')--, tc1_gc,SAIDI desc\r
+
+      ;"
+    languageId: oracle-sql
+  - kind: 1
+    value: "# Inventario de activos eléctricos (GIS/SAP): transformadores, líneas,
+      capacidad, tipo  de red, antigüedad. "
+    languageId: markdown
+  - kind: 2
+    value: SELECT * FROM QA_TTT2_REGISTRO WHERE TT2_PERIODO_OP = DATE'2021-12-01';
+    languageId: oracle-sql
+  - kind: 1
+    value: "# SAIDI y SAIFI calculado por TRANSFORMADOR periodos 2021 - 2025"
+    languageId: markdown
+  - kind: 2
+    value: "SELECT TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM') as periodo,
+      tt2_codigoelemento--tc1_gc\r
+
+      ,round (SUM (C.CSU_DIUM),2) as UIxTI, SUM(C.CSU_FIUM) as UI, round(
+      count(C.CSU_NIU),0) as Usuarios_total\r
+
+      , round (SUM (C.CSU_DIUM)/count(C.CSU_NIU),2) as saidi , round (SUM
+      (C.CSU_FIUM)/count(C.CSU_NIU),2) as saifi \r
+
+      --,diugj, (case when C.CSU_DIU > diugj then 'Incumple' else 'Cumple' END)
+      \r
+
+      FROM BRAE.QA_TCSU C\r
+
+      LEFT JOIN BRAE.QA_TTC1 U ON (C.CSU_NIU||TO_CHAR
+      (C.CSU_PERIODO_OP,'YYYYMM') = U.TC1_TC1||U.TC1_PERIODO)\r
+
+      left join BRAE.QA_TTT2_REGISTRO on tt2_codigoelemento = tc1_codconex\r
+
+      --left join (select * from BRAE.QA_TMETAS_CALINDIVIDUAL where periodo =
+      '2025' and nt = '1') mt on tc1_gc = to_char (mt.grupo015)\r
+
+      WHERE TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM') >= '202101'\r
+
+      AND U.TC1_TIPCONEX ='T'\r
+
+      AND U.TC1_CODCONEX NOT LIKE ('ALPM%')\r
+
+      and tc1_nt = 1\r
+
+      --and tt2_nombre_circuito in ('SARC2','CULC2','SRQC1','SRQC2','SRQC3')\r
+
+      GROUP BY TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM'),tt2_codigoelemento--tc1_gc\r
+
+      --,diugj,  (case when C.CSU_DIU > diugj then 'Incumple' else 'Cumple' END)
+      \r
+
+      order by  TO_CHAR(C.CSU_PERIODO_OP,'YYYYMM')--, tc1_gc,SAIDI desc"
     languageId: oracle-sql
