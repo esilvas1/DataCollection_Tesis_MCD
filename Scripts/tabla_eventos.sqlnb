@@ -1,0 +1,31 @@
+cells:
+  - kind: 1
+    value: "## Script de la informacion de eventos extraida de la base de datos BRAE"
+    languageId: markdown
+  - kind: 2
+    value: "\r
+
+      SELECT DISTINCT FDD_CODIGOEVENTO AS ID_EVENTO\r
+
+      \t  ,FDD_FINICIAL AS FECHA_DESCONEXION\r
+
+      \t  ,FDD_FFINAL AS FECHA_CONEXION\r
+
+      \t  ,'' AS ELEMENTO_FALLADO\r
+
+      FROM BRAE.QA_TFDDREGISTRO\r
+
+      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024',
+      '2025')  \r
+
+      AND FDD_EXCLUSION = 'NO EXCLUIDA'\r
+
+      AND FDD_CAUSA_SSPD NOT IN (1)\r
+
+      AND FDD_FFINAL IS NOT NULL;"
+    languageId: oracle-sql
+  - kind: 1
+    value: Todos los eventos de los años 2021 al 2025, codigo de la falla, intervalo
+      de la desconexion, faltaria asociar el elemento fallado o el elemento de
+      la causa (causante)
+    languageId: markdown
