@@ -49,21 +49,47 @@ def nasa_power_daily_point_csv_text(lat, lon):
 
 
 def extraer_tabla_power(csv_text):
-    lineas = [l for l in csv_text.splitlines() if l.strip()]
+    if csv_text is None:
+        return None
 
-    inicio = None
-    for i, linea in enumerate(lineas):
-        if linea.upper().startswith(("YEAR,MO,DY", "YEAR,DOY", "DATE,")):
-            inicio = i
-            break
+    lineas = [l.strip() for l in csv_text.splitlines() if l.strip()]
 
-    if inicio is None:
-        raise ValueError("No se encontró tabla NASA")
+    # 🔥 Encontrar fin del header
+    try:
+        idx_header_end = next(i for i, l in enumerate(lineas) if "-END HEADER-" in l)
+        data_lines = lineas[idx_header_end + 1:]
+    except StopIteration:
+        print("⚠️ No se encontró '-END HEADER-'")
+        return None
 
-    df = pd.read_csv(StringIO("\n".join(lineas[inicio:])), engine="python")
+    # 🔥 Convertir a DataFrame de forma robusta
+    try:
+        df = pd.read_csv(
+            StringIO("\n".join(data_lines)),
+            engine="python",
+            on_bad_lines="skip"
+        )
+    except Exception as e:
+        print("⚠️ Error leyendo CSV:", e)
+        return None
 
-    # manejo fechas
-    if {"YEAR", "MO", "DY"}.issubset(df.columns):
+    # ==========================
+    # LIMPIEZA COLUMNAS
+    # ==========================
+    df.columns = [c.strip().upper() for c in df.columns]
+
+    # ==========================
+    # MANEJO DE FECHAS
+    # ==========================
+    if {"YEAR", "DOY"}.issubset(df.columns):
+        df["fecha_consulta"] = pd.to_datetime(
+            df["YEAR"].astype(str) + df["DOY"].astype(str).str.zfill(3),
+            format="%Y%j",
+            errors="coerce"
+        )
+        df.drop(columns=["YEAR", "DOY"], inplace=True)
+
+    elif {"YEAR", "MO", "DY"}.issubset(df.columns):
         df["fecha_consulta"] = pd.to_datetime(
             df["YEAR"].astype(str) + "-" +
             df["MO"].astype(str).str.zfill(2) + "-" +
@@ -72,13 +98,6 @@ def extraer_tabla_power(csv_text):
         )
         df.drop(columns=["YEAR", "MO", "DY"], inplace=True)
 
-    elif {"YEAR", "DOY"}.issubset(df.columns):
-        df["fecha_consulta"] = (
-            pd.to_datetime(df["YEAR"].astype(str), format="%Y", errors="coerce")
-            + pd.to_timedelta(df["DOY"] - 1, unit="D")
-        )
-        df.drop(columns=["YEAR", "DOY"], inplace=True)
-
     elif "DATE" in df.columns:
         df["fecha_consulta"] = pd.to_datetime(
             df["DATE"], format="%Y%m%d", errors="coerce"
@@ -86,9 +105,13 @@ def extraer_tabla_power(csv_text):
         df.drop(columns=["DATE"], inplace=True)
 
     else:
-        raise ValueError("Formato de fecha no reconocido")
+        print("⚠️ No se pudo construir fecha")
+        return None
 
-    return df
+    # 🔥 Eliminar filas sin fecha (ruido residual)
+    df = df[df["fecha_consulta"].notna()]
+
+    return df if not df.empty else None
 
 
 def leer_excel(ruta):
@@ -134,7 +157,7 @@ def procesar_cuadrante(cuadrante):
     df_filtrado = grupos.get_group(cuadrante)
 
     df_coords = df_filtrado[[col_lat_cuadrante, col_lon_cuadrante]].drop_duplicates()
-
+    df_coords = df_coords.sample(100)
     lat = normalizar_numero(df_coords.iloc[0][col_lat_cuadrante])
     lon = normalizar_numero(df_coords.iloc[0][col_lon_cuadrante])
 

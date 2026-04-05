@@ -144,16 +144,30 @@ def normalizar_numero(valor):
         return None
 
 
+def grid_nasa_lat(x):
+    return round(x * 2) / 2   # 0.5°
+
+def grid_nasa_lon(x):
+    return round(x / 0.625) * 0.625
+
 # ==========================
 # CARGA DATOS
 # ==========================
 df_origen = leer_excel(archivo_entrada)
 
-df_coords = df_origen[[col_lat, col_lon]].drop_duplicates()
-# 🔧 PRUEBA CONTROLADA
+# Convertir coordenadas
+df_origen["LATITUD"] = df_origen["LATITUD"].apply(normalizar_numero)
+df_origen["LONGITUD"] = df_origen["LONGITUD"].apply(normalizar_numero)
+
+# 🔥 CREAR GRILLA
+df_origen["lat_grid"] = df_origen["LATITUD"].apply(grid_nasa_lat)
+df_origen["lon_grid"] = df_origen["LONGITUD"].apply(grid_nasa_lon)
+
+# 🔥 REDUCIR DRÁSTICAMENTE CONSULTAS
+df_coords = df_origen[["lat_grid", "lon_grid"]].drop_duplicates()
 df_coords = df_coords.sample(5)
 
-print("Total coordenadas únicas:", len(df_coords))
+print("Total celdas únicas (antes eran miles):", len(df_coords))
 
 start_api = time.time()
 
@@ -163,12 +177,9 @@ start_api = time.time()
 resultados = []
 
 def procesar_coord(row):
-    lat = normalizar_numero(row[col_lat])
-    lon = normalizar_numero(row[col_lon])
-
-    if lat is None or lon is None:
-        return None
-
+    lat = row["lat_grid"]
+    lon = row["lon_grid"]
+    time.sleep(0.5)
     try:
         respuesta = nasa_power_daily_point_csv_text(lat, lon)
 
@@ -181,22 +192,18 @@ def procesar_coord(row):
             print(f"⚠️ Sin datos para {lat}, {lon}")
             return None
 
-        if "fecha_consulta" not in df_res.columns:
-            return None
-
-        df_res["latitud"] = lat
-        df_res["longitud"] = lon
+        df_res["lat_grid"] = lat
+        df_res["lon_grid"] = lon
 
         return df_res
 
     except Exception as e:
-        print(f"⚠️ Error en coordenada {lat},{lon}: {e}")
+        print(f"⚠️ Error en {lat},{lon}: {e}")
         return None
-
 
 print("\nProcesando en paralelo...")
 
-with ThreadPoolExecutor(max_workers=3) as executor:
+with ThreadPoolExecutor(max_workers=2) as executor:
     futures = [
         executor.submit(procesar_coord, row)
         for _, row in df_coords.iterrows()
@@ -221,8 +228,11 @@ df_clima = pd.concat(resultados, ignore_index=True)
  # ========================== # MERGE CON ELEMENTOS # ========================== 
 df_origen["LATITUD"] = df_origen["LATITUD"].apply(normalizar_numero) 
 df_origen["LONGITUD"] = df_origen["LONGITUD"].apply(normalizar_numero) 
-df_total = df_origen.merge( df_clima, left_on=["LATITUD", "LONGITUD"], right_on=["latitud", "longitud"], how="left" ) 
-# ========================== # CREAR MES-AÑO # ========================== 
+df_total = df_origen.merge(
+    df_clima,
+    on=["lat_grid", "lon_grid"],
+    how="left"
+)# ========================== # CREAR MES-AÑO # ========================== 
 df_total["mes_anio"] = df_total["fecha_consulta"].dt.to_period("M").astype(str) # ========================== 
 
 """ 
