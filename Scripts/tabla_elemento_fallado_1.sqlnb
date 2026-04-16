@@ -4,8 +4,6 @@ cells:
 
       SELECT DISTINCT MINICIAL as CODIGO_MANIOBRA\r
 
-      , TYPEEQUIP AS TIPO_EQUIPO\r
-
       , BREAKER AS ELEMENTO_FALLADO\r
 
       FROM OMS.INTERUPC@SPARD\r
@@ -16,9 +14,27 @@ cells:
 
       AND TIPO != 'PRUEBA'\r
 
+      AND CAUSA != 'PRUEBA';\r
+
+      \r
+
+      \r\n"
+    languageId: oracle-sql
+  - kind: 1
+    value: "# script corregido"
+    languageId: markdown
+  - kind: 2
+    value: "SELECT CODE as CODIGO_MANIOBRA\r
+
+      , BREAKER AS ELEMENTO_FALLADO\r
+
+      FROM OMS.MANIOBRAS@SPARD\r
+
+      WHERE TO_NUMBER(TO_CHAR(FECHA, 'YYYY')) >= 2019\r
+
       AND CAUSA != 'PRUEBA'\r
 
-      AND INTERUPC.TYPEEQUIP != 'Transformer'"
+      ;"
     languageId: oracle-sql
   - kind: 1
     value: Script de la consulta de elementos fallados o causante de la base de
