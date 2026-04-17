@@ -206,17 +206,23 @@ ggplot(clima_tiempo_long, aes(x = semana, y = valor, color = variable)) +
   geom_line(size = 1) +
   facet_wrap(~variable, scales = "free_y", ncol = 1) +
   scale_color_manual(values = c(
-    "temp_media" = "#e31a1c",
-    "temp_max" = "#fb9a99",
-    "temp_min" = "#b2df8a",
+    "Temperatura media" = "#e31a1c",
+    "Temperatura máxima" = "#fb9a99",
+    "Temperatura mínima" = "#b2df8a",
     
-    "precip" = "#1f78b4",
+    "Precipitación" = "#1f78b4",
     
-    "humedad" = "#ff7f00",
+    "Humedad relativa" = "#ff7f00",
     
-    "viento_medio" = "#33a02c",
-    "viento_max" = "#6a3d9a"
-  )) +
+    "Viento medio" = "#33a02c",
+    "Viento máximo" = "#6a3d9a"
+  )) +geom_vline(
+    data = extremos_tiempo %>% filter(lluvia_extrema > 0.3),
+    aes(xintercept = semana),
+    color = "#1f78b4",
+    alpha = 0.2
+  )+
+  
   theme_minimal() +
   theme(
     legend.position = "none",
@@ -227,10 +233,5 @@ ggplot(clima_tiempo_long, aes(x = semana, y = valor, color = variable)) +
     title = "Dinámica temporal de variables climáticas",
     x = "Semana",
     y = NULL
-  )+geom_vline(
-    data = extremos_tiempo %>% filter(lluvia_extrema > 0.3),
-    aes(xintercept = semana),
-    color = "#1f78b4",
-    alpha = 0.2
   )
 
