@@ -1,4 +1,4 @@
-#📊 Capítulo X. Integración Clima–Eventos y Construcción del Panel Analítico
+#📊 Capítulo 5. Integración Clima–Eventos y Construcción del Panel Analítico
 #1. Objetivo del análisis
 
 #El objetivo de esta sección es construir una base de datos integrada que combine información climatológica y eventos de falla en una unidad espacial y temporal consistente, con el fin de:
@@ -216,6 +216,7 @@ ggplot(
     y = "Latitud"
   )
 
+# saveRDS(panel_semana,"C:/Users/User/Downloads/panel_semana.rds")
 
 
 #🎬 1. Instalar (si no lo tienes)
@@ -284,13 +285,9 @@ anim_save("C:/Users/User/Downloads/fallas_animacion.gif", animacion)
   transition_time(semana) +
   shadow_mark(alpha = 0.1) +   # deja “rastro”
   ease_aes("linear")
-  
-<<<<<<< Updated upstream
-# 🧠 Interpretación (esto lo puedes decir en la sustentación)
-=======
+
 # 🧠 Interpretación
->>>>>>> Stashed changes
-# 
+
 # La animación permite observar:
 #   
 #   clusters persistentes de fallas
