@@ -17,14 +17,10 @@ library(lubridate)
 library(readr)
 library(readxl)
 
-
-# llamar variable de entorno UBICACION_DATA en el archivo .env
-ubicacion_data <- Sys.getenv("UBICACION_DATA")
-
 # 🧱 1. Cargar y preparar datos base
 # 📍 1.1 Coordenadas de cuadrantes
 
-CUADRANTE_COORD <- read_excel(paste0(ubicacion_data, "/CUADRANTE_CORD_800.xls")) %>%
+CUADRANTE_COORD <- read_excel("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/CUADRANTE_CORD_800.xls") %>%
   rename(
     id_cuadrante = OBJECTID,
     longitud = POINT_X,
@@ -32,11 +28,11 @@ CUADRANTE_COORD <- read_excel(paste0(ubicacion_data, "/CUADRANTE_CORD_800.xls"))
   )
 
 # 🌦️ 1.2 Clima diario
-nasa_power_consolidado <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
+nasa_power_consolidado <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv")
 
 # ⚡ 1.3 Tabla de Eventos
 
-tabla_eventos_ajustado <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/Output_Raw_API_NASA/tabla_eventos_ajustado.csv"))
+tabla_eventos_ajustado <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/tabla_eventos_ajustado.csv")
 head(tabla_eventos_ajustado)
 
 
@@ -47,7 +43,7 @@ tabla_eventos_ajustado_1 <- tabla_eventos_ajustado %>%
   )
 
 
-vtabla_eventos_ajustado_2 <- tabla_eventos_ajustado_1 %>%
+tabla_eventos_ajustado_2 <- tabla_eventos_ajustado_1 %>%
   mutate(
     anio = year(FECHA_DESCONEXION),
     mes = floor_date(FECHA_DESCONEXION, "month"),

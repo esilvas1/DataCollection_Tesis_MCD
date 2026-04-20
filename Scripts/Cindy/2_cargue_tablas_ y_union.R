@@ -2,15 +2,11 @@ library(readr)
 library(dplyr)
 library(lubridate)
 
-
-# llamar variable de entorno UBICACION_DATA en el archivo .env
-ubicacion_data <- Sys.getenv("UBICACION_DATA")
-
-tabla_elemento_fallado_1_ajustado <- read_csv(paste0(ubicacion_data, "/tabla_elemento_fallado_1_ajustado.csv"))
+tabla_elemento_fallado_1_ajustado <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/tabla_elemento_fallado_1_ajustado.csv")
 head(tabla_elemento_fallado_1_ajustado)
 
 
-tabla_eventos_ajustado <- read_csv(paste0(ubicacion_data, "/tabla_eventos_ajustado.csv"))
+tabla_eventos_ajustado <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/tabla_eventos_ajustado.csv")
 head(tabla_eventos_ajustado)
 
 
@@ -99,7 +95,7 @@ tipo_elemento %>%
 
 
 library(readxl)
-ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(paste0(ubicacion_data, "/DistribuciÃ³n de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls"))
+ELEMENTO_FALLA_CUADRANTE_800 <- read_excel("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls")
 head(ELEMENTO_FALLA_CUADRANTE_800)
 skim(ELEMENTO_FALLA_CUADRANTE_800)
 str(ELEMENTO_FALLA_CUADRANTE_800)
@@ -112,7 +108,7 @@ ELEMENTO_FALLA_CUADRANTE_800 %>%
 
 
 library(readr)
-ELEMENTO_FALLA_CUADRANTE_200 <- read_csv(paste0(ubicacion_data, "/DistribuciÃ³n de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_200.csv"))
+ELEMENTO_FALLA_CUADRANTE_200 <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_200.csv")
 head(ELEMENTO_FALLA_CUADRANTE_200)
 
 skim(ELEMENTO_FALLA_CUADRANTE_200)
@@ -125,11 +121,11 @@ ELEMENTO_FALLA_CUADRANTE_200 %>%
 
 
 
-## esta es la adiciï¿½n de falla cuadrante y pivote 200
+## esta es la adición de falla cuadrante y pivote 200
 
 
 library(readxl)
-ELEMENTO_FALLA_PIVOTE <- read_excel(paste0(ubicacion_data, "/DistribuciÃ³n de Cuadrantes/ELEMENTO_FALLA_PIVOTE.xls"))
+ELEMENTO_FALLA_PIVOTE <- read_excel("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/ELEMENTO_FALLA_PIVOTE.xls")
 head(ELEMENTO_FALLA_PIVOTE)
 
 library(skimr)
@@ -154,7 +150,7 @@ tabla_elemento_fallado_1_ajustado %>%
 
 
 library(readr)
-nasa_power_consolidado <- read_csv(paste0(ubicacion_data, "/DistribuciÃ³n de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
+nasa_power_consolidado <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv")
 head(nasa_power_consolidado)
 dim(nasa_power_consolidado)
 dim(ELEMENTO_FALLA_PIVOTE)
@@ -178,17 +174,17 @@ str(nasa_power_consolidado)
 
 # 
 # 
-# ???? 1. Principio tï¿½cnico (muy importante)
+# ???? 1. Principio técnico (muy importante)
 # 
-# No todas las variables climï¿½ticas se agregan igual:
+# No todas las variables climáticas se agregan igual:
 #   
-#   Variable	Agregaciï¿½n correcta	Justificaciï¿½n
-# Precipitaciï¿½n	suma	es acumulativa
-# Temperatura media	promedio	nivel promedio de exposiciï¿½n
-# Temperatura mï¿½xima	mï¿½ximo	eventos extremos
-# Temperatura mï¿½nima	mï¿½nimo	eventos extremos
-# Humedad	promedio	estado atmosfï¿½rico
-# Viento	promedio + mï¿½ximo (ideal)	nivel + rï¿½fagas
+#   Variable	Agregación correcta	Justificación
+# Precipitación	suma	es acumulativa
+# Temperatura media	promedio	nivel promedio de exposición
+# Temperatura máxima	máximo	eventos extremos
+# Temperatura mínima	mínimo	eventos extremos
+# Humedad	promedio	estado atmosférico
+# Viento	promedio + máximo (ideal)	nivel + ráfagas
 
 
 library(dplyr)
@@ -208,7 +204,7 @@ clima_semana <- clima_semana %>%
     temp_max_semana = max(temperatura_maxima_c, na.rm = TRUE),
     temp_min_semana = min(temperatura_minima_c, na.rm = TRUE),
     
-    # Precipitaciï¿½n (ACUMULADA)
+    # Precipitación (ACUMULADA)
     precip_total_semana = sum(precipitacion_total_mm, na.rm = TRUE),
     
     # Humedad
@@ -218,13 +214,13 @@ clima_semana <- clima_semana %>%
     viento_medio_semana = mean(velocidad_viento_ms, na.rm = TRUE),
     viento_max_semana = max(velocidad_viento_ms, na.rm = TRUE),
     
-    # Opcional (muy ï¿½til para robustez)
+    # Opcional (muy útil para robustez)
     dias_observados = n(),
     
     .groups = "drop"
   )
 
-## 4. Creaciï¿½n de Variables derivadas
+## 4. Creación de Variables derivadas
 
 clima_semana <- clima_semana %>%
   mutate(
