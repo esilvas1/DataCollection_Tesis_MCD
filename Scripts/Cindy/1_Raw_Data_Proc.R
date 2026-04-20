@@ -1,28 +1,27 @@
 ### Raw Data Processing ####
 
-### Librerías ####
-
+### Librerï¿½as ####
 
 library(tidyverse)
 library(readxl)   # Lectura de archivos Excel
 library(readr)    # Lectura de archivos en otros formatos
-library(dplyr)    # Manipulación de datos
-library(tidyr)    # Transformación de datos
+library(dplyr)    # Manipulaciï¿½n de datos
+library(tidyr)    # Transformaciï¿½n de datos
 library(skimr)    # Resumen de estructuras de datos
 library(stringr)  # Manejo de cadenas de texto
 library(officer)
 library(flextable)
 library(magrittr)
-library(mice) # imputación MICE
+library(mice) # imputaciï¿½n MICE
 
-### Índice ####
+### ï¿½ndice ####
   
   
-# 1. Descripción de la actividad 
+# 1. Descripciï¿½n de la actividad 
 # 2. Objetivos
 # 3. Datos
 # 4. Procesamiento de datos
-# 5. Resultados y discusión
+# 5. Resultados y discusiï¿½n
 # 6. Conclusiones
 # 7. Referencias
 # 8. Anexos
@@ -100,13 +99,13 @@ df_diario <- eventos_1_2_3_4_fecha %>%
   summarise(eventos = n()) %>%                # Contar eventos diarios
   arrange(fecha)
 
-# Visualización de serie de tiempo
+# Visualizaciï¿½n de serie de tiempo
 ggplot(df_diario, aes(x = fecha, y = eventos)) +
   geom_line(linewidth = 0.8) + 
   labs(
     title = "Eventos diarios registrados",
     x = "Fecha",
-    y = "Número de eventos"
+    y = "Nï¿½mero de eventos"
   ) +
   theme_minimal()
 
@@ -120,7 +119,7 @@ df_mensual <- eventos_1_2_3_4_fecha %>%
 ggplot(df_mensual, aes(mes, eventos)) +
   geom_col(fill="steelblue") +
   labs(title="Eventos por mes", x="Mes", y="Eventos") +
-  scale_x_date(date_labels="%Y-%m", date_breaks = "3 months") + # evita saturación
+  scale_x_date(date_labels="%Y-%m", date_breaks = "3 months") + # evita saturaciï¿½n
   theme_minimal()+
   theme(axis.text.x = element_text (angle = 55))
 
@@ -135,7 +134,7 @@ df_mensual_CREG <- eventos_1_2_3_4_fecha %>%
 ggplot(df_mensual_CREG, aes(mes, eventos, color=ID_CAUSA_CREG,fill=ID_CAUSA_CREG)) +
   geom_col() +
   labs(title="Eventos por mes", x="Mes", y="Eventos") +
-  scale_x_date(date_labels="%Y-%m", date_breaks = "3 months") + # evita saturación
+  scale_x_date(date_labels="%Y-%m", date_breaks = "3 months") + # evita saturaciï¿½n
   theme_minimal()+
   theme(axis.text.x = element_text (angle = 55))
 
