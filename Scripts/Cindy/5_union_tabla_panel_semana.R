@@ -12,6 +12,9 @@
 # Unidad de análisis:
 #  Cuadrante × semana
 
+
+
+
 # 🧱 2. Preparación de datos
 library(dplyr)
 library(ggplot2)

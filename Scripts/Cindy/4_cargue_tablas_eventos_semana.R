@@ -22,8 +22,19 @@ library(readr)
 library(tidyr)
 library(readxl)
 
+# cargar variables de entorno desde .env si existe
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
+
+# traer la informacion de la variable de entorno UBICACION_DATA
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
 #🔹 2.1 Cargar y limpiar datos
-tabla_eventos <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/tabla_eventos_ajustado.csv")
+tabla_eventos <- read_csv(file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"))
 
 tabla_eventos <- tabla_eventos %>%
   mutate(
@@ -31,12 +42,18 @@ tabla_eventos <- tabla_eventos %>%
     FECHA_CONEXION = dmy_hm(FECHA_CONEXION)
   )
 
-ELEMENTO_FALLA_CUADRANTE_800 <- read_excel("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls")
+
+
+ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls")
+)
 head(ELEMENTO_FALLA_CUADRANTE_800)
 
 # CONTIENE ID DE CUADRANTE Y LAT LONG DE LOS CENTROIDES
 library(readxl)
-CUADRANTE_CORD_800 <- read_excel("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/Distribución de Cuadrantes/CUADRANTE_CORD_800.xls")
+CUADRANTE_CORD_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "CUADRANTE_CORD_800.xls")
+)
 View(CUADRANTE_CORD_800)
 
 #🔹 2.2 Construcción de variables temporales

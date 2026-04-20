@@ -2,6 +2,19 @@ library(readr)
 library(dplyr)
 library(lubridate)
 
+
+# cargar variables de entorno desde .env si existe
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
+
+# traer la informacion de la variable de entorno UBICACION_DATA
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+
 tabla_elemento_fallado_1_ajustado <- read_csv(paste0(UBICACION_DATA, "tabla_elemento_fallado_1_ajustado.csv"))
 head(tabla_elemento_fallado_1_ajustado)
 
