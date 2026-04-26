@@ -1,0 +1,339 @@
+---
+title: "Informe de Extraccion e Integracion de Datos"
+author: "Proyecto SAIDI-SAIFI"
+date: "`r Sys.Date()`"
+lang: es
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+header-includes:
+  - <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  - |
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.mermaid) {
+          mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "default" });
+        }
+      });
+    </script>
+
+---
+
+# 1. Objetivo del informe
+
+Documentar la logica de extraccion y consolidacion de informacion usada para construir la base analitica del proyecto de prediccion de indicadores SAIDI y SAIFI. El informe explica que extrae cada consulta, por que se filtra de esa forma y como se integran los resultados entre sistemas.
+
+# 2. Sistemas y fuentes consultadas
+
+Se integran datos de cuatro fuentes principales:
+
+- BRAE: base regulatoria e historica de eventos.
+- OMS SPARD (sistema historico): fuente de elemento causante antes de la migracion.
+- OMS SP7 (sistema actual): fuente de elemento causante en archivos CSV mensuales.
+- GTECH (GIS): inventario y georreferenciacion de activos electricos.
+- NASA POWER (API): serie diaria de variables climatologicas por coordenada/cuadrante.
+
+# 3. Logica de las extracciones
+
+## 3.1 Extraccion base de eventos (BRAE)
+
+Consulta principal en BRAE para construir el universo de eventos:
+
+```sql
+SELECT DISTINCT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,FDD_FINICIAL AS FECHA_DESCONEXION
+      ,FDD_FFINAL AS FECHA_CONEXION
+      ,'' AS ELEMENTO_FALLADO
+FROM BRAE.QA_TFDDREGISTRO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL;
+```
+
+Logica aplicada:
+
+1. Se toma como llave de negocio el evento (`ID_EVENTO`) y el intervalo temporal (`FECHA_DESCONEXION`, `FECHA_CONEXION`).
+2. Se restringe a 2021-2025 para alinear el periodo de modelacion.
+3. Se excluyen eventos no validos para calidad (`FDD_EXCLUSION` y causas no comparables).
+4. Se exige fecha de reconexion para poder calcular duracion de interrupcion.
+5. Se deja el campo `ELEMENTO_FALLADO` vacio para completarlo posteriormente con OMS.
+
+Resultado: tabla base de eventos para iniciar el ensamblaje del dataset.
+
+## 3.2 Extraccion de afectacion por evento (BRAE + QA_TTC1)
+
+Consulta para estimar magnitud de la afectacion por evento:
+
+```sql
+SELECT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS
+      ,SUM(CANTIDAD_USUARIOS) AS CANTIDAD_USUARIOS
+FROM BRAE.QA_TFDDREGISTRO
+LEFT JOIN (
+    SELECT TC1_CODCONEX AS TRANSFORMADOR
+          ,COUNT(TC1_CODCONEX) AS CANTIDAD_USUARIOS
+          ,TC1_PERIODO AS PERIODO
+    FROM QA_TTC1
+    WHERE SUBSTR(TC1_PERIODO, 1, 4) IN ('2021', '2022', '2023', '2024', '2025')
+    GROUP BY TC1_PERIODO, TC1_CODCONEX
+) ON FDD_CODIGOELEMENTO = TRANSFORMADOR
+ AND FDD_PERIODO_TC1 = PERIODO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL
+GROUP BY FDD_CODIGOEVENTO;
+```
+
+Logica aplicada:
+
+1. Se calcula cantidad de elementos fallados por evento en `QA_TFDDREGISTRO`.
+2. Se construye una subconsulta de usuarios por transformador y periodo desde `QA_TTC1`.
+3. El cruce se hace por codigo de elemento y periodo para evitar mezclar usuarios de otro corte temporal.
+4. Se agrega por `ID_EVENTO` para obtener una metrica de severidad del evento.
+
+Resultado: variables de impacto directo del evento para modelacion.
+
+## 3.3 Extraccion del elemento causante historico (OMS SPARD)
+
+Consulta usada para recuperar elemento causante del sistema OMS historico:
+
+```sql
+SELECT CODE AS CODIGO_MANIOBRA
+      ,BREAKER AS ELEMENTO_FALLADO
+FROM OMS.MANIOBRAS@SPARD
+WHERE TO_NUMBER(TO_CHAR(FECHA, 'YYYY')) >= 2019
+  AND CAUSA != 'PRUEBA';
+```
+
+Logica aplicada:
+
+1. Se usa `CODIGO_MANIOBRA` como clave de empalme contra el identificador de maniobra/evento.
+2. Se extrae `BREAKER` como representacion del elemento que origina o materializa la falla.
+3. Se filtra desde 2019 para cubrir historia reciente util y evitar cargas innecesarias.
+4. Se eliminan registros de pruebas para conservar solo eventos operativos reales.
+
+Resultado: catalogo historico de maniobra-elemento causante para eventos previos a la migracion de OMS.
+
+## 3.4 Extraccion del elemento causante actual (OMS SP7 via CSV)
+
+Para el sistema actual, la informacion se consolida desde archivos mensuales CSV con el script de Python.
+
+Fragmento funcional del proceso:
+
+```python
+columnas_necesarias = ['Maniobra Apertura', 'Tipo Elemento', 'Elemento_Falla']
+df = pd.read_csv(ruta_actual)
+df.columns = df.columns.str.strip()
+df = df[columnas_necesarias].drop_duplicates()
+```
+
+Logica aplicada:
+
+1. Lectura iterativa de rutas de archivos mensuales de SP7.
+2. Estandarizacion de nombres de columnas (`str.strip`) para evitar errores por espacios.
+3. Seleccion de solo 3 campos clave: maniobra, tipo de elemento y elemento de falla.
+4. Eliminacion de duplicados por archivo antes de concatenar.
+5. Union vertical de todos los meses y exportacion a un unico CSV consolidado.
+
+Resultado: tabla consolidada de elemento causante del sistema actual con formato homologable.
+
+## 3.5 Extraccion de inventario y tipo de elemento (GIS GTECH)
+
+Consulta de inventario para enriquecer la data con tipo de activo y ubicacion:
+
+```sql
+(SELECT nodo_transform_v AS ELEMENTO, coor_gps_lat AS LATITUD, coor_gps_lon AS LONGITUD,
+        coor_z AS ALTITUD, 'Transformador' AS TIPO, ubicacion
+ FROM ccomun@gtech c
+ JOIN cconectividad_e@gtech USING (g3e_fid)
+ WHERE c.estado = 'OPERACION' AND c.g3e_fno = 20400)
+UNION
+(SELECT r.codigo, coor_gps_lat, coor_gps_lon, coor_z, 'Reconectador' AS TIPO, ubicacion
+ FROM ereconec_at@gtech r
+ JOIN ccomun@gtech c USING (g3e_fid)
+ JOIN cconectividad_e@gtech USING (g3e_fid)
+ WHERE c.estado = 'OPERACION')
+-- Se repite el mismo patron para Interruptor, Cuchilla y Aisladero
+-- incluyendo variantes de codigo y codigo_operativo.
+;
+```
+
+Logica aplicada:
+
+1. Se unifican distintos tipos de activos en una misma estructura (`ELEMENTO`, coordenadas, `TIPO`, `UBICACION`).
+2. Se conserva solo estado operativo para reflejar red en servicio.
+3. Se incluyen codigos alternos (`codigo` y `codigo_operativo`) para mejorar tasa de emparejamiento en cruces.
+4. Se usa `UNION` para evitar duplicados exactos entre subconjuntos.
+
+Resultado: dimension de activos georreferenciada para enriquecer eventos con contexto fisico y tipo de equipo.
+
+## 3.6 Extraccion de datos climatologicos (NASA POWER via Python)
+
+La extraccion climatologica se implemento en el script `consultaNASA_optimizada.py` usando la API de NASA POWER (resolucion diaria por punto geografico).
+
+Fragmento funcional del proceso:
+
+```python
+parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
+
+url = "https://power.larc.nasa.gov/api/temporal/daily/point"
+params = {
+  "parameters": ",".join(parametros_nasa),
+  "community": "AG",
+  "longitude": lon,
+  "latitude": lat,
+  "start": fecha_inicial,
+  "end": fecha_final,
+  "format": "CSV"
+}
+
+df_res.rename(columns={
+  "PRECTOT": "precipitacion_total_mm",
+  "T2M": "temperatura_media_c",
+  "T2M_MAX": "temperatura_maxima_c",
+  "T2M_MIN": "temperatura_minima_c",
+  "RH2M": "humedad_relativa_pct",
+  "WS2M": "velocidad_viento_ms"
+}, inplace=True)
+```
+
+Logica aplicada:
+
+1. Se lee un archivo Excel de entrada con la relacion de elementos por cuadrante y sus coordenadas.
+2. Se normalizan nombres de columnas y se agrupa por cuadrante (`OBJECTID`).
+3. Para cada cuadrante se selecciona una coordenada representativa (`POINT_Y`, `POINT_X`) para realizar la consulta al API.
+4. Se consulta NASA POWER en ventana temporal 2021-01-01 a 2025-12-31 con variables climaticas diarias.
+5. Se parsea el CSV eliminando metadatos del encabezado (`-END HEADER-`) y se construye `fecha_consulta`.
+6. Se eliminan filas sin fecha valida y se estandarizan nombres de columnas a mayusculas durante la limpieza.
+7. Se agregan metadatos del cuadrante: `id_cuadrante`, latitud, longitud y cantidad de elementos del cuadrante.
+8. Se exporta un archivo por cuadrante y luego se consolida todo en un unico CSV final.
+
+Resultado: serie climatologica diaria homogenizada y lista para cruce con la base de eventos.
+
+Salidas del proceso climatologico:
+
+- Archivos por cuadrante: `nasa_power_cuadrantes/cuadrante_<id>.csv`.
+- Archivo consolidado: `nasa_power_consolidado.csv`.
+- Variables estandarizadas: precipitacion total, temperatura media/max/min, humedad relativa y velocidad de viento.
+
+# 4. Logica de integracion entre sistemas
+
+Secuencia recomendada de ensamblaje:
+
+1. Construir tabla base de eventos desde BRAE (`ID_EVENTO`, fechas y filtros regulatorios).
+2. Anexar metricas de impacto (`CANTIDAD_ELEMENTOS_FALLADOS`, `CANTIDAD_USUARIOS`).
+3. Completar `ELEMENTO_FALLADO` usando dos fuentes OMS:
+   - Historico (SPARD) para eventos previos a la migracion.
+   - Actual (SP7 CSV) para eventos posteriores.
+4. Homologar nombres de columnas y formatos de codigo de maniobra/elemento.
+5. Enriquecer contra inventario GIS para asignar `TIPO`, `LATITUD`, `LONGITUD`, `ALTITUD` y `UBICACION`.
+6. Integrar serie climatologica de NASA POWER por cuadrante y fecha (`id_cuadrante`, `fecha_consulta`).
+7. Generar dataset final para analitica y modelacion SAIDI-SAIFI.
+
+## Diagrama de flujo de integracion
+
+```mermaid
+flowchart TD
+    A["1) BRAE - Eventos base<br/>ID_EVENTO, FECHA_DESCONEXION, FECHA_CONEXION"]
+    B["2) BRAE + QA_TTC1 - Severidad<br/>CANTIDAD_ELEMENTOS_FALLADOS, CANTIDAD_USUARIOS"]
+    C["3A) OMS SPARD historico<br/>CODIGO_MANIOBRA, ELEMENTO_FALLADO"]
+    D["3B) OMS SP7 actual CSV<br/>Maniobra Apertura, Tipo Elemento, Elemento_Falla"]
+    E["4) Homologacion de llaves<br/>ID_EVENTO - CODIGO_MANIOBRA - Maniobra Apertura"]
+    F["5) GTECH GIS - Inventario tecnico<br/>ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, UBICACION"]
+    H["6) NASA POWER - Clima diario<br/>PRECTOT, T2M, T2M_MAX, T2M_MIN, RH2M, WS2M"]
+    G["7) Dataset integrado final<br/>Base de modelacion SAIDI-SAIFI"]
+
+    A --> B
+    B --> C
+    B --> D
+    C --> E
+    D --> E
+    E --> F
+    H --> G
+    F --> G
+ ``` 
+
+Lectura del diagrama:
+
+1. BRAE define el universo de eventos y su ventana temporal.
+2. QA_TTC1 agrega intensidad del impacto por evento.
+3. OMS aporta el elemento causante por dos rutas (historica y actual).
+4. Se unifican llaves para evitar perdida de emparejamiento entre sistemas.
+5. GTECH aporta contexto tecnico y espacial para enriquecer variables de red.
+6. NASA POWER aporta contexto meteorologico diario para las zonas de analisis.
+7. El resultado es la tabla analitica consolidada para modelacion.
+
+# 5. Diccionario de campos clave
+
+| Campo estandar | Campo origen | Sistema origen | Tipo dato esperado | Descripcion funcional | Uso en integracion |
+|---|---|---|---|---|---|
+| ID_EVENTO | FDD_CODIGOEVENTO | BRAE | Entero/Cadena | Identificador unico de evento de interrupcion | Llave principal del dataset de eventos |
+| FECHA_DESCONEXION | FDD_FINICIAL | BRAE | Fecha-hora | Inicio de la interrupcion | Calculo de duracion y filtros de periodo |
+| FECHA_CONEXION | FDD_FFINAL | BRAE | Fecha-hora | Fin de la interrupcion | Validacion de cierre y duracion |
+| CODIGO_ELEMENTO_EVENTO | FDD_CODIGOELEMENTO | BRAE | Cadena | Elemento reportado en el detalle del evento | Cruce con usuarios y activos |
+| CANTIDAD_ELEMENTOS_AFECTADOS | COUNT(FDD_CODIGOELEMENTO) | BRAE | Entero | Total de elementos asociados al evento | Variable de severidad |
+| CANTIDAD_USUARIOS | SUM(CANTIDAD_USUARIOS) | QA_TTC1 (agregado) | Entero | Total de usuarios afectados por evento | Variable de impacto |
+| TRANSFORMADOR | TC1_CODCONEX | QA_TTC1 | Cadena | Codigo de transformador comercial | Llave de empalme con elemento del evento |
+| PERIODO | TC1_PERIODO | QA_TTC1 | Cadena | Periodo de corte comercial | Alineacion temporal del cruce |
+| CODIGO_MANIOBRA | CODE o MINICIAL | OMS SPARD | Cadena | Identificador operativo de maniobra | Llave para asignar elemento causante historico |
+| ELEMENTO_FALLADO_OMS | BREAKER | OMS SPARD | Cadena | Elemento causante segun OMS historico | Completa causante en eventos pre-migracion |
+| MANIOBRA_APERTURA | Maniobra Apertura | OMS SP7 CSV | Cadena | Identificador de maniobra en sistema actual | Llave para asignar causante post-migracion |
+| TIPO_ELEMENTO_OMS | Tipo Elemento | OMS SP7 CSV | Cadena | Clasificacion del activo causante | Enriquecimiento tecnico del evento |
+| ELEMENTO_FALLA_SP7 | Elemento_Falla | OMS SP7 CSV | Cadena | Codigo del elemento causante en SP7 | Completa causante en eventos recientes |
+| ELEMENTO | nodo_transform_v/codigo/codigo_operativo | GTECH GIS | Cadena | Codigo normalizado del activo de red | Llave para enriquecer geografia y tipo |
+| LATITUD | coor_gps_lat | GTECH GIS | Decimal | Coordenada geografica latitud | Variables espaciales para analitica |
+| LONGITUD | coor_gps_lon | GTECH GIS | Decimal | Coordenada geografica longitud | Variables espaciales para analitica |
+| ALTITUD | coor_z | GTECH GIS | Decimal/Entero | Cota del activo | Contexto topografico |
+| TIPO | Tipo fijo por subconsulta | GTECH GIS | Cadena | Tipo de activo (Transformador, Interruptor, etc.) | Segmentacion por tecnologia de red |
+| UBICACION | ubicacion | GTECH GIS | Cadena | Referencia textual de ubicacion del activo | Validacion y soporte de trazabilidad |
+| ID_CUADRANTE | OBJECTID / id_cuadrante | Excel cuadrantes / NASA POWER | Cadena/Entero | Identificador del cuadrante geografico | Llave para cruce espacial con clima |
+| FECHA_CONSULTA | fecha_consulta | NASA POWER | Fecha | Fecha diaria de la variable meteorologica | Llave temporal para agregacion y cruce |
+| LATITUD_CUADRANTE | POINT_Y / latitud_cuadrante | Excel cuadrantes / NASA POWER | Decimal | Latitud usada en la consulta al API | Trazabilidad geografica de la extraccion |
+| LONGITUD_CUADRANTE | POINT_X / longitud_cuadrante | Excel cuadrantes / NASA POWER | Decimal | Longitud usada en la consulta al API | Trazabilidad geografica de la extraccion |
+| PRECIPITACION_TOTAL_MM | PRECTOT / PRECTOTCORR | NASA POWER | Decimal | Precipitacion diaria total (mm) | Variable exogena de clima para modelacion |
+| TEMPERATURA_MEDIA_C | T2M | NASA POWER | Decimal | Temperatura media diaria (C) | Variable exogena de clima para modelacion |
+| TEMPERATURA_MAXIMA_C | T2M_MAX | NASA POWER | Decimal | Temperatura maxima diaria (C) | Variable exogena de clima para modelacion |
+| TEMPERATURA_MINIMA_C | T2M_MIN | NASA POWER | Decimal | Temperatura minima diaria (C) | Variable exogena de clima para modelacion |
+| HUMEDAD_RELATIVA_PCT | RH2M | NASA POWER | Decimal | Humedad relativa diaria (%) | Variable exogena de clima para modelacion |
+| VELOCIDAD_VIENTO_MS | WS2M | NASA POWER | Decimal | Velocidad diaria del viento (m/s) | Variable exogena de clima para modelacion |
+
+Reglas de estandarizacion recomendadas:
+
+1. Convertir llaves tecnicas a texto para evitar perdida por formato numerico.
+2. Aplicar `trim` y `upper` en codigos de maniobra y elemento antes de cruzar.
+3. Normalizar nombres de columnas a un esquema unico de salida.
+4. Registrar fuente de procedencia por fila (`FUENTE_CAUSANTE`: SPARD o SP7).
+
+# 6. Validaciones de calidad de datos
+
+Controles aplicados en la extraccion y consolidacion:
+
+- Exclusion de registros de prueba.
+- Exclusion de eventos sin fecha final.
+- Filtrado por ventana temporal de analisis.
+- Deteccion y eliminacion de duplicados en consolidaciones de CSV.
+- Homologacion de llaves de cruce entre sistemas.
+- Verificacion de nulos en campos criticos (`ID_EVENTO`, fechas, elemento causante).
+- Control de timeout y captura de errores de consulta por cuadrante en el API climatologico.
+- Eliminacion de registros climatologicos sin fecha valida (`fecha_consulta`).
+
+# 7. Productos de datos resultantes
+
+Entregables esperados del proceso:
+
+- Base de eventos depurada (BRAE).
+- Resumen de severidad por evento (elementos y usuarios afectados).
+- Catalogo de elemento causante historico (OMS SPARD).
+- Catalogo de elemento causante actual consolidado (OMS SP7 CSV).
+- Inventario GIS de activos operativos georreferenciados (GTECH).
+- Series climatologicas diarias por cuadrante (NASA POWER).
+- Consolidado climatologico unico para integracion analitica.
+- Tabla integrada final para consumo en etapas de feature engineering y modelacion.
+
+# 8. Nota final
+
+La logica implementada responde a un escenario de convivencia de sistemas (OMS historico y OMS actual). Por esta razon, la calidad del cruce depende de una homologacion consistente de llaves operativas (evento/maniobra/elemento) y de mantener actualizada la tabla de equivalencias cuando existan cambios en codificacion.
