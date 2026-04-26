@@ -90,3 +90,45 @@ cells:
 
       \        ;"
     languageId: oracle-sql
+  - kind: 1
+    value: "# Extraer antiguedad de la red"
+    languageId: markdown
+  - kind: 2
+    value: "SELECT FDD_CODIGOEVENTO AS ID_EVENTO\r
+
+      --,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS \r
+
+      --,SUM(CANTIDAD_USUARIOS) AS CANTIDAD_USUARIOS\r
+
+      FROM BRAE.QA_TFDDREGISTRO\r
+
+      LEFT JOIN (\r
+
+      \        SELECT TC1_CODCONEX AS TRANSFORMADOR \r
+
+      \        ,   COUNT(TC1_CODCONEX) CANTIDAD_USUARIOS\r
+
+      \        ,   TC1_PERIODO AS PERIODO\r
+
+      \        FROM QA_TTC1\r
+
+      \        WHERE SUBSTR(TC1_PERIODO, 1, 4) IN ('2021', '2022', '2023',
+      '2024', '2025')\r
+
+      \        GROUP BY TC1_PERIODO, TC1_CODCONEX\r
+
+      ) ON FDD_CODIGOELEMENTO = TRANSFORMADOR AND FDD_PERIODO_TC1 = PERIODO\r
+
+      WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024',
+      '2025')  \r
+
+      AND FDD_EXCLUSION = 'NO EXCLUIDA'\r
+
+      AND FDD_CAUSA_SSPD NOT IN (1)\r
+
+      AND FDD_FFINAL IS NOT NULL\r
+
+      --GROUP BY FDD_CODIGOEVENTO\r
+
+      ;"
+    languageId: oracle-sql
