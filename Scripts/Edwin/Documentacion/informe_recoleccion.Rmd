@@ -267,6 +267,45 @@ Lectura del diagrama:
 6. NASA POWER aporta contexto meteorologico diario para las zonas de analisis.
 7. El resultado es la tabla analitica consolidada para modelacion.
 
+## Definicion de tabla consolidada final (grano elemento-dia)
+
+La tabla final consolidada se define a nivel de granularidad **un registro por activo electrico por dia**.
+
+Logica estructural:
+
+1. Se construye un calendario diario del periodo 2021-01-01 a 2025-12-31.
+2. Se realiza producto cartesiano entre inventario de activos y calendario diario.
+3. Sobre esa base se anexan variables de red, variables climaticas por cuadrante-dia y variables de eventos por activo-dia.
+4. Cuando un activo no presenta falla en el dia, se registra `DURACION = 0` y `FRECUENCIA = 0`.
+
+Reglas para variables de evento en el dia:
+
+- `DURACION` (horas): suma de horas sin servicio del activo dentro del dia.
+- `FRECUENCIA`: numero de interrupciones del activo cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese dia.
+
+Si un evento cruza medianoche, la duracion debe prorratearse por dia. Formula sugerida:
+
+`duracion_horas_dia = SUM(MAX(0, MIN(FECHA_CONEXION, FECHA + 1 dia) - MAX(FECHA_DESCONEXION, FECHA)) * 24)`
+
+Estructura esperada de columnas finales (segun consolidado objetivo):
+
+- `ID_ACTIVO_ELECTRICO`, `TIPO_ACTIVO_ELECTRICO`, `LATITUD`, `LONGITUD`, `ALTITUD`.
+- `ID_CUADRANTE`, `LATITUD_CUADRANTE`, `LONGITUD_CUADRANTE`, `FECHA`.
+- `CANTIDAD_ELEMENTOS`, `CANTIDAD_USUARIOS`, `ANTIGUEDAD_RED`, `EXPANSION_RED`.
+- `VELOCIDAD_VIENTO_MS`, `TEMPERATURA_MEDIA_C`, `HUMEDAD_RELATIVA_PCT`, `TEMPERATURA_MINIMA_C`, `TEMPERATURA_MAXIMA_C`, `PRECIPITACION_TOTAL_MM`.
+- `DURACION`, `FRECUENCIA`.
+
+Mapeo de nombres recomendado para estandarizar salida:
+
+- `ELEMENTO` -> `ID_ACTIVO_ELECTRICO`
+- `TIPO` -> `TIPO_ACTIVO_ELECTRICO`
+- `fecha_consulta` -> `FECHA`
+
+Estimacion de volumen de la tabla consolidada:
+
+- Aproximado base: `47.653 activos * 365 dias * 5 anos = 86.966.725 filas`.
+- Considerando ano bisiesto 2024 (1.826 dias): `47.653 * 1.826 = 87.014.378 filas`.
+
 # 5. Diccionario de campos clave
 
 | Campo estandar | Campo origen | Sistema origen | Tipo dato esperado | Descripcion funcional | Uso en integracion |
@@ -300,6 +339,8 @@ Lectura del diagrama:
 | TEMPERATURA_MINIMA_C | T2M_MIN | NASA POWER | Decimal | Temperatura minima diaria (C) | Variable exogena de clima para modelacion |
 | HUMEDAD_RELATIVA_PCT | RH2M | NASA POWER | Decimal | Humedad relativa diaria (%) | Variable exogena de clima para modelacion |
 | VELOCIDAD_VIENTO_MS | WS2M | NASA POWER | Decimal | Velocidad diaria del viento (m/s) | Variable exogena de clima para modelacion |
+| DURACION | FECHA_DESCONEXION/FECHA_CONEXION (derivado) | BRAE/OMS (eventos) | Decimal | Horas acumuladas sin servicio del activo en el dia | Variable objetivo/explicativa de continuidad |
+| FRECUENCIA | Conteo de eventos por dia (derivado) | BRAE/OMS (eventos) | Entero | Numero de fallas del activo en el dia | Variable objetivo/explicativa de continuidad |
 
 Reglas de estandarizacion recomendadas:
 

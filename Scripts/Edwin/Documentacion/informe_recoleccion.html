@@ -382,6 +382,8 @@ sistemas</a>
 <ul>
 <li><a href="#diagrama-de-flujo-de-integracion" id="toc-diagrama-de-flujo-de-integracion"><span class="toc-section-number">4.1</span> Diagrama de flujo de
 integracion</a></li>
+<li><a href="#definicion-de-tabla-consolidada-final-grano-elemento-dia" id="toc-definicion-de-tabla-consolidada-final-grano-elemento-dia"><span class="toc-section-number">4.2</span> Definicion de tabla consolidada
+final (grano elemento-dia)</a></li>
 </ul></li>
 <li><a href="#diccionario-de-campos-clave" id="toc-diccionario-de-campos-clave"><span class="toc-section-number">5</span> 5. Diccionario de campos
 clave</a></li>
@@ -690,6 +692,62 @@ analisis.</li>
 <li>El resultado es la tabla analitica consolidada para modelacion.</li>
 </ol>
 </div>
+<div id="definicion-de-tabla-consolidada-final-grano-elemento-dia" class="section level2" number="4.2">
+<h2><span class="header-section-number">4.2</span> Definicion de tabla
+consolidada final (grano elemento-dia)</h2>
+<p>La tabla final consolidada se define a nivel de granularidad
+<strong>un registro por activo electrico por dia</strong>.</p>
+<p>Logica estructural:</p>
+<ol style="list-style-type: decimal">
+<li>Se construye un calendario diario del periodo 2021-01-01 a
+2025-12-31.</li>
+<li>Se realiza producto cartesiano entre inventario de activos y
+calendario diario.</li>
+<li>Sobre esa base se anexan variables de red, variables climaticas por
+cuadrante-dia y variables de eventos por activo-dia.</li>
+<li>Cuando un activo no presenta falla en el dia, se registra
+<code>DURACION = 0</code> y <code>FRECUENCIA = 0</code>.</li>
+</ol>
+<p>Reglas para variables de evento en el dia:</p>
+<ul>
+<li><code>DURACION</code> (horas): suma de horas sin servicio del activo
+dentro del dia.</li>
+<li><code>FRECUENCIA</code>: numero de interrupciones del activo cuyo
+inicio (<code>FECHA_DESCONEXION</code>) ocurre en ese dia.</li>
+</ul>
+<p>Si un evento cruza medianoche, la duracion debe prorratearse por dia.
+Formula sugerida:</p>
+<p><code>duracion_horas_dia = SUM(MAX(0, MIN(FECHA_CONEXION, FECHA + 1 dia) - MAX(FECHA_DESCONEXION, FECHA)) * 24)</code></p>
+<p>Estructura esperada de columnas finales (segun consolidado
+objetivo):</p>
+<ul>
+<li><code>ID_ACTIVO_ELECTRICO</code>,
+<code>TIPO_ACTIVO_ELECTRICO</code>, <code>LATITUD</code>,
+<code>LONGITUD</code>, <code>ALTITUD</code>.</li>
+<li><code>ID_CUADRANTE</code>, <code>LATITUD_CUADRANTE</code>,
+<code>LONGITUD_CUADRANTE</code>, <code>FECHA</code>.</li>
+<li><code>CANTIDAD_ELEMENTOS</code>, <code>CANTIDAD_USUARIOS</code>,
+<code>ANTIGUEDAD_RED</code>, <code>EXPANSION_RED</code>.</li>
+<li><code>VELOCIDAD_VIENTO_MS</code>, <code>TEMPERATURA_MEDIA_C</code>,
+<code>HUMEDAD_RELATIVA_PCT</code>, <code>TEMPERATURA_MINIMA_C</code>,
+<code>TEMPERATURA_MAXIMA_C</code>,
+<code>PRECIPITACION_TOTAL_MM</code>.</li>
+<li><code>DURACION</code>, <code>FRECUENCIA</code>.</li>
+</ul>
+<p>Mapeo de nombres recomendado para estandarizar salida:</p>
+<ul>
+<li><code>ELEMENTO</code> -&gt; <code>ID_ACTIVO_ELECTRICO</code></li>
+<li><code>TIPO</code> -&gt; <code>TIPO_ACTIVO_ELECTRICO</code></li>
+<li><code>fecha_consulta</code> -&gt; <code>FECHA</code></li>
+</ul>
+<p>Estimacion de volumen de la tabla consolidada:</p>
+<ul>
+<li>Aproximado base:
+<code>47.653 activos * 365 dias * 5 anos = 86.966.725 filas</code>.</li>
+<li>Considerando ano bisiesto 2024 (1.826 dias):
+<code>47.653 * 1.826 = 87.014.378 filas</code>.</li>
+</ul>
+</div>
 </div>
 <div id="diccionario-de-campos-clave" class="section level1" number="5">
 <h1><span class="header-section-number">5</span> 5. Diccionario de
@@ -945,6 +1003,22 @@ campos clave</h1>
 <td>Decimal</td>
 <td>Velocidad diaria del viento (m/s)</td>
 <td>Variable exogena de clima para modelacion</td>
+</tr>
+<tr class="even">
+<td>DURACION</td>
+<td>FECHA_DESCONEXION/FECHA_CONEXION (derivado)</td>
+<td>BRAE/OMS (eventos)</td>
+<td>Decimal</td>
+<td>Horas acumuladas sin servicio del activo en el dia</td>
+<td>Variable objetivo/explicativa de continuidad</td>
+</tr>
+<tr class="odd">
+<td>FRECUENCIA</td>
+<td>Conteo de eventos por dia (derivado)</td>
+<td>BRAE/OMS (eventos)</td>
+<td>Entero</td>
+<td>Numero de fallas del activo en el dia</td>
+<td>Variable objetivo/explicativa de continuidad</td>
 </tr>
 </tbody>
 </table>
