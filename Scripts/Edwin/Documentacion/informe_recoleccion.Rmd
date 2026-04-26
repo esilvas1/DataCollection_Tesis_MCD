@@ -249,24 +249,36 @@ Secuencia recomendada de ensamblaje:
 ## Diagrama de flujo de integracion
 
 ```mermaid
-flowchart TD
-    A["1) BRAE - Eventos base<br/>ID_EVENTO, FECHA_DESCONEXION, FECHA_CONEXION"]
-    B["2) BRAE + QA_TTC1 - Severidad<br/>CANTIDAD_ELEMENTOS_FALLADOS, CANTIDAD_USUARIOS"]
-    C["3A) OMS SPARD historico<br/>CODIGO_MANIOBRA, ELEMENTO_FALLADO"]
-    D["3B) OMS SP7 actual CSV<br/>Maniobra Apertura, Tipo Elemento, Elemento_Falla"]
-    E["4) Homologacion de llaves<br/>ID_EVENTO - CODIGO_MANIOBRA - Maniobra Apertura"]
-    F["5) GTECH GIS - Inventario tecnico<br/>ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, UBICACION"]
-    H["6) NASA POWER - Clima diario<br/>PRECTOT, T2M, T2M_MAX, T2M_MIN, RH2M, WS2M"]
-    G["7) Dataset integrado final<br/>Base de modelacion SAIDI-SAIFI"]
+flowchart LR
+    %% ===== FASE 1: FUENTES =====
+    subgraph S1["Fase 1 - Fuentes de informacion"]
+      A["BRAE<br/>ID_EVENTO, FECHA_DESCONEXION, FECHA_CONEXION"]
+      C["OMS SPARD (historico)<br/>CODIGO_MANIOBRA, ELEMENTO_FALLADO"]
+      D["OMS SP7 (actual CSV)<br/>MANIOBRA_APERTURA, TIPO_ELEMENTO_OMS, ELEMENTO_FALLA_SP7"]
+      F["GTECH GIS<br/>ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, UBICACION"]
+      H["NASA POWER<br/>PRECTOT, T2M, T2M_MAX, T2M_MIN, RH2M, WS2M"]
+    end
+
+    %% ===== FASE 2: INTEGRACION =====
+    subgraph S2["Fase 2 - Integracion y cruces"]
+      B["Eventos + severidad<br/>CANTIDAD_ELEMENTOS_AFECTADOS, CANTIDAD_USUARIOS"]
+      E["Homologacion de llaves<br/>ID_EVENTO - CODIGO_MANIOBRA - MANIOBRA_APERTURA"]
+      R["Enriquecimiento tecnico de red<br/>tipo de activo y ubicacion"]
+      CL["Enriquecimiento climatologico diario<br/>ID_CUADRANTE + FECHA_CONSULTA"]
+    end
+
+    %% ===== FASE 3: SALIDA =====
+    G["Dataset consolidado final (grano elemento-dia)<br/>DURACION, FRECUENCIA y variables explicativas"]
 
     A --> B
-    B --> C
-    B --> D
+    B --> E
     C --> E
     D --> E
-    E --> F
-    H --> G
-    F --> G
+    E --> R
+    F --> R
+    R --> CL
+    H --> CL
+    CL --> G
  ``` 
 
 Lectura del diagrama:
