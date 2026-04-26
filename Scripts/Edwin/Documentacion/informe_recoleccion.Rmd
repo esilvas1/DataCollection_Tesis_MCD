@@ -35,7 +35,19 @@ Se integran datos de cuatro fuentes principales:
 - GTECH (GIS): inventario y georreferenciacion de activos electricos.
 - NASA POWER (API): serie diaria de variables climatologicas por coordenada/cuadrante.
 
+## lugar donde se registra la información;
+
+La informacion se registra en la red de distribucion electrica de Norte de Santander, con soporte de localizacion geografica por activo y por cuadrante.
+
+## empresa, institución o fuente correspondiente, según el caso.
+
+La empresa origen de los datos operativos y tecnicos es **CENTRALES ELECTRICAS DE NORTE DE SANTANDER S.A E.S.P (CENS S.A E.S.P)**, a traves de sus sistemas corporativos (BRAE, OMS y GIS). Para variables climatologicas se utiliza la fuente institucional externa NASA POWER.
+
 # 3. Logica de las extracciones
+
+## tiempo o período de estudio;
+
+El periodo de estudio consolidado en las extracciones y cruces corresponde a **2021-01-01 a 2025-12-31**.
 
 ## 3.1 Extraccion base de eventos (BRAE)
 
@@ -269,7 +281,9 @@ Lectura del diagrama:
 
 ## Definicion de tabla consolidada final (grano elemento-dia)
 
-La tabla final consolidada se define a nivel de granularidad **un registro por activo electrico por dia**.
+### unidad muestral;
+
+La unidad muestral adoptada es **un activo electrico por dia** (grano elemento-dia).
 
 Logica estructural:
 
@@ -301,12 +315,15 @@ Mapeo de nombres recomendado para estandarizar salida:
 - `TIPO` -> `TIPO_ACTIVO_ELECTRICO`
 - `fecha_consulta` -> `FECHA`
 
-Estimacion de volumen de la tabla consolidada:
+### número de observaciones;
 
-- Aproximado base: `47.653 activos * 365 dias * 5 anos = 86.966.725 filas`.
-- Considerando ano bisiesto 2024 (1.826 dias): `47.653 * 1.826 = 87.014.378 filas`.
+La tabla consolidada final tiene una estimacion de:
+
+- `47.653 * 1.826 = 87.014.378` observaciones.
 
 # 5. Diccionario de campos clave
+
+## descripción de las variables;
 
 | Campo estandar | Campo origen | Sistema origen | Tipo dato esperado | Descripcion funcional | Uso en integracion |
 |---|---|---|---|---|---|
