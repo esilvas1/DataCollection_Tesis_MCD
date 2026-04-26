@@ -75,7 +75,24 @@ Logica aplicada:
 
 Resultado: tabla base de eventos para iniciar el ensamblaje del dataset.
 
+Muestra de resultados de esta extraccion:
+
+| ID_EVENTO | FECHA_DESCONEXION     | FECHA_CONEXION        | ELEMENTO_FALLADO |
+|-----------|-----------------------|-----------------------|------------------|
+| 801851    | 14/03/21 06:59:00.000 | 14/03/21 09:30:00.000 | (null)           |
+| 787583    | 04/01/21 08:50:00.000 | 04/01/21 17:15:00.000 | (null)           |
+| 787496    | 03/01/21 14:18:14.296 | 03/01/21 14:40:42.699 | (null)           |
+| 787232    | 01/01/21 10:29:33.936 | 01/01/21 13:30:00.000 | (null)           |
+| 787455    | 03/01/21 10:34:23.000 | 03/01/21 13:30:00.000 | (null)           |
+| 787376    | 02/01/21 12:09:22.000 | 02/01/21 18:20:00.000 | (null)           |
+| 789756    | 16/01/21 08:50:00.000 | 16/01/21 15:50:00.000 | (null)           |
+| 788677    | 10/01/21 08:37:45.000 | 10/01/21 10:10:00.000 | (null)           |
+| 788932    | 12/01/21 06:47:47.000 | 12/01/21 08:30:00.000 | (null)           |
+| 787922    | 06/01/21 08:42:00.000 | 06/01/21 15:28:00.000 | (null)           |
+
 ## 3.2 Extraccion de afectacion por evento (BRAE + QA_TTC1)
+
+Nota: QA_TTC1 es la tabla de usuarios por transformador comercial, que se cruza para estimar la cantidad de usuarios afectados por cada evento.
 
 Consulta para estimar magnitud de la afectacion por evento:
 
@@ -109,6 +126,20 @@ Logica aplicada:
 
 Resultado: variables de impacto directo del evento para modelacion.
 
+Muestra de resultados de esta extraccion:
+
+| ID_EVENTO | CANTIDAD_ELEMENTOS_FALLADOS | CANTIDAD_USUARIOS |
+|-----------|------------------------------|-------------------|
+| 795044    | 33                           | 2692              |
+| 795513    | 162                          | 11796             |
+| 788221    | 10                           | 74                |
+| 788203    | 240                          | 3865              |
+| 789543    | 8                            | 45                |
+| 789719    | 109                          | 503               |
+| 789929    | 109                          | 503               |
+| 788758    | 1                            | 6                 |
+| 798712    | 159                          | 1869              |
+
 ## 3.3 Extraccion del elemento causante historico (OMS SPARD)
 
 Consulta usada para recuperar elemento causante del sistema OMS historico:
@@ -129,6 +160,20 @@ Logica aplicada:
 4. Se eliminan registros de pruebas para conservar solo eventos operativos reales.
 
 Resultado: catalogo historico de maniobra-elemento causante para eventos previos a la migracion de OMS.
+
+Muestra de resultados de esta extraccion:
+
+| CODIGO_MANIOBRA | ELEMENTO_FALLADO |
+|-----------------|------------------|
+| 640011          | AMVE271          |
+| 634924          | LMVEL79620       |
+| 634978          | LMVEL67393       |
+| 631108          | RMVEL79067-2     |
+| 631464          | CMVE2454         |
+| 631761          | SW6844           |
+| 637873          | BMVE749          |
+| 640442          | LMVEL99259       |
+| 631793          | SANC52           |
 
 ## 3.4 Extraccion del elemento causante actual (OMS SP7 via CSV)
 
@@ -152,6 +197,22 @@ Logica aplicada:
 5. Union vertical de todos los meses y exportacion a un unico CSV consolidado.
 
 Resultado: tabla consolidada de elemento causante del sistema actual con formato homologable.
+
+Muestra de resultados de esta extraccion:
+
+| MANIOBRA_APERTURA   | TIPO_ELEMENTO                 | ELEMENTO_FALLA |
+|---------------------|-------------------------------|----------------|
+| 424000000000114424  | Transformador de distribucion | 1T07942        |
+| 124000000000269842  | Fusible                       | F1979          |
+| 124000000000269842  | Transformador de distribucion | F1979          |
+| 124000000000273378  | Fusible                       | F2004          |
+| 124000000000269851  | Fusible                       | F2000          |
+| 124000000000273383  | Fusible                       | F2001          |
+| 124000000000273374  | Fusible                       | F2006          |
+| 124000000000273377  | Fusible                       | F2004          |
+| 124000000000273372  | Fusible                       | F2006          |
+| 124000000000273356  | Fusible                       | F2005          |
+| 124000000000273381  | Fusible                       | F1993          |
 
 ## 3.5 Extraccion de inventario y tipo de elemento (GIS GTECH)
 
@@ -182,6 +243,22 @@ Logica aplicada:
 4. Se usa `UNION` para evitar duplicados exactos entre subconjuntos.
 
 Resultado: dimension de activos georreferenciada para enriquecer eventos con contexto fisico y tipo de equipo.
+
+Muestra de resultados de esta extraccion:
+
+| ELEMENTO | LATITUD | LONGITUD | ALTITUD | TIPO | UBICACION |
+|----------|---------|----------|---------|------|-----------|
+| 1T00001  | 7.917491919 | -72.50199542 | 296 | Transformador | AVE AEROPUERTO CLL 18N |
+| 1T00002  | 7.920237054 | -72.49963693 | 289 | Transformador | AV 6 23N-05 PRADOS NORTE |
+| 1T00003  | 7.920535966 | -72.49861408 | 287 | Transformador | AV LIBERTADORES 5 Y 6 |
+| 1T00004  | 7.92045106  | -72.49958172 | 290 | Transformador | AVE 6 23N-25 B/PRADOS DEL NORTE |
+| 1T00005  | 7.918228719 | -72.49370385 | 286 | Transformador | AVE LBTDORES CLL 19N |
+| 1T00006  | 7.918835719 | -72.49265081 | 285 | Transformador | CL 20BN 3-108 |
+| 1T00007  | 7.918644514 | -72.4937086  | 285 | Transformador | AV 3 19N-22 M GRANAHORRA |
+| 1T00008  | 7.918019396 | -72.49261496 | 284 | Transformador | AVE 4 20N-03 TSAJERO |
+| 1T00009  | 7.916469888 | -72.49681557 | 286 | Transformador | CL 19AN 2-112-1 LOS ANGELES |
+| 1T00010  | 7.916776022 | -72.49650526 | 286 | Transformador | CL 20N 2-86 PRADOS NORTE |
+| 1T00011  | 7.917344542 | -72.49840688 | 288 | Transformador | CLL 20N 4-82 PRADOS NORTE |
 
 ## 3.6 Extraccion de datos climatologicos (NASA POWER via Python)
 
@@ -225,6 +302,22 @@ Logica aplicada:
 8. Se exporta un archivo por cuadrante y luego se consolida todo en un unico CSV final.
 
 Resultado: serie climatologica diaria homogenizada y lista para cruce con la base de eventos.
+
+Muestra de resultados de esta extraccion:
+
+| VELOCIDAD_VIENTO_MS | TEMPERATURA_MEDIA_C | HUMEDAD_RELATIVA_PCT | TEMPERATURA_MINIMA_C | TEMPERATURA_MAXIMA_C | PRECIPITACION_TOTAL_MM | FECHA_CONSULTA | ID_CUADRANTE | LATITUD_CUADRANTE | LONGITUD_CUADRANTE | CANTIDAD_ELEMENTOS_CUADRANTE |
+|---------------------|---------------------|----------------------|----------------------|----------------------|------------------------|----------------|--------------|-------------------|--------------------|------------------------------|
+| 2.06                | 13.27               | 87.24                | 9.12                 | 18.63                | 2.6                    | 01/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 2.66                | 13.89               | 88.27                | 10.71                | 18.92                | 1.41                   | 02/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 1.93                | 13.66               | 88.59                | 10.29                | 18.96                | 3.04                   | 03/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 1.73                | 13.6                | 85.07                | 9.13                 | 20.17                | 9.07                   | 04/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 1.45                | 11.52               | 69.12                | 5.95                 | 18.7                 | 0.79                   | 05/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 1.1                 | 12.29               | 80.8                 | 7.55                 | 17.76                | 0.77                   | 06/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 1.76                | 13.23               | 88.9                 | 10.65                | 17.93                | 3.03                   | 07/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 2.34                | 12.95               | 88.44                | 10.14                | 17.84                | 2.51                   | 08/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 2.41                | 12.69               | 87.38                | 9.48                 | 16.55                | 1.84                   | 09/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 2.98                | 12.99               | 90.13                | 9.65                 | 17.44                | 3.35                   | 10/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
+| 3.18                | 13.12               | 87.67                | 10.58                | 17.69                | 0.9                    | 11/01/2021     | 1            | 6.982116699       | -72.68548584       | 1                            |
 
 Salidas del proceso climatologico:
 

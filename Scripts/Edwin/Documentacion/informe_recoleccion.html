@@ -489,10 +489,92 @@ completarlo posteriormente con OMS.</li>
 </ol>
 <p>Resultado: tabla base de eventos para iniciar el ensamblaje del
 dataset.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<colgroup>
+<col width="14%" />
+<col width="30%" />
+<col width="30%" />
+<col width="24%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>ID_EVENTO</th>
+<th>FECHA_DESCONEXION</th>
+<th>FECHA_CONEXION</th>
+<th>ELEMENTO_FALLADO</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>801851</td>
+<td>14/03/21 06:59:00.000</td>
+<td>14/03/21 09:30:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="even">
+<td>787583</td>
+<td>04/01/21 08:50:00.000</td>
+<td>04/01/21 17:15:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="odd">
+<td>787496</td>
+<td>03/01/21 14:18:14.296</td>
+<td>03/01/21 14:40:42.699</td>
+<td>(null)</td>
+</tr>
+<tr class="even">
+<td>787232</td>
+<td>01/01/21 10:29:33.936</td>
+<td>01/01/21 13:30:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="odd">
+<td>787455</td>
+<td>03/01/21 10:34:23.000</td>
+<td>03/01/21 13:30:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="even">
+<td>787376</td>
+<td>02/01/21 12:09:22.000</td>
+<td>02/01/21 18:20:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="odd">
+<td>789756</td>
+<td>16/01/21 08:50:00.000</td>
+<td>16/01/21 15:50:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="even">
+<td>788677</td>
+<td>10/01/21 08:37:45.000</td>
+<td>10/01/21 10:10:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="odd">
+<td>788932</td>
+<td>12/01/21 06:47:47.000</td>
+<td>12/01/21 08:30:00.000</td>
+<td>(null)</td>
+</tr>
+<tr class="even">
+<td>787922</td>
+<td>06/01/21 08:42:00.000</td>
+<td>06/01/21 15:28:00.000</td>
+<td>(null)</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="extraccion-de-afectacion-por-evento-brae-qa_ttc1" class="section level2" number="3.3">
 <h2><span class="header-section-number">3.3</span> 3.2 Extraccion de
 afectacion por evento (BRAE + QA_TTC1)</h2>
+<p>Nota: QA_TTC1 es la tabla de usuarios por transformador comercial,
+que se cruza para estimar la cantidad de usuarios afectados por cada
+evento.</p>
 <p>Consulta para estimar magnitud de la afectacion por evento:</p>
 <pre class="sql"><code>SELECT FDD_CODIGOEVENTO AS ID_EVENTO
       ,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS
@@ -525,6 +607,63 @@ severidad del evento.</li>
 </ol>
 <p>Resultado: variables de impacto directo del evento para
 modelacion.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<thead>
+<tr class="header">
+<th>ID_EVENTO</th>
+<th>CANTIDAD_ELEMENTOS_FALLADOS</th>
+<th>CANTIDAD_USUARIOS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>795044</td>
+<td>33</td>
+<td>2692</td>
+</tr>
+<tr class="even">
+<td>795513</td>
+<td>162</td>
+<td>11796</td>
+</tr>
+<tr class="odd">
+<td>788221</td>
+<td>10</td>
+<td>74</td>
+</tr>
+<tr class="even">
+<td>788203</td>
+<td>240</td>
+<td>3865</td>
+</tr>
+<tr class="odd">
+<td>789543</td>
+<td>8</td>
+<td>45</td>
+</tr>
+<tr class="even">
+<td>789719</td>
+<td>109</td>
+<td>503</td>
+</tr>
+<tr class="odd">
+<td>789929</td>
+<td>109</td>
+<td>503</td>
+</tr>
+<tr class="even">
+<td>788758</td>
+<td>1</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td>798712</td>
+<td>159</td>
+<td>1869</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="extraccion-del-elemento-causante-historico-oms-spard" class="section level2" number="3.4">
 <h2><span class="header-section-number">3.4</span> 3.3 Extraccion del
@@ -549,6 +688,53 @@ operativos reales.</li>
 </ol>
 <p>Resultado: catalogo historico de maniobra-elemento causante para
 eventos previos a la migracion de OMS.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<thead>
+<tr class="header">
+<th>CODIGO_MANIOBRA</th>
+<th>ELEMENTO_FALLADO</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>640011</td>
+<td>AMVE271</td>
+</tr>
+<tr class="even">
+<td>634924</td>
+<td>LMVEL79620</td>
+</tr>
+<tr class="odd">
+<td>634978</td>
+<td>LMVEL67393</td>
+</tr>
+<tr class="even">
+<td>631108</td>
+<td>RMVEL79067-2</td>
+</tr>
+<tr class="odd">
+<td>631464</td>
+<td>CMVE2454</td>
+</tr>
+<tr class="even">
+<td>631761</td>
+<td>SW6844</td>
+</tr>
+<tr class="odd">
+<td>637873</td>
+<td>BMVE749</td>
+</tr>
+<tr class="even">
+<td>640442</td>
+<td>LMVEL99259</td>
+</tr>
+<tr class="odd">
+<td>631793</td>
+<td>SANC52</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="extraccion-del-elemento-causante-actual-oms-sp7-via-csv" class="section level2" number="3.5">
 <h2><span class="header-section-number">3.5</span> 3.4 Extraccion del
@@ -573,6 +759,73 @@ consolidado.</li>
 </ol>
 <p>Resultado: tabla consolidada de elemento causante del sistema actual
 con formato homologable.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<thead>
+<tr class="header">
+<th>MANIOBRA_APERTURA</th>
+<th>TIPO_ELEMENTO</th>
+<th>ELEMENTO_FALLA</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>424000000000114424</td>
+<td>Transformador de distribucion</td>
+<td>1T07942</td>
+</tr>
+<tr class="even">
+<td>124000000000269842</td>
+<td>Fusible</td>
+<td>F1979</td>
+</tr>
+<tr class="odd">
+<td>124000000000269842</td>
+<td>Transformador de distribucion</td>
+<td>F1979</td>
+</tr>
+<tr class="even">
+<td>124000000000273378</td>
+<td>Fusible</td>
+<td>F2004</td>
+</tr>
+<tr class="odd">
+<td>124000000000269851</td>
+<td>Fusible</td>
+<td>F2000</td>
+</tr>
+<tr class="even">
+<td>124000000000273383</td>
+<td>Fusible</td>
+<td>F2001</td>
+</tr>
+<tr class="odd">
+<td>124000000000273374</td>
+<td>Fusible</td>
+<td>F2006</td>
+</tr>
+<tr class="even">
+<td>124000000000273377</td>
+<td>Fusible</td>
+<td>F2004</td>
+</tr>
+<tr class="odd">
+<td>124000000000273372</td>
+<td>Fusible</td>
+<td>F2006</td>
+</tr>
+<tr class="even">
+<td>124000000000273356</td>
+<td>Fusible</td>
+<td>F2005</td>
+</tr>
+<tr class="odd">
+<td>124000000000273381</td>
+<td>Fusible</td>
+<td>F1993</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="extraccion-de-inventario-y-tipo-de-elemento-gis-gtech" class="section level2" number="3.6">
 <h2><span class="header-section-number">3.6</span> 3.5 Extraccion de
@@ -608,6 +861,117 @@ subconjuntos.</li>
 </ol>
 <p>Resultado: dimension de activos georreferenciada para enriquecer
 eventos con contexto fisico y tipo de equipo.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<colgroup>
+<col width="18%" />
+<col width="16%" />
+<col width="18%" />
+<col width="16%" />
+<col width="10%" />
+<col width="20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>ELEMENTO</th>
+<th>LATITUD</th>
+<th>LONGITUD</th>
+<th>ALTITUD</th>
+<th>TIPO</th>
+<th>UBICACION</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1T00001</td>
+<td>7.917491919</td>
+<td>-72.50199542</td>
+<td>296</td>
+<td>Transformador</td>
+<td>AVE AEROPUERTO CLL 18N</td>
+</tr>
+<tr class="even">
+<td>1T00002</td>
+<td>7.920237054</td>
+<td>-72.49963693</td>
+<td>289</td>
+<td>Transformador</td>
+<td>AV 6 23N-05 PRADOS NORTE</td>
+</tr>
+<tr class="odd">
+<td>1T00003</td>
+<td>7.920535966</td>
+<td>-72.49861408</td>
+<td>287</td>
+<td>Transformador</td>
+<td>AV LIBERTADORES 5 Y 6</td>
+</tr>
+<tr class="even">
+<td>1T00004</td>
+<td>7.92045106</td>
+<td>-72.49958172</td>
+<td>290</td>
+<td>Transformador</td>
+<td>AVE 6 23N-25 B/PRADOS DEL NORTE</td>
+</tr>
+<tr class="odd">
+<td>1T00005</td>
+<td>7.918228719</td>
+<td>-72.49370385</td>
+<td>286</td>
+<td>Transformador</td>
+<td>AVE LBTDORES CLL 19N</td>
+</tr>
+<tr class="even">
+<td>1T00006</td>
+<td>7.918835719</td>
+<td>-72.49265081</td>
+<td>285</td>
+<td>Transformador</td>
+<td>CL 20BN 3-108</td>
+</tr>
+<tr class="odd">
+<td>1T00007</td>
+<td>7.918644514</td>
+<td>-72.4937086</td>
+<td>285</td>
+<td>Transformador</td>
+<td>AV 3 19N-22 M GRANAHORRA</td>
+</tr>
+<tr class="even">
+<td>1T00008</td>
+<td>7.918019396</td>
+<td>-72.49261496</td>
+<td>284</td>
+<td>Transformador</td>
+<td>AVE 4 20N-03 TSAJERO</td>
+</tr>
+<tr class="odd">
+<td>1T00009</td>
+<td>7.916469888</td>
+<td>-72.49681557</td>
+<td>286</td>
+<td>Transformador</td>
+<td>CL 19AN 2-112-1 LOS ANGELES</td>
+</tr>
+<tr class="even">
+<td>1T00010</td>
+<td>7.916776022</td>
+<td>-72.49650526</td>
+<td>286</td>
+<td>Transformador</td>
+<td>CL 20N 2-86 PRADOS NORTE</td>
+</tr>
+<tr class="odd">
+<td>1T00011</td>
+<td>7.917344542</td>
+<td>-72.49840688</td>
+<td>288</td>
+<td>Transformador</td>
+<td>CLL 20N 4-82 PRADOS NORTE</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="extraccion-de-datos-climatologicos-nasa-power-via-python" class="section level2" number="3.7">
 <h2><span class="header-section-number">3.7</span> 3.6 Extraccion de
@@ -660,6 +1024,182 @@ unico CSV final.</li>
 </ol>
 <p>Resultado: serie climatologica diaria homogenizada y lista para cruce
 con la base de eventos.</p>
+<p>Muestra de resultados de esta extraccion:</p>
+<table>
+<colgroup>
+<col width="9%" />
+<col width="9%" />
+<col width="9%" />
+<col width="9%" />
+<col width="9%" />
+<col width="10%" />
+<col width="6%" />
+<col width="6%" />
+<col width="8%" />
+<col width="8%" />
+<col width="12%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>VELOCIDAD_VIENTO_MS</th>
+<th>TEMPERATURA_MEDIA_C</th>
+<th>HUMEDAD_RELATIVA_PCT</th>
+<th>TEMPERATURA_MINIMA_C</th>
+<th>TEMPERATURA_MAXIMA_C</th>
+<th>PRECIPITACION_TOTAL_MM</th>
+<th>FECHA_CONSULTA</th>
+<th>ID_CUADRANTE</th>
+<th>LATITUD_CUADRANTE</th>
+<th>LONGITUD_CUADRANTE</th>
+<th>CANTIDAD_ELEMENTOS_CUADRANTE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2.06</td>
+<td>13.27</td>
+<td>87.24</td>
+<td>9.12</td>
+<td>18.63</td>
+<td>2.6</td>
+<td>01/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>2.66</td>
+<td>13.89</td>
+<td>88.27</td>
+<td>10.71</td>
+<td>18.92</td>
+<td>1.41</td>
+<td>02/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>1.93</td>
+<td>13.66</td>
+<td>88.59</td>
+<td>10.29</td>
+<td>18.96</td>
+<td>3.04</td>
+<td>03/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>1.73</td>
+<td>13.6</td>
+<td>85.07</td>
+<td>9.13</td>
+<td>20.17</td>
+<td>9.07</td>
+<td>04/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>1.45</td>
+<td>11.52</td>
+<td>69.12</td>
+<td>5.95</td>
+<td>18.7</td>
+<td>0.79</td>
+<td>05/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>1.1</td>
+<td>12.29</td>
+<td>80.8</td>
+<td>7.55</td>
+<td>17.76</td>
+<td>0.77</td>
+<td>06/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>1.76</td>
+<td>13.23</td>
+<td>88.9</td>
+<td>10.65</td>
+<td>17.93</td>
+<td>3.03</td>
+<td>07/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>2.34</td>
+<td>12.95</td>
+<td>88.44</td>
+<td>10.14</td>
+<td>17.84</td>
+<td>2.51</td>
+<td>08/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>2.41</td>
+<td>12.69</td>
+<td>87.38</td>
+<td>9.48</td>
+<td>16.55</td>
+<td>1.84</td>
+<td>09/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>2.98</td>
+<td>12.99</td>
+<td>90.13</td>
+<td>9.65</td>
+<td>17.44</td>
+<td>3.35</td>
+<td>10/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td>3.18</td>
+<td>13.12</td>
+<td>87.67</td>
+<td>10.58</td>
+<td>17.69</td>
+<td>0.9</td>
+<td>11/01/2021</td>
+<td>1</td>
+<td>6.982116699</td>
+<td>-72.68548584</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
 <p>Salidas del proceso climatologico:</p>
 <ul>
 <li>Archivos por cuadrante:
@@ -697,24 +1237,36 @@ maniobra/elemento.</li>
 <div id="diagrama-de-flujo-de-integracion" class="section level2" number="4.1">
 <h2><span class="header-section-number">4.1</span> Diagrama de flujo de
 integracion</h2>
-<pre class="mermaid"><code>flowchart TD
-    A[&quot;1) BRAE - Eventos base&lt;br/&gt;ID_EVENTO, FECHA_DESCONEXION, FECHA_CONEXION&quot;]
-    B[&quot;2) BRAE + QA_TTC1 - Severidad&lt;br/&gt;CANTIDAD_ELEMENTOS_FALLADOS, CANTIDAD_USUARIOS&quot;]
-    C[&quot;3A) OMS SPARD historico&lt;br/&gt;CODIGO_MANIOBRA, ELEMENTO_FALLADO&quot;]
-    D[&quot;3B) OMS SP7 actual CSV&lt;br/&gt;Maniobra Apertura, Tipo Elemento, Elemento_Falla&quot;]
-    E[&quot;4) Homologacion de llaves&lt;br/&gt;ID_EVENTO - CODIGO_MANIOBRA - Maniobra Apertura&quot;]
-    F[&quot;5) GTECH GIS - Inventario tecnico&lt;br/&gt;ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, UBICACION&quot;]
-    H[&quot;6) NASA POWER - Clima diario&lt;br/&gt;PRECTOT, T2M, T2M_MAX, T2M_MIN, RH2M, WS2M&quot;]
-    G[&quot;7) Dataset integrado final&lt;br/&gt;Base de modelacion SAIDI-SAIFI&quot;]
+<pre class="mermaid"><code>flowchart LR
+    %% ===== FASE 1: FUENTES =====
+    subgraph S1[&quot;Fase 1 - Fuentes de informacion&quot;]
+      A[&quot;BRAE&lt;br/&gt;ID_EVENTO, FECHA_DESCONEXION, FECHA_CONEXION&quot;]
+      C[&quot;OMS SPARD (historico)&lt;br/&gt;CODIGO_MANIOBRA, ELEMENTO_FALLADO&quot;]
+      D[&quot;OMS SP7 (actual CSV)&lt;br/&gt;MANIOBRA_APERTURA, TIPO_ELEMENTO_OMS, ELEMENTO_FALLA_SP7&quot;]
+      F[&quot;GTECH GIS&lt;br/&gt;ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, UBICACION&quot;]
+      H[&quot;NASA POWER&lt;br/&gt;PRECTOT, T2M, T2M_MAX, T2M_MIN, RH2M, WS2M&quot;]
+    end
+
+    %% ===== FASE 2: INTEGRACION =====
+    subgraph S2[&quot;Fase 2 - Integracion y cruces&quot;]
+      B[&quot;Eventos + severidad&lt;br/&gt;CANTIDAD_ELEMENTOS_AFECTADOS, CANTIDAD_USUARIOS&quot;]
+      E[&quot;Homologacion de llaves&lt;br/&gt;ID_EVENTO - CODIGO_MANIOBRA - MANIOBRA_APERTURA&quot;]
+      R[&quot;Enriquecimiento tecnico de red&lt;br/&gt;tipo de activo y ubicacion&quot;]
+      CL[&quot;Enriquecimiento climatologico diario&lt;br/&gt;ID_CUADRANTE + FECHA_CONSULTA&quot;]
+    end
+
+    %% ===== FASE 3: SALIDA =====
+    G[&quot;Dataset consolidado final (grano elemento-dia)&lt;br/&gt;DURACION, FRECUENCIA y variables explicativas&quot;]
 
     A --&gt; B
-    B --&gt; C
-    B --&gt; D
+    B --&gt; E
     C --&gt; E
     D --&gt; E
-    E --&gt; F
-    H --&gt; G
-    F --&gt; G</code></pre>
+    E --&gt; R
+    F --&gt; R
+    R --&gt; CL
+    H --&gt; CL
+    CL --&gt; G</code></pre>
 <p>Lectura del diagrama:</p>
 <ol style="list-style-type: decimal">
 <li>BRAE define el universo de eventos y su ventana temporal.</li>
