@@ -45,3 +45,27 @@ logs/*.txt
 *.csv
 *.pdf
 *.xlsx
+
+# LaTeX/Overleaf temporary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.run.xml
+*.toc
+*.out
+*.lof
+*.lot
+*.synctex.gz
+*-SAVE-ERROR
+*.xmpi
+
+# LaTeX additional
+*.idx
+*.ilg
+*.ind
+*.brf
+*.cb
+*.dvi

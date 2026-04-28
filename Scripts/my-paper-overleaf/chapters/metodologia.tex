@@ -1,0 +1,830 @@
+
+
+%--------------------------------------------------
+Nuestra metodología está organizada por etapas que se alinean con los objetivos específicos del proyecto. El enfoque general consiste en integrar datos, limpiarlos, analizarlos y construir modelos para predecir los indicadores $SAIDI$ y $SAIFI$ de la empresa de distribución eléctrica en Norte de Santander.
+
+Se decidió utilizar CRISP-DM (Cross-Industry Standard Process for Data Mining) como marco de referencia por ser un estándar reconocido en la industria para proyectos de ciencia de datos, el cual fue adaptado al contexto específico del sector eléctrico regulado. Las fases de CRISP-DM se implementaron de la siguiente manera: el entendimiento del negocio (Business Understanding) se desarrolla en las Secciones 1–4, donde se describen el problema, los objetivos y la justificación. Las fases de entendimiento y preparación de datos (Data Understanding y Data Preparation) corresponden a las Etapas 1, 2 y 3, en las que se integran, depuran y exploran los datos. La fase de modelado y evaluación (Modeling y Evaluation) se desarrolla en la Etapa 4, donde se construyen y validan los modelos predictivos. Finalmente, el despliegue (Deployment) corresponde a la Etapa 5, en la cual se documenta el proceso, se entrega código reproducible.
+
+Esta adaptación de CRISP-DM considera los requisitos específicos del regulador (CREG, SSPD), las métricas propias del sector eléctrico ($SAIDI$, $SAIFI$) y la necesidad de que los modelos sean interpretables para su uso en la toma de decisiones.
+
+\section{Etapa 1 – Extracción de datos}
+
+
+\textbf{Objetivo específico asociado: OE1}
+
+Esta etapa comprende la recolección, integración y estandarización de las fuentes de datos internas (SCADA, OMS, GIS, CIS, registros de fallas y mantenimiento) y externas (NASA, CREG, SSPD). Incluye la creación de un repositorio analítico unificado y la elaboración de un catálogo de datos que documenta metadatos, alcances, limitaciones y métricas de integridad.
+
+\textbf{Entregable:} Informe de consolidación de datos y catálogo de calidad e integridad.
+
+\subsubsection{Fuentes de informacion}
+
+A partir del año $2023$, la Electrificadora de Norte de Santander realizó una migración de su sistema de gestión de interrupciones. Como resultado, la recopilación de información de interrupciones eléctricas se llevó a cabo a partir de dos bases de datos provenientes de sistemas distintos:
+
+\begin{itemize}
+\item \textbf{OMS Energy}: sistema utilizado hasta antes de la migración, del cual se extrae la información histórica de interrupciones previas a $2023$.
+\item \textbf{OMS SP7 de Siemens}: nuevo sistema implementado desde $2023$, del cual se obtiene la información de interrupciones a partir de dicha fecha.
+\end{itemize}
+
+Esta dualidad de fuentes implica diferencias estructurales en los esquemas de datos (tales como nombres de campos, codificaciones y niveles de granularidad), las cuales fueron consideradas durante el proceso de integración y homologación de la información.
+
+
+\subsection{Sistemas y fuentes consultadas}
+
+Se integran datos de cinco fuentes de información principales:
+
+\begin{itemize}
+\item BRAE: base regulatoria e histórica de eventos.
+\item OMS SPARD (sistema histórico): fuente de elemento causante antes de la migración.
+\item OMS SP7 (sistema actual): fuente de elemento causante en archivos CSV mensuales.
+\item GTECH (GIS): inventario y georreferenciación de activos eléctricos.
+\item NASA POWER (API): serie diaria de variables climatológicas por coordenada/cuadrante.
+\end{itemize}
+
+\subsection{Extracción base y depuración de eventos de interrupción (BRAE)}
+
+La construcción de la base de eventos de interrupción se realizó a partir de la tabla transaccional \texttt{BRAE.QA\_TFDDREGISTRO}, la cual contiene el registro histórico de eventos de desconexión del sistema eléctrico. A partir de esta fuente, se ejecutó una consulta SQL orientada a depurar inconsistencias, restringir el periodo de análisis y estandarizar la estructura del identificador de evento.
+
+En primer lugar, se seleccionaron únicamente los campos relevantes para el análisis: el identificador del evento (\texttt{FDD\_CODIGOEVENTO}), la fecha de inicio de la desconexión (\texttt{FDD\_FINICIAL}) y la fecha de reconexión (\texttt{FDD\_FFINAL}). Adicionalmente, se incluyó un campo vacío para \texttt{ELEMENTO\_FALLADO}, con el fin de mantener compatibilidad estructural con otras fuentes que sí contienen este nivel de desagregación.
+
+Posteriormente, se aplicaron criterios de depuración y filtrado. En primer lugar, se restringió la muestra al periodo comprendido entre los años 2021 y 2025, garantizando consistencia temporal del análisis. En segundo lugar, se excluyeron aquellos registros marcados como no relevantes mediante la variable \texttt{FDD\_EXCLUSION}, conservando únicamente los eventos clasificados como \texttt{NO EXCLUIDA}. En tercer lugar, se eliminaron eventos asociados a causas no válidas según la regulación (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}), así como aquellos registros sin fecha de finalización (\texttt{FDD\_FFINAL IS NOT NULL}), los cuales no permiten calcular la duración del evento.
+
+Finalmente, se utilizó la instrucción \texttt{DISTINCT} para garantizar la eliminación de duplicados en el identificador de evento, obteniéndose una base depurada y consistente a nivel de evento de interrupción. Como resultado de este proceso de extracción y limpieza, se obtuvo un total de 95{,}280 registros válidos de eventos de desconexión para el periodo de análisis.
+
+\begin{lstlisting}[style=thesiscode,language=SQL]
+SELECT DISTINCT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,FDD_FINICIAL AS FECHA_DESCONEXION
+      ,FDD_FFINAL AS FECHA_CONEXION
+      ,'' AS ELEMENTO_FALLADO
+FROM BRAE.QA_TFDDREGISTRO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL;
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de eventos depurados de interrupción (BRAE)}
+\label{tab:muestra_eventos_brae}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.8cm} >{\raggedright\arraybackslash}p{3.7cm} >{\raggedright\arraybackslash}p{3.7cm} >{\raggedright\arraybackslash}p{2.6cm}}
+\toprule
+\textbf{ID EVENTO} & \textbf{FECHA DESCONEXION} & \textbf{FECHA CONEXION} & \textbf{ELEMENTO FALLADO} \\
+\midrule
+801851 & 14/03/21 06:59:00.000 & 14/03/21 09:30:00.000 & (null) \\
+787583 & 04/01/21 08:50:00.000 & 04/01/21 17:15:00.000 & (null) \\
+787496 & 03/01/21 14:18:14.296 & 03/01/21 14:40:42.699 & (null) \\
+787232 & 01/01/21 10:29:33.936 & 01/01/21 13:30:00.000 & (null) \\
+787455 & 03/01/21 10:34:23.000 & 03/01/21 13:30:00.000 & (null) \\
+787376 & 02/01/21 12:09:22.000 & 02/01/21 18:20:00.000 & (null) \\
+789756 & 16/01/21 08:50:00.000 & 16/01/21 15:50:00.000 & (null) \\
+788677 & 10/01/21 08:37:45.000 & 10/01/21 10:10:00.000 & (null) \\
+788932 & 12/01/21 06:47:47.000 & 12/01/21 08:30:00.000 & (null) \\
+787922 & 06/01/21 08:42:00.000 & 06/01/21 15:28:00.000 & (null) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\subsection{Extracción de afectación por evento}
+
+Con el fin de complementar la base de eventos de interrupción, se construyó una tabla de afectación asociada a cada evento, incorporando información sobre el número de elementos afectados y la cantidad de usuarios impactados. Este proceso permite pasar de una caracterización puramente temporal del evento a una medición de su severidad en términos de impacto en la red.
+
+La extracción se realizó a partir de la tabla \texttt{BRAE.QA\_TFDDREGISTRO}, la cual se utilizó como fuente principal de eventos, y se complementó mediante una unión (LEFT JOIN) con la base \texttt{QA\_TTC1}, que contiene información asociada a la conexión de transformadores y el número de usuarios por conexión.
+
+En particular, la variable \texttt{CANTIDAD\_USUARIOS} se construyó a partir del conteo de usuarios asociados a cada transformador (\texttt{TC1\_CODCONEX}) agrupados por periodo, mientras que la variable de afectación por evento se obtuvo mediante la agregación de estos usuarios a nivel de evento de interrupción.
+
+Posteriormente, se aplicaron los mismos criterios de depuración utilizados en la etapa anterior, restringiendo el análisis al periodo 2021–2025, excluyendo eventos marcados como no relevantes (\texttt{FDD\_EXCLUSION = 'NO EXCLUIDA'}), eliminando causas no válidas según la clasificación regulatoria (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}) y conservando únicamente registros con fecha de finalización válida (\texttt{FDD\_FFINAL IS NOT NULL}).
+
+Finalmente, los datos se agregaron a nivel de evento (\texttt{FDD\_CODIGOEVENTO}) utilizando la función \texttt{GROUP BY}, obteniendo como resultado dos indicadores clave: el número de elementos fallados por evento y el total de usuarios afectados. El procedimiento permitió consolidar una base consistente de 95{,}280 registros, alineada con la estructura del conjunto de eventos previamente depurado.
+
+\begin{lstlisting}[style=thesiscode,language=SQL]
+SELECT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS
+      ,SUM(CANTIDAD_USUARIOS) AS CANTIDAD_USUARIOS
+FROM BRAE.QA_TFDDREGISTRO
+LEFT JOIN (
+    SELECT TC1_CODCONEX AS TRANSFORMADOR
+          ,COUNT(TC1_CODCONEX) AS CANTIDAD_USUARIOS
+          ,TC1_PERIODO AS PERIODO
+    FROM QA_TTC1
+    WHERE SUBSTR(TC1_PERIODO, 1, 4) IN ('2021', '2022', '2023', '2024', '2025')
+    GROUP BY TC1_PERIODO, TC1_CODCONEX
+) ON FDD_CODIGOELEMENTO = TRANSFORMADOR
+ AND FDD_PERIODO_TC1 = PERIODO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL
+GROUP BY FDD_CODIGOEVENTO;
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de afectación por evento (BRAE + QA\_TTC1)}
+\label{tab:muestra_afectacion_evento}
+\begin{tabularx}{0.9\textwidth}{
+    >{\raggedright\arraybackslash}p{2.0cm}
+    >{\centering\arraybackslash}p{4.6cm}
+    >{\centering\arraybackslash}p{3.0cm}
+}
+\toprule
+\textbf{ID EVENTO} & \textbf{CANTIDAD ELEMENTOS FALLADOS} & \textbf{CANTIDAD USUARIOS AFECTADOS} \\
+\midrule
+795044 & 33  & 2692  \\
+795513 & 162 & 11796 \\
+788221 & 10  & 74    \\
+788203 & 240 & 3865  \\
+789543 & 8   & 45    \\
+789719 & 109 & 503   \\
+789929 & 109 & 503   \\
+788758 & 1   & 6     \\
+798712 & 159 & 1869  \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Extracción del elemento causante histórico}
+
+Con el objetivo de identificar el elemento de la red asociado a la causa de cada evento de maniobra, se realizó la extracción de información histórica desde la base de datos del sistema OMS (Outage Management System), específicamente desde la tabla \texttt{OMS.MANIOBRAS@SPARD}. Esta fuente permite complementar la información de eventos de interrupción mediante la identificación del elemento físico que originó la falla.
+
+El proceso de extracción se centró en dos variables principales: el código de la maniobra (\texttt{CODE}), utilizado como identificador del evento en el sistema OMS, y el elemento fallado (\texttt{BREAKER}), que corresponde al activo de la red asociado a la causa de la interrupción. Estas variables permiten establecer la relación entre el evento registrado y el componente físico responsable dentro de la infraestructura eléctrica.
+
+Adicionalmente, se aplicaron criterios de filtrado temporal y de calidad de datos. En primer lugar, se restringió la información a registros con fecha igual o posterior al año 2021, garantizando la consistencia histórica del análisis. En segundo lugar, se excluyeron aquellos eventos clasificados como pruebas operativas mediante la condición \texttt{CAUSA != 'PRUEBA'}, con el fin de conservar únicamente eventos reales de operación del sistema.
+
+Como resultado de este proceso de extracción y depuración, se obtuvo una base de datos estructurada a nivel de maniobra, la cual permite complementar la trazabilidad entre eventos de interrupción y los elementos físicos de la red asociados a su ocurrencia.
+
+\begin{lstlisting}[style=thesiscode,language=SQL]
+SELECT CODE AS CODIGO_MANIOBRA
+      ,BREAKER AS ELEMENTO_FALLADO
+FROM OMS.MANIOBRAS@SPARD
+WHERE TO_NUMBER(TO_CHAR(FECHA, 'YYYY')) >= 2021
+  AND CAUSA != 'PRUEBA';
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de elemento causante histórico (OMS SPARD)}
+\label{tab:muestra_elemento_causante_historico}
+\begin{tabularx}{0.72\textwidth}{>{\centering\arraybackslash}p{3.0cm} >{\centering\arraybackslash}p{4.0cm}}
+\toprule
+\textbf{CODIGO MANIOBRA} & \textbf{ELEMENTO FALLADO} \\
+\midrule
+640011 & AMVE271 \\
+634924 & LMVEL79620 \\
+634978 & LMVEL67393 \\
+631108 & RMVEL79067-2 \\
+631464 & CMVE2454 \\
+631761 & SW6844 \\
+637873 & BMVE749 \\
+640442 & LMVEL99259 \\
+631793 & SANC52 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Extracción del elemento causante actual}
+
+Con el objetivo de actualizar la información histórica del sistema de maniobras, se realizó la extracción de los datos correspondientes a la versión más reciente del sistema OMS en formato plano (CSV). Este proceso permite complementar la información histórica con registros operativos actuales, garantizando la continuidad y consistencia de la base de datos utilizada en el análisis.
+
+La extracción se realizó mediante un proceso de lectura y depuración de datos en Python, a partir del archivo fuente correspondiente a la versión actual del sistema. En primer lugar, se cargó el archivo mediante la función \texttt{read\_csv}, asegurando la correcta lectura de la estructura tabular. Posteriormente, se realizó una limpieza de los nombres de las columnas mediante la eliminación de espacios en blanco al inicio y al final, con el fin de evitar inconsistencias en la identificación de variables.
+
+A continuación, se seleccionaron únicamente las variables relevantes para el análisis: \texttt{Maniobra Apertura}, \texttt{Tipo Elemento} y \texttt{Elemento\_Falla}. Esta selección permitió homogenizar la estructura de la base con la información histórica previamente construida. Finalmente, se eliminaron los registros duplicados mediante la función \texttt{drop\_duplicates}, garantizando la unicidad de las observaciones a nivel de combinación de variables relevantes.
+
+Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final.
+
+\begin{lstlisting}[style=thesiscode,language=Python]
+columnas_necesarias = ['Maniobra Apertura', 'Tipo Elemento', 'Elemento_Falla']
+df = pd.read_csv(ruta_actual)
+df.columns = df.columns.str.strip()
+df = df[columnas_necesarias].drop_duplicates()
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de elemento causante actual (OMS SP7)}
+\label{tab:muestra_elemento_causante_actual}
+\begin{tabularx}{0.95\textwidth}{
+    >{\centering\arraybackslash}p{3.8cm} 
+    >{\raggedright\arraybackslash}p{4.8cm} 
+    >{\centering\arraybackslash}p{2.7cm}}
+\toprule
+\textbf{MANIOBRA APERTURA} & \textbf{TIPO ELEMENTO} & \textbf{ELEMENTO FALLA} \\
+\midrule
+424000000000114424 & Transformador de distribucion & 1T07942 \\
+124000000000269842 & Fusible & F1979 \\
+124000000000269842 & Transformador de distribucion & F1979 \\
+124000000000273378 & Fusible & F2004 \\
+124000000000269851 & Fusible & F2000 \\
+124000000000273383 & Fusible & F2001 \\
+124000000000273374 & Fusible & F2006 \\
+124000000000273377 & Fusible & F2004 \\
+124000000000273372 & Fusible & F2006 \\
+124000000000273356 & Fusible & F2005 \\
+124000000000273381 & Fusible & F1993 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Extracción de inventario GIS}
+
+Con el propósito de incorporar la dimensión espacial de la red eléctrica, se realizó la extracción del inventario georreferenciado a partir del sistema GIS corporativo. Esta información permite asociar cada activo de la red con sus coordenadas geográficas y características físicas, facilitando posteriormente el análisis espacial de los eventos de interrupción.
+
+La extracción se efectuó desde la base de datos \texttt{ccomun@gtech}, la cual contiene el inventario técnico de los activos de la red. A partir de esta fuente, se seleccionaron las variables correspondientes al identificador del elemento (\texttt{nodo\_transform\_v}), la latitud (\texttt{coor\_gps\_lat}), la longitud (\texttt{coor\_gps\_lon}) y la altitud (\texttt{coor\_z}). Adicionalmente, se incluyó la variable \texttt{ubicacion}, que permite complementar la caracterización espacial del activo.
+
+Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformador}, con el fin de estandarizar la clasificación dentro del conjunto de datos integrado. Esta homogenización resulta clave para la posterior vinculación con los eventos de interrupción y la construcción del panel activo–día.
+
+Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado.
+
+\begin{lstlisting}[style=thesiscode,language=SQL]
+SELECT 
+    nodo_transform_v AS ELEMENTO,
+    coor_gps_lat     AS LATITUD,
+    coor_gps_lon     AS LONGITUD,
+    coor_z           AS ALTITUD,
+    'Transformador'  AS TIPO,
+    ubicacion
+FROM ccomun@gtech c
+JOIN cconectividad_e@gtech USING (g3e_fid)
+WHERE c.estado = 'OPERACION'
+  AND c.g3e_fno = 20400
+UNION
+SELECT 
+    r.codigo         AS ELEMENTO,
+    coor_gps_lat     AS LATITUD,
+    coor_gps_lon     AS LONGITUD,
+    coor_z           AS ALTITUD,
+    'Reconectador'   AS TIPO,
+    ubicacion
+FROM ereconec_at@gtech r
+JOIN ccomun@gtech c USING (g3e_fid)
+JOIN cconectividad_e@gtech USING (g3e_fid)
+WHERE c.estado = 'OPERACION';
+
+\end{lstlisting}
+
+
+Se repite el mismo patrón para interruptor, Cuchilla y Aisladero
+
+\subsection{Extracción de variables meteorológicas}
+
+Con el objetivo de incorporar condiciones climáticas como variables explicativas en el análisis de interrupciones del sistema eléctrico, se realizó la extracción de información meteorológica a partir de la plataforma NASA POWER. Esta fuente proporciona series temporales diarias de variables climáticas relevantes, las cuales permiten capturar la influencia del entorno atmosférico sobre la ocurrencia y duración de eventos en la red.
+
+El proceso de extracción se centró en un conjunto de variables meteorológicas seleccionadas por su relevancia en el análisis de confiabilidad del sistema eléctrico. En particular, se consideraron las variables de precipitación total (\texttt{PRECTOT}), temperatura media (\texttt{T2M}), temperatura máxima (\texttt{T2M\_MAX}), temperatura mínima (\texttt{T2M\_MIN}), humedad relativa (\texttt{RH2M}) y velocidad del viento (\texttt{WS2M}).
+
+\begin{lstlisting}[style=code,language=Python]
+parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de variables meteorológicas (NASA POWER) - Parte 1}
+\label{tab:muestra_nasa_power_1}
+\begin{tabularx}{\textwidth}{
+>{\centering\arraybackslash}p{2.0cm}
+>{\centering\arraybackslash}p{2.0cm}
+>{\centering\arraybackslash}p{2.0cm}
+>{\centering\arraybackslash}p{2.0cm}
+>{\centering\arraybackslash}p{2.0cm}
+>{\centering\arraybackslash}p{2.0cm}
+}
+\toprule
+\textbf{VEL. VIENTO} & \textbf{TEMP. MEDIA} & \textbf{HUMEDAD} & \textbf{TEMP. MIN} & \textbf{TEMP. MAX} & \textbf{PRECIP.} \\
+\midrule
+2.06 & 13.27 & 87.24 & 9.12 & 18.63 & 2.6  \\
+2.66 & 13.89 & 88.27 & 10.71 & 18.92 & 1.41 \\
+1.93 & 13.66 & 88.59 & 10.29 & 18.96 & 3.04 \\
+1.73 & 13.6  & 85.07 & 9.13 & 20.17 & 9.07 \\
+1.45 & 11.52 & 69.12 & 5.95 & 18.7  & 0.79 \\
+1.1  & 12.29 & 80.8  & 7.55 & 17.76 & 0.77 \\
+1.76 & 13.23 & 88.9  & 10.65 & 17.93 & 3.03 \\
+2.34 & 12.95 & 88.44 & 10.14 & 17.84 & 2.51 \\
+2.41 & 12.69 & 87.38 & 9.48 & 16.55 & 1.84 \\
+2.98 & 12.99 & 90.13 & 9.65 & 17.44 & 3.35 \\
+3.18 & 13.12 & 87.67 & 10.58 & 17.69 & 0.9  \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Estas variables fueron extraídas a nivel diario para el periodo comprendido entre el 1 de enero de 2021 y el 31 de diciembre de 2025, lo que dio lugar a una base de aproximadamente 83.5 millones de registros. Este volumen de información refleja la estructura panelizada de la base climática, construida mediante la combinación de múltiples variables atmosféricas observadas diariamente a lo largo del horizonte temporal de análisis.
+
+La incorporación de estas variables permite enriquecer el dataset consolidado con condiciones exógenas del entorno, facilitando el análisis de su relación con la frecuencia y severidad de las interrupciones en el sistema eléctrico.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Resumen metodológico de extracción e integración de bases de datos}
+\label{tab:data_lineage}
+\begin{tabular}{p{3.5cm} p{3cm} p{3cm} p{3cm}}
+\hline
+\textbf{Fuente} & \textbf{Variables principales} & \textbf{Proceso aplicado} & \textbf{Resultado} \\
+\hline
+
+BRAE (QA\_TFDDREGISTRO) 
+& ID EVENTO, FECHA DESCONEXION, FECHA CONEXION 
+& Filtrado temporal (2021–2025), exclusión de registros no válidos, eliminación de duplicados 
+& 95.280 eventos de interrupción \\
+
+\hline
+
+BRAE + QA\_TTC1 
+& CANTIDAD ELEMENTOS FALLADOS, CANTIDAD USUARIOS 
+& JOIN por elemento y periodo, agregación por evento 
+& Base de severidad por evento (usuarios y elementos afectados) \\
+
+\hline
+
+OMS SPARD (histórico) 
+& CODIGO MANIOBRA, ELEMENTO FALLADO 
+& Filtrado de registros desde 2019, exclusión de pruebas 
+& Base histórica de causa de falla \\
+
+\hline
+
+OMS SP7 (actual) 
+& MANIOBRA APERTURA, TIPO ELEMENTO, ELEMENTO FALLA 
+& Lectura CSV, limpieza de columnas, eliminación de duplicados 
+& Base actualizada de elementos causantes \\
+
+\hline
+
+GIS (GTECH) 
+& ELEMENTO, LATITUD, LONGITUD, ALTITUD, TIPO 
+& Extracción desde sistema georreferenciado corporativo 
+& Inventario espacial de la red \\
+
+\hline
+
+NASA POWER 
+& PRECTOT, T2M, T2M\_MAX, T2M\_MIN, RH2M, WS2M 
+& Extracción diaria (2021–2025) por variables climáticas 
+& 83.5 millones de registros meteorológicos \\
+
+\hline
+\end{tabular}
+\end{table}
+
+
+
+
+\section{Etapa 2 - Integración, depuración y preprocesamiento de datos}
+
+\subsection{Lógica de integración entre sistemas}
+
+\begin{enumerate}
+\item Construir tabla base desde BRAE.
+\item Anexar métricas de impacto.
+\item Completar elemento fallado con OMS.
+\item Homologar llaves.
+\item Enriquecer con GIS.
+\item Integrar clima.
+\item Generar dataset final.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{img/drawings/mermaid-diagram (1).png}
+    \caption{Estructura del panel de datos activo–día}
+    \label{fig:panel_activo_dia}
+\end{figure}
+
+
+\subsection{Descripción de las variables}
+
+\begin{landscape}
+
+\begin{table}[!htbp]
+\centering
+\caption{Variables de eventos y usuarios}
+\label{tab:eventos_usuarios}
+
+\begin{threeparttable}
+\small
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabularx}{\linewidth}{X X l X X X}
+\toprule
+Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
+\midrule
+
+\multicolumn{6}{l}{\textbf{Eventos de interrupción (BRAE)}}\\
+\addlinespace
+
+ID EVENTO & FDD CODIGOEVENTO & BRAE & Entero/Cadena & Identificador único de evento de interrupción & Llave principal del dataset de eventos \\
+FECHA DESCONEXION & FDD FINICIAL & BRAE & Fecha-hora & Inicio de la interrupción & Cálculo de duración y filtros de periodo \\
+FECHA CONEXION & FDD FFINAL & BRAE & Fecha-hora & Fin de la interrupción & Validación de cierre y duración \\
+CODIGO ELEMENTO EVENTO & FDD CODIGOELEMENTO & BRAE & Cadena & Elemento reportado en el detalle del evento & Cruce con usuarios y activos \\
+CANTIDAD ELEMENTOS AFECTADOS & COUNT(FDD CODIGOELEMENTO) & BRAE & Entero & Total de elementos asociados al evento & Variable de severidad \\
+
+\addlinespace
+\midrule
+
+\multicolumn{6}{l}{\textbf{Usuarios y transformadores (QA TTC1)}}\\
+\addlinespace
+
+CANTIDAD USUARIOS & SUM(CANTIDAD USUARIOS) & QA TTC1 & Entero & Total de usuarios afectados por evento & Variable de impacto \\
+TRANSFORMADOR & TC1 CODCONEX & QA TTC1 & Cadena & Código de transformador comercial & Llave de empalme con elemento del evento \\
+PERIODO & TC1 PERIODO & QA TTC1 & Cadena & Periodo de corte comercial & Alineación temporal del cruce \\
+
+\bottomrule
+\end{tabularx}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Nota: Se incluyen únicamente variables clave de eventos y usuarios.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+\restoregeometry
+\end{landscape}
+
+
+\begin{landscape}
+
+\begin{table}[!htbp]
+\centering
+\caption{Variables de operación y maniobras del sistema (OMS)}
+\label{tab:operacion_maniobras}
+
+\begin{threeparttable}
+\small
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabularx}{\linewidth}{X X l X X X}
+\toprule
+Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
+\midrule
+
+\multicolumn{6}{l}{\textbf{Operación y maniobras (OMS)}}\\
+\addlinespace
+
+CODIGO MANIOBRA & CODE / MINICIAL & OMS SPARD & Cadena & Identificador operativo de maniobra & Llave para asignar elemento causante histórico \\
+ELEMENTO FALLADO OMS & BREAKER & OMS SPARD & Cadena & Elemento causante según OMS histórico & Completa causante en eventos pre-migración \\
+MANIOBRA APERTURA & Maniobra Apertura & OMS SP7 CSV & Cadena & Identificador de maniobra en sistema actual & Llave para asignar causante post-migración \\
+TIPO ELEMENTO OMS & Tipo Elemento & OMS SP7 CSV & Cadena & Clasificación del activo causante & Enriquecimiento técnico del evento \\
+ELEMENTO FALLA SP7 & Elemento Falla & OMS SP7 CSV & Cadena & Código del elemento causante en SP7 & Completa causante en eventos recientes \\
+
+\bottomrule
+\end{tabularx}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Nota: Esta tabla consolida la información de maniobras operativas y elementos causantes en sistemas OMS pre y post migración.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+\restoregeometry
+\end{landscape}
+
+
+\begin{landscape}
+
+
+\begin{table}[!htbp]
+\centering
+\caption{Variables geográficas}
+\label{tab:geografia_clima}
+
+\begin{threeparttable}
+\small
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabularx}{\linewidth}{X X l X X X}
+\toprule
+Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
+\midrule
+
+\multicolumn{6}{l}{\textbf{Georreferenciación de activos (GTECH GIS)}}\\
+\addlinespace
+
+ELEMENTO & nodo transform v / codigo / codigo operativo & GTECH GIS & Cadena & Código normalizado del activo de red & Llave para enriquecer geografía y tipo \\
+LATITUD & coor gps lat & GTECH GIS & Decimal & Coordenada geográfica latitud & Variables espaciales para analítica \\
+LONGITUD & coor gps lon & GTECH GIS & Decimal & Coordenada geográfica longitud & Variables espaciales para analítica \\
+ALTITUD & coor z & GTECH GIS & Decimal/Entero & Cota del activo & Contexto topográfico \\
+TIPO & Tipo fijo por subconsulta & GTECH GIS & Cadena & Tipo de activo (transformador, interruptor, etc.) & Segmentación por tecnología de red \\
+UBICACION & ubicacion & GTECH GIS & Cadena & Referencia textual de ubicación del activo & Validación y soporte de trazabilidad \\
+
+\addlinespace
+\midrule
+
+\bottomrule
+\end{tabularx}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Nota: Las variables climáticas se integran mediante cruce espacial y temporal con los eventos.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+\restoregeometry
+\end{landscape}
+
+\begin{landscape}
+
+
+\begin{table}[!htbp]
+\centering
+\caption{Variables meteorológicas provenientes de NASA POWER}
+\label{tab:variables_meteorologicas}
+
+\begin{threeparttable}
+\small
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabularx}{\linewidth}{X X l X X X}
+\toprule
+Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
+\midrule
+
+\multicolumn{6}{l}{\textbf{Variables meteorológicas (NASA POWER)}}\\
+\addlinespace
+
+ID CUADRANTE & OBJECTID / id cuadrante & Excel / NASA POWER & Cadena/Entero & Identificador del cuadrante geográfico & Llave para cruce espacial con clima \\
+FECHA CONSULTA & fecha consulta & NASA POWER & Fecha & Fecha diaria de la variable meteorológica & Llave temporal para agregación y cruce \\
+LATITUD CUADRANTE & POINT Y / latitud cuadrante & Excel / NASA POWER & Decimal & Latitud usada en la consulta al API & Trazabilidad geográfica de la extracción \\
+LONGITUD CUADRANTE & POINT X / longitud cuadrante & Excel / NASA POWER & Decimal & Longitud usada en la consulta al API & Trazabilidad geográfica de la extracción \\
+PRECIPITACION TOTAL MM & PRECTOT / PRECTOTCORR & NASA POWER & Decimal & Precipitación diaria total (mm) & Variable exógena de clima para modelación \\
+TEMPERATURA MEDIA C & T2M & NASA POWER & Decimal & Temperatura media diaria (°C) & Variable exógena de clima para modelación \\
+TEMPERATURA MAXIMA C & T2M MAX & NASA POWER & Decimal & Temperatura máxima diaria (°C) & Variable exógena de clima para modelación \\
+TEMPERATURA MINIMA C & T2M MIN & NASA POWER & Decimal & Temperatura mínima diaria (°C) & Variable exógena de clima para modelación \\
+HUMEDAD RELATIVA PCT & RH2M & NASA POWER & Decimal & Humedad relativa diaria (\%) & Variable exógena de clima para modelación \\
+VELOCIDAD VIENTO MS & WS2M & NASA POWER & Decimal & Velocidad del viento (m/s) & Variable exógena de clima para modelación \\
+
+\bottomrule
+\end{tabularx}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Nota: Las variables meteorológicas se integran mediante cruce espacial y temporal con los eventos de interrupción.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+\restoregeometry
+\end{landscape}
+
+\begin{landscape}
+
+
+\begin{table}[!htbp]
+\centering
+\caption{Variables derivadas de continuidad del servicio eléctrico}
+\label{tab:variables_derivadas}
+
+\begin{threeparttable}
+\small
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabularx}{\linewidth}{X X l l X X}
+\toprule
+Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
+\midrule
+
+\multicolumn{6}{l}{\textbf{Variables derivadas de continuidad}}\\
+\addlinespace
+
+DURACION & Fecha desconexion / Fecha conexion (derivado) & Eventos BRAE / OMS & Decimal & Horas acumuladas sin servicio del activo en el día & Variable objetivo o explicativa de continuidad \\
+FRECUENCIA & Conteo de eventos por día (derivado) & Eventos BRAE / OMS & Entero & Número de fallas del activo en el día & Variable objetivo o explicativa de continuidad \\
+\bottomrule
+\end{tabularx}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item Nota: Estas variables se calculan a partir de la agregación diaria de eventos de interrupción y maniobras operativas.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+\restoregeometry
+\end{landscape}
+
+
+\subsection{Características de la tabla consolidada}
+
+La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
+
+Sea $A$ el número total de activos eléctricos en la red y $T$ el número total de periodos diarios observados, el tamaño teórico del panel balanceado está dado por:
+
+\[
+N = A \times T
+\]
+
+donde:
+\begin{itemize}
+    \item $A = 47{,}653$ corresponde al número total de activos eléctricos de la red,
+    \item $T = 1{,}826$ corresponde al número de días observados (cinco años de información diaria).
+\end{itemize}
+
+En consecuencia, el número total de observaciones en la base consolidada se calcula como:
+
+\[
+N = 47{,}653 \times 1{,}826 = 87{,}014{,}378
+\]
+
+\textbf{Objetivo específico asociado: OE1}
+
+En esta etapa se identifican datos faltantes, inconsistencias y valores atípicos. Se aplican técnicas de imputación, estandarización temporal, normalización y transformación de variables. Asimismo, se realizan validaciones cruzadas entre sistemas para garantizar consistencia y coherencia estructural.
+
+\textbf{Entregable:} Reporte técnico de depuración, preprocesamiento y estandarización de datos.
+
+El preprocesamiento se estructura en cuatro etapas secuenciales: (i) tratamiento de valores extremos en variables cuantitativas, (ii) análisis de asociación y depuración de covariables cuantitativas y cualitativas, (iii) codificación de variables categóricas y (iv) estandarización de variables continuas. Este orden responde a criterios de estabilidad numérica, identificabilidad del modelo y coherencia con los supuestos del modelo.
+
+
+%--------------------------------------------------
+\subsection{Identificación de datos faltantes}
+    Como parte del proceso de validación y preparación de los datos, se definió un procedimiento sistemático para evaluar la presencia de valores faltantes en todas las variables consideradas para el análisis. Esta verificación se realizó a nivel de columna y de observación, con el objetivo de determinar la necesidad de aplicar técnicas de imputación o de exclusión de registros.
+
+    El diagnóstico de datos faltantes se aplicó una vez concluido el proceso de limpieza y filtrado estructural, y abarcó tanto las variables transaccionales como las variables de perfilamiento del cliente y las magnitudes monetarias utilizadas posteriormente en la construcción de la variable respuesta del modelo \emph{pogit}.
+    
+    En caso de detectarse valores faltantes, el diseño metodológico contemplaba la aplicación de reglas explícitas de imputación o exclusión, debidamente documentadas. No obstante, cuando el diagnóstico no evidencia la presencia de datos faltantes, se evita la introducción de supuestos adicionales asociados a mecanismos de datos incompletos, preservando así la simplicidad y coherencia del pipeline de preprocesamiento.
+    
+
+Se documentarán de forma detallada las fuentes y los requisitos mínimos de los datos necesarios para garantizar consistencia en el modelado. Esta sección especifica, para cada tipo de variable, su definición, granularidad temporal y espacial, periodo histórico mínimo recomendado y criterios de volumen y representatividad.
+
+
+El resumen de las variables requeridas es el siguiente:
+
+\begin{itemize}
+    \item \textbf{Indicadores de calidad}
+    \begin{itemize}
+        \item Variables: $SAIDI$, $SAIFI$ históricos por circuito o zona.
+        \item Granularidad: registro por evento con sello temporal (fecha/hora).
+        \item Periodo: entre el 1 de enero de 2020 y el 31 de octubre de 2025.
+        \item Volumen: se registran todos los eventos ocurridos durante el periodo.
+    \end{itemize}
+
+    \item \textbf{Técnicas / operativas}
+    \begin{itemize}
+        \item Variables: duración y frecuencia de interrupciones, número de usuarios afectados, longitud de circuito, nivel de tensión, antigüedad de equipos.
+        \item Variables recomendadas: carga máxima, densidad de transformadores, tipo de red (aérea/subterránea), tipo de terreno.
+        \item Granularidad: por evento y por circuito; agregados diarios o mensuales para análisis exploratorio.
+    \end{itemize}
+
+    \item \textbf{Mantenimiento}
+    \begin{itemize}
+        \item Variables: número y fecha de mantenimientos preventivos y correctivos por activo.
+        \item Recomendadas: tipo de mantenimiento, tiempo promedio de atención, cuadrillas, historial de poda.
+        \item Periodo: coincidente con $SAIDI$/$SAIFI$.
+    \end{itemize}
+
+    \item \textbf{Ambientales / climáticas}
+    \begin{itemize}
+        \item Variables: precipitación, velocidad de viento, temperatura, ocurrencia de descargas eléctricas.
+        \item Recomendadas: índices climáticos, datos satelitales, anomalías por estación.
+        \item Granularidad: diaria u horaria según disponibilidad; coincidente con $SAIDI$/$SAIFI$.
+    \end{itemize}
+
+    \item \textbf{Regulatorias / externas}
+    \begin{itemize}
+        \item Variables: límites de calidad CREG, registros de compensaciones y reportes regulatorios.
+        \item Recomendadas: variaciones normativas históricas, indicadores regionales comparativos.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Criterios generales de calidad y muestreo:}
+
+\begin{itemize}
+    \item \textbf{Trazabilidad:} cada registro debe conservar metadatos (origen, timestamp, identificador de activo o circuito).
+    
+    \item \textbf{Sincronización temporal:} definir protocolo de alineamiento (UTC/local, ventana de tolerancia) y reglas para resolución de conflictos.
+    
+    \item \textbf{Umbrales mínimos de completitud:} porcentaje mínimo aceptable de datos por variable (por ejemplo $\geq 80\%$) y políticas de imputación o exclusión debidamente documentadas.
+    
+    \item \textbf{Representatividad de eventos extremos:} registrar y etiquetar eventos extremos (tormentas, catástrofes) para análisis separado; si son escasos, aplicar técnicas de augmentación o enfoques de modelado robusto.
+\end{itemize}
+
+Esta especificación formará parte del catálogo de datos y del entregable \emph{Informe de consolidación de datos}, y condiciona las decisiones metodológicas posteriores (ingeniería de variables, selección de modelos y validación).
+
+\subsubsection{Mapeo: variable $\rightarrow$ sistema origen}
+
+Se propone el siguiente mapeo inicial:
+
+\begin{itemize}
+    \item \textbf{Indicadores de calidad}
+    \begin{itemize}
+        \item Origen primario: OMS (reportes de eventos) y CIS (población conectada).
+        \item Variables: $SAIDI$, $SAIFI$ (históricos por circuito o zona).
+    \end{itemize}
+
+    \item \textbf{Técnicas / operativas}
+    \begin{itemize}
+        \item Orígenes: OMS (eventos), SCADA (tiempos, mediciones, alarmas), GIS (topología, longitud), CIS / inventario (usuarios, transformadores, nivel de tensión).
+        \item Variables: duración, frecuencia, \texttt{usuarios\_afectados}, \texttt{longitud\_circuito}, \texttt{nivel\_tension}, \texttt{antiguedad\_activo}, \texttt{carga\_max}.
+    \end{itemize}
+
+    \item \textbf{Mantenimiento}
+    \begin{itemize}
+        \item Origen: CIS, sistema de gestión de activos y registros de mantenimiento; registros internos OMS cuando aplique.
+        \item Variables: \texttt{fecha\_mantenimiento}, \texttt{tipo\_mantenimiento}, \texttt{activo\_id}, \texttt{duracion\_intervencion}, \texttt{cuadrilla}.
+    \end{itemize}
+
+    \item \textbf{Ambientales / climáticas}
+    \begin{itemize}
+        \item Origen: IDEAM (estaciones), estaciones meteorológicas locales, datos satelitales.
+        \item Variables: precipitación, viento, temperatura, descargas eléctricas, índices climáticos.
+    \end{itemize}
+
+    \item \textbf{Regulatorias / externas}
+    \begin{itemize}
+        \item Origen: documentación CREG, SSPD y bases regulatorias internas.
+        \item Variables: \texttt{limites\_CREG}, \texttt{compensaciones\_reportadas}, \texttt{exclusiones\_normativas}.
+    \end{itemize}
+
+    \item \textbf{GIS (atributos estáticos / espaciales)}
+    \begin{itemize}
+        \item Origen: GIS corporativo.
+        \item Variables: \texttt{circuit\_id}, \texttt{geometry}, \texttt{tipo\_red} (aérea/subterránea), longitud, \texttt{coordenadas\_nodo}, \texttt{tipo\_terreno}, \texttt{densidad\_transformadores}.
+    \end{itemize}
+
+    \item \textbf{SCADA (telemedida y eventos detectados)}
+    \begin{itemize}
+        \item Origen: SCADA.
+        \item Variables: mediciones (corriente, tensión), alarmas, timestamps de detección.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Evidencia de calidad y confiabilidad de las fuentes}
+
+La validación de los datos recopilados por Centrales Eléctricas de Norte de Santander S.A. E.S.P. (CENS) se fundamenta en su arquitectura institucional de gestión, enmarcada en la Política de Gestión de Tecnología de la Información (Sesión de la Junta Directiva No.~800 del 20 de febrero de 2018)~\cite{ref38} y en la Política del Sistema de Gestión Integrado (Sesión de la Junta Directiva No.~831 del 22 de abril de 2020)~\cite{ref2}, orientadas a garantizar una gestión sistemática de calidad continua, sostenibilidad ambiental y cumplimiento legal mediante la evaluación permanente de la calidad de los datos, priorizando consistencia, disponibilidad y accesibilidad de la información~\cite{ref39}.
+
+CENS refuerza su gobernanza de datos mediante Instrumentos de Gestión de Información Pública, entre los cuales se destacan el Registro de Activos de Información (IPR), utilizado para detectar, clasificar y almacenar conjuntos de datos institucionales; los Cuadros de Clasificación Documental; el Esquema de Publicación de Información (IPS); el Índice de Información Clasificada y Reservada; los Costos de Reproducción; y el Programa de Gestión Documental (PGD). Estos instrumentos enmarcan el proceso institucional de almacenamiento, organización, acceso, difusión, protección y preservación de la información~\cite{ref40}.
+
+En conjunto, estos mecanismos reflejan sistemas de control interno, gobernanza, confianza en la información documentada y transparencia institucional. Asimismo, evidencian el funcionamiento estructurado de los registros y su disponibilidad operativa, garantizando la calidad, veracidad y consistencia de los datos utilizados en este estudio para la toma de decisiones analíticas y gerenciales.
+
+La fiabilidad técnica de las fuentes climáticas y ambientales está respaldada por el IDEAM, entidad pública responsable de la recopilación oficial de datos hidrológicos, meteorológicos y ambientales en Colombia. El IDEAM opera bajo la Política Institucional para la Gestión de Información Estadística (E-SGI-PI003)~\cite{ref41} y las disposiciones del Sistema Estadístico Nacional, que establecen normas obligatorias de trazabilidad, control de calidad, validación estadística, metadatos estructurados y consistencia metodológica en los procesos de captura, procesamiento y difusión de datos~\cite{ref42}.
+
+Adicionalmente, en cumplimiento del Decreto 1081 de 2015, el Decreto 103 de 2015, la Ley 1712 de 2014 (Ley de Transparencia) y la Resolución 1519 de 2020 del MINTIC, el IDEAM garantiza que la información publicada sea auditable, actualizada y accesible, respaldada por canales institucionales de difusión, monitoreo interno e integridad documental. Estas disposiciones fortalecen la calidad estadística y aseguran que las series climáticas oficiales cumplan criterios formales de confiabilidad, oportunidad y validez técnica a escala nacional~\cite{ref41,ref42,ref43}.
+
+
+
+\subsection{Tratamiento de valores extremos en variables cuantitativas}
+
+    
+
+\subsection{Análisis de asociación y depuración de variables cuantitativas}
+
+   
+
+
+\subsection{Análisis de asociación y depuración de variables cualitativas}
+
+    
+    
+\subsection{Codificación de variables categóricas}
+
+    
+
+\subsection{Estandarización de variables cuantitativas}
+
+
+\section{Etapa 3 – Análisis descriptivo y exploratorio}
+
+\textbf{Objetivo específico asociado: OE2}
+
+Se desarrolla un análisis exploratorio con el fin de identificar tendencias temporales, patrones espaciales, estacionalidades, correlaciones entre variables y primeras aproximaciones a los factores que podrían explicar la variación de $SAIDI$ y $SAIFI$. El análisis incluye visualizaciones avanzadas como series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
+
+\textbf{Entregable:} Documento de análisis descriptivo y exploratorio (EDA).
+
+\section{Etapa 4 – Modelado predictivo y evaluativo}
+
+\textbf{Objetivo específico asociado: OE2 y OE3}
+
+En esta etapa se desarrollan y evalúan diversos modelos estadísticos y de aprendizaje automático para estimar $SAIDI$ y $SAIFI$ por circuito o área. La selección del enfoque (supervisado, no supervisado o híbrido) se determinará según los hallazgos del análisis exploratorio, la naturaleza de los datos disponibles y los requerimientos de interpretabilidad.
+
+La evaluación comparativa considera métricas de error como $RMSE$, $MAE$ y $MAPE$, así como estabilidad del modelo y validez de supuestos. Además, se realiza un análisis de importancia de variables mediante técnicas interpretables, con el objetivo de identificar los factores operativos, técnicos o climáticos que influyen de manera significativa en la calidad del servicio.
+
+\textbf{Entregables:} Informe de evaluación comparativa de modelos predictivos (OE3) y reporte técnico de importancia de variables (OE2).
+
+
+Una vez completadas las etapas de limpieza, validación y construcción de variables, se realizó un análisis exploratorio de los datos con el objetivo de caracterizar las distribuciones de las variables, identificar patrones relevantes y apoyar las decisiones de selección y depuración de covariables para la modelación. Esta etapa se concibió como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados.
+
+Para las variables cuantitativas, se calcularon medidas de tendencia central y dispersión, así como la proporción de valores atípicos. Adicionalmente, se construyeron histogramas y diagramas de caja para examinar la forma de las distribuciones y detectar posibles asimetrías o colas largas que pudieran afectar la estimación de los componentes del modelo. En el caso de las variables categóricas, se analizaron las frecuencias absolutas y relativas de cada categoría, con el fin de identificar concentraciones excesivas o niveles con baja representatividad.
+
+Posteriormente, se evaluó el grado de asociación entre variables cuantitativas mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér. Estos análisis se utilizaron como insumo para identificar redundancias entre covariables y apoyar decisiones de depuración, con el propósito de evitar problemas de multicolinealidad en la estimación del modelo.
+
+    
+\section{Etapa 5 – Documentación y reportes}
+
+\textbf{Objetivo específico asociado: OE1–OE2–OE3}
+
+En la etapa final se consolidan los resultados del proyecto y se documentan de forma integral las técnicas aplicadas, transformaciones realizadas y código reproducible (en R o Python). El capítulo incluye apéndices técnicos, tablas de validación, bibliografía y lineamientos de reproducibilidad.
+
+\textbf{Entregables:} Compendio de documentación del proyecto (informe final, informe descriptivo, informe de evaluación de modelos y reporte técnico de variables relevantes), código reproducible y documentación detallada de procesos y transformaciones.
+   
+
+%--------------------------------------------------
+
+    
+    
