@@ -1,0 +1,158 @@
+
+
+%--------------------------------------------------
+\section{Contexto empresarial}
+\label{sec:Contexto-empresarial}
+\section{Marco teórico}
+
+Cuando hablamos de calidad del servicio eléctrico, nos referimos básicamente a entregar energía de forma segura y eficiente, cumpliendo con estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la Comisión de Regulación de Energía y Gas (CREG) \cite{ref3}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI (\textit{System Average Interruption Duration Index}) y el SAIFI (\textit{System Average Interruption Frequency Index}).
+
+\subsection{Definición del SAIDI según la Resolución CREG 015 de 2018}
+
+La Resolución CREG 015 de 2018 define el SAIDI como:
+
+%\ref{eq:saidi_creg_015_2018}
+
+\begin{quote}
+La calidad media anual del OR se mide a través de los indicadores de duración y frecuencia de los eventos sucedidos en los SDL, que se establecen como se describe a continuación. El indicador SAIDI representa la duración total en horas de los eventos que en promedio percibe cada usuario del SDL de un OR, hayan sido o no afectados por un evento, en un período anual.
+
+
+Se establece mediante la siguiente expresión:
+    
+  \begin{equation}
+\begin{aligned}
+SAIDI_{j,t} 
+&= \dfrac{\sum_{m=1}^{12} \sum_{i=1}^{n} D_{i,u,m} \times NU_{i,u,m}}{UT_{j,m} \times 60}
+\end{aligned}
+\label{eq:saidi_creg_015_2018}
+\end{equation}
+
+\textbf{Donde:} 
+\begin{itemize} 
+\item $SAIDI_{j,t}$: Indicador de duración promedio por usuario, de los eventos sucedidos en el SDL del OR $j$, durante el año $t$, medido en horas al año. 
+\item $D_{i,u,m}$: Duración en minutos del evento $i$, sucedido durante el mes $m$, que afectó al activo $u$ perteneciente al SDL del OR $j$. 
+\item $NU_{i,u,m}$: Número de usuarios que fueron afectados por el evento $i$ sucedido durante el mes $m$, conectados al activo $u$. 
+\item $UT_{j,m}$: Número total de usuarios conectados al SDL del OR $j$ en el mes $m$. 
+\item $m$: Mes del año $t$, con enero $= 1, \ldots,$ diciembre $= 12$. 
+\end{itemize}
+\end{quote}
+
+\subsection{Definición del SAIFI según la Resolución CREG 015 de 2018}
+\label{sec:saifi_creg_015_2018}
+
+La misma resolución define el \textit{SAIFI} como:
+
+\begin{quote}
+``El indicador \textit{SAIFI} representa la cantidad total de los eventos que en promedio perciben todos los usuarios del SDL de un OR, hayan sido o no afectados por un evento, en un período anual. Se establece mediante la siguiente expresión:''
+
+\begin{equation}
+\begin{aligned}
+SAIFI_{j,t} &= \dfrac{\sum_{m=1}^{12} \sum_{i=1}^{n} NU_{i,u,m}}{UT_{j,m}}
+\end{aligned}
+\label{eq:saifi_definicion}
+\end{equation}
+
+
+\textbf{Donde:}
+
+\begin{itemize}
+\item $SAIFI_{j,t}$: Indicador de frecuencia promedio por usuario, de los eventos sucedidos en el SDL del OR $j$, durante el año $t$, medido en cantidad al año.
+
+\item $NU_{i,u,m}$: Número de usuarios que fueron afectados por el evento $i$ sucedido durante el mes $m$, por encontrarse conectados al activo $u$.
+
+\item $UT_{j,m}$: Número total de usuarios conectados al SDL del OR $j$ en el mes $m$.
+
+\item $m$: Mes del año $t$, con enero $= 1, \ldots,$ diciembre $= 12$.
+\end{itemize}
+
+\end{quote}
+
+Cada Operador de Red (OR) es responsable del cálculo de los indicadores de calidad del servicio. Para ello, debe utilizar la información reportada conforme a lo establecido en el numeral 5.2.11.3.2 de la Resolución CREG 015 de 2018, así como la información de vinculación definida en el literal a) del numeral 5.2.10 \cite{ref1}. Esta disposición garantiza que el cálculo de los indicadores se realice con base en registros oficiales, trazables y consistentes con los lineamientos regulatorios vigentes.
+
+\subsection{Interpretación de los indicadores}
+
+Los indicadores SAIDI y SAIFI miden los \textit{eventos} de interrupción del servicio eléctrico, entendidos como situaciones en las cuales se presenta una pérdida total o parcial del suministro. Dependiendo de su causa y de los criterios regulatorios aplicables, ciertos eventos son incluidos en el cálculo de los indicadores, mientras que otros pueden ser excluidos conforme a la normativa vigente.
+
+El SAIDI expresa el tiempo promedio durante el cual un usuario permanece sin servicio eléctrico en un período determinado, generalmente anual. Por su parte, el SAIFI mide la frecuencia promedio con la que un usuario experimenta interrupciones en el mismo período. En conjunto, ambos indicadores permiten evaluar la continuidad y confiabilidad del sistema de distribución.
+
+Desde una perspectiva operativa, valores elevados de SAIDI o SAIFI pueden reflejar deficiencias en el mantenimiento de la red, limitaciones en la infraestructura, obsolescencia tecnológica, fallas en los procedimientos operativos o una alta exposición a factores externos como condiciones climáticas adversas \cite{ref1,ref5}. En consecuencia, estos indicadores no solo describen el desempeño del sistema, sino que también permiten identificar áreas críticas que requieren intervención técnica o inversión en activos.
+
+En el ámbito regulatorio, los OR deben reportar estos indicadores como métricas clave de desempeño y compararlos con las metas establecidas por la CREG. El cumplimiento de dichas metas está asociado a esquemas de remuneración por calidad del servicio, mientras que el incumplimiento puede dar lugar a ajustes tarifarios, obligaciones de reinversión o sanciones económicas \cite{ref3,ref8}. Por tanto, SAIDI y SAIFI no solo constituyen medidas técnicas de continuidad, sino también variables con impacto financiero y regulatorio significativo.
+
+\subsection{Meta de calidad media del SAIDI}
+
+La Resolución CREG 015 de 2018 establece que la meta de calidad media para el indicador de duración de los eventos en el Sistema de Distribución Local (SDL) de cada OR se determina con base en una expresión específica definida por la regulación. Formalmente, dicha meta se calcula mediante la siguiente formulación:
+
+\begin{quote}
+
+``La meta para el indicador de frecuencia de los eventos sucedidos en el SDL de cada OR se obtiene con base en la siguiente expresión:''
+
+\begin{equation}
+\begin{aligned}
+\mathrm{SAIDI\_M}_{j,t} = (1 - 0.08)\times \mathrm{SAIDI\_M}_{j,t-1}
+\end{aligned}
+\label{eq:saidi_m_actualizacion}
+\end{equation}
+
+\textbf{Donde:}
+
+\begin{itemize}
+    \item $\mathrm{SAIDI\_M}_{j,t}$: Meta del indicador de duración de eventos, en horas al año, a ser alcanzada por el OR $j$ al finalizar el año $t$.
+    
+    \item $\mathrm{SAIDI\_M}_{j,t-1}$: Meta del indicador de duración de eventos, en horas al año, para el año $t-1$. Para el primer año de aplicación del esquema de calidad de cada OR esta variable será igual al indicador de referencia, $\mathrm{SAIDI\_R}_{j}$.
+\end{itemize}
+
+\end{quote}
+
+\subsection{Dimensión social y económica}
+
+Desde una dimensión social y económica, un servicio deficiente ocasiona pérdidas significativas en la productividad empresarial y en los ingresos por remuneración al operador de red, y afecta la operación de instituciones comerciales e industriales. Por ello, mejorar la gestión y la capacidad de predicción de $SAIDI$ y $SAIFI$ es un objetivo estratégico para los operadores y para la regulación del sector, con impactos directos en usuarios, empresas y entes de control.
+
+\subsection{Exclusiones de eventos}
+
+Para la realización del cálculo de la calidad del servicio y el seguimiento de estos indicadores se tienen algunas exclusiones que permiten exonerar o excluir eventos de este cálculo. Entre los aspectos de la calidad del servicio de energía eléctrica que no serán observados dentro de este estudio se encuentran las siguientes exclusiones de eventos, tal como lo dicta la regulación CREG 015 del 2018 \cite{ref3}:
+
+\begin{itemize}
+    \item Los menores o iguales a 3 minutos.
+    \item Los debidos a racionamientos programados.
+    \item Los causados por eventos de activos pertenecientes al Sistema de Transmisión Nacional (STN) y al Sistema de Transmisión Regional (STR).
+    \item Los eventos requeridos por seguridad ciudadana, solicitados por organismos de socorro o autoridades competentes.
+    \item Cuando se daña un activo de nivel de tensión 1 de propiedad del usuario.
+    \item Los debidos a catástrofes naturales.
+    \item Los debidos a actos de terrorismo.
+    \item Eventos originados en exigencias de traslados y adecuaciones de la infraestructura eléctrica.
+    \item Los eventos debidos a trabajos de reposición o modernización en subestaciones.
+    \item Y otros menos relevantes para este estudio, pero que serán igualmente excluidos.
+\end{itemize}
+
+\subsection{Factores que afectan los indicadores}
+
+Hay varios factores que deben considerarse, ya que terminan afectando negativamente los indicadores de calidad:
+
+\begin{itemize}
+    \item \textbf{El clima:} Las tormentas eléctricas, vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
+
+    \item \textbf{Aspectos técnicos e infraestructura:} Si el mantenimiento es deficiente, si los equipos están viejos u obsoletos, o si no hay redundancia en la red, se generan problemas que impactan los indicadores.
+
+    \item \textbf{La gestión operativa:} Cuando falta planificación en el mantenimiento, cuando existen redes y equipos sin hojas de vida documentadas, cuando la respuesta a fallas es lenta o cuando el servicio está saturado, los indicadores se ven afectados. El problema se agrava al tener la información dispersa en múltiples sistemas.
+
+    \item \textbf{Los datos:} Cuando la información está fragmentada en diferentes aplicativos, se dificulta el desarrollo de modelos predictivos que funcionen adecuadamente.
+\end{itemize}
+
+Por lo tanto, analizar en conjunto todas estas situaciones que afectan el indicador de forma negativa o positiva constituye un ejercicio relevante, ya que permitiría fortalecer la confiabilidad de los procesos internos y mejorar la gestión de los indicadores de calidad del servicio público de redes eléctricas de la empresa operadora de red de Norte de Santander.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

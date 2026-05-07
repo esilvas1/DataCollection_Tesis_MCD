@@ -1,0 +1,109 @@
+
+Para el desarrollo del modelo de predicción de indicadores de calidad del servicio eléctrico, se utilizará una base de datos histórica de eventos de falla reportados en el sistema de distribución. La tabla principal consolidada contendría una estimación de $87{,}014{,}378$ registros aproximadamente, correspondientes a interrupciones de servicio energético de CENS ocurridas entre el $1$ de enero de $2021$ y el $31$ de octubre de $2025$, según los campos de fecha mínima y máxima presentes en la variable $fecha_inicio$.
+
+\section{Tiempo o periodo de estudio}
+El periodo de estudio abarca desde el $1$ de enero de $2021$ hasta el $31$ de diciembre de $2025$.
+
+\section{Unidad muestral}
+La unidad muestral adoptada corresponde a un activo eléctrico por día, lo que define un nivel de granularidad tipo \textit{elemento-día}. Esta elección permite capturar la variabilidad temporal de los eventos e integrar variables de red y climáticas a nivel diario.
+
+\section{Construcción del dataset}
+
+\subsection{Lógica estructural}
+
+La construcción del conjunto de datos sigue la siguiente lógica:
+
+\begin{itemize}
+    \item Se crea un calendario diario para el periodo comprendido entre el 01-01-2021 y el 31-12-2025.
+    
+    \item Se construye el producto cartesiano entre el inventario de activos eléctricos y el calendario diario, garantizando la presencia de todos los activos en cada día del periodo de análisis.
+    
+    \item Sobre esta estructura base se integran:
+    \begin{itemize}
+        \item Variables de red.
+        \item Variables climáticas agregadas a nivel de activo por día.
+        \item Variables de eventos asociadas a cada activo por día.
+    \end{itemize}
+
+\end{itemize}
+
+\subsection{Definición de variables de evento}
+
+Las variables de eventos se definen así:
+
+\begin{itemize}
+    \item \textbf{DURACION (horas):} suma total de horas sin servicio del activo dentro del día.
+    
+    \item \textbf{FRECUENCIA:} número de interrupciones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en el día.
+\end{itemize}
+
+\subsection{Estructura del dataset consolidado}
+
+El dataset final incluye las siguientes variables:
+
+\begin{itemize}
+    \item \textbf{Información del activo:}
+    \begin{itemize}
+        \item ID\_ACTIVO\_ELECTRICO
+        \item TIPO\_ACTIVO\_ELECTRICO
+    \end{itemize}
+    
+    \item \textbf{Información geoespacial:}
+    \begin{itemize}
+        \item LATITUD, LONGITUD, ALTITUD
+        \item ID\_CUADRANTE
+        \item LATITUD\_CUADRANTE, LONGITUD\_CUADRANTE
+    \end{itemize}
+    
+    \item \textbf{Variables de red:}
+    \begin{itemize}
+        \item FECHA
+        \item CANTIDAD\_ELEMENTOS
+        \item CANTIDAD\_USUARIOS
+        \item ANTIGUEDAD\_RED
+        \item EXPANSION\_RED
+    \end{itemize}
+    
+    \item \textbf{Variables climáticas:}
+    \begin{itemize}
+        \item VELOCIDAD\_VIENTO\_MS
+        \item TEMPERATURA\_MEDIA\_C
+        \item HUMEDAD\_RELATIVA\_PCT
+        \item TEMPERATURA\_MINIMA\_C
+        \item TEMPERATURA\_MAXIMA\_C
+        \item PRECIPITACION\_TOTAL\_MM
+    \end{itemize}
+    
+    \item \textbf{Variables objetivo:}
+    \begin{itemize}
+        \item DURACION
+        \item FRECUENCIA
+    \end{itemize}
+\end{itemize}
+
+\section{Numero de observaciones:}
+\begin{itemize}
+\item La tabla consolidada final se estima como:
+
+\[
+\text{Total de observaciones} = 47{,}653 \times 1{,}826 = 87{,}014{,}378
+\]
+
+correspondiente a 5 años de información a nivel elemento-día.
+\end{itemize}
+
+\section{Origen de la información:}
+
+La empresa origen de los datos operativos y técnicos es \textbf{CENTRALES ELÉCTRICAS DE NORTE DE SANTANDER S.A E.S.P (CENS S.A E.S.P)}.
+
+\section{Lugar donde se registra la información:}
+Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER.
+
+La información se registra en la red de distribución eléctrica de Norte de Santander, con soporte de localización geográfica por activo y por cuadrante.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/drawings/mermaid-diagram (1).png}
+    \caption{Estructura del panel de datos activo--día}
+    \label{fig:_panel_activo_dia}
+\end{figure}

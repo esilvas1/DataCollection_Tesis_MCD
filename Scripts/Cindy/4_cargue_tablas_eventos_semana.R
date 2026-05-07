@@ -22,26 +22,38 @@ library(readr)
 library(tidyr)
 library(readxl)
 
-# llamar variable de entorno UBICACION_DATA en el archivo .env
-ubicacion_data <- Sys.getenv("UBICACION_DATA")
+# cargar variables de entorno desde .env si existe
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
 
+# traer la informacion de la variable de entorno UBICACION_DATA
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
 
 #🔹 2.1 Cargar y limpiar datos
-ubicación_eventos <- paste0(ubicacion_data, "/tabla_eventos_ajustado.csv")
-tabla_eventos <- read_csv(ubicación_eventos)
-#
+tabla_eventos <- read_csv(file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"))
+
 tabla_eventos <- tabla_eventos %>%
   mutate(
     FECHA_DESCONEXION = dmy_hm(FECHA_DESCONEXION),
     FECHA_CONEXION = dmy_hm(FECHA_CONEXION)
   )
 
-ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(paste0(ubicacion_data, "/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls"))
+
+
+ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls")
+)
 head(ELEMENTO_FALLA_CUADRANTE_800)
 
 # CONTIENE ID DE CUADRANTE Y LAT LONG DE LOS CENTROIDES
 library(readxl)
-CUADRANTE_CORD_800 <- read_excel(paste0(ubicacion_data, "/Distribución de Cuadrantes/CUADRANTE_CORD_800.xls"))
+CUADRANTE_CORD_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "CUADRANTE_CORD_800.xls")
+)
 View(CUADRANTE_CORD_800)
 
 #🔹 2.2 Construcción de variables temporales

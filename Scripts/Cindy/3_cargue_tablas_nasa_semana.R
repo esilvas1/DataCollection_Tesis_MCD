@@ -17,14 +17,21 @@ library(lubridate)
 library(readr)
 library(readxl)
 
+# cargar variables de entorno desde .env si existe
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
 
-# llamar variable de entorno UBICACION_DATA en el archivo .env
-ubicacion_data <- Sys.getenv("UBICACION_DATA")
+# traer la informacion de la variable de entorno UBICACION_DATA
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
 
 # 🧱 1. Cargar y preparar datos base
 # 📍 1.1 Coordenadas de cuadrantes
 
-CUADRANTE_COORD <- read_excel(paste0(ubicacion_data, "/CUADRANTE_CORD_800.xls")) %>%
+CUADRANTE_COORD <- read_excel(paste0(UBICACION_DATA, "/Distribución de Cuadrantes/CUADRANTE_CORD_800.xls")) %>%
   rename(
     id_cuadrante = OBJECTID,
     longitud = POINT_X,
@@ -32,11 +39,11 @@ CUADRANTE_COORD <- read_excel(paste0(ubicacion_data, "/CUADRANTE_CORD_800.xls"))
   )
 
 # 🌦️ 1.2 Clima diario
-nasa_power_consolidado <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
+nasa_power_consolidado <- read_csv(paste0(UBICACION_DATA, "/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
 
 # ⚡ 1.3 Tabla de Eventos
 
-tabla_eventos_ajustado <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/Output_Raw_API_NASA/tabla_eventos_ajustado.csv"))
+tabla_eventos_ajustado <- read_csv(paste0(UBICACION_DATA, "/tabla_eventos_ajustado.csv"))
 head(tabla_eventos_ajustado)
 
 
@@ -47,7 +54,7 @@ tabla_eventos_ajustado_1 <- tabla_eventos_ajustado %>%
   )
 
 
-vtabla_eventos_ajustado_2 <- tabla_eventos_ajustado_1 %>%
+tabla_eventos_ajustado_2 <- tabla_eventos_ajustado_1 %>%
   mutate(
     anio = year(FECHA_DESCONEXION),
     mes = floor_date(FECHA_DESCONEXION, "month"),
@@ -234,4 +241,7 @@ ggplot(clima_tiempo_long, aes(x = semana, y = valor, color = variable)) +
     x = "Semana",
     y = NULL
   )
+
+
+
 

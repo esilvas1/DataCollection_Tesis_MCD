@@ -3,14 +3,23 @@ library(dplyr)
 library(lubridate)
 
 
-# llamar variable de entorno UBICACION_DATA en el archivo .env
-ubicacion_data <- Sys.getenv("UBICACION_DATA")
+# cargar variables de entorno desde .env si existe
+if (file.exists(".env")) {
+  readRenviron(".env")
+}
 
-tabla_elemento_fallado_1_ajustado <- read_csv(paste0(ubicacion_data, "/tabla_elemento_fallado_1_ajustado.csv"))
+# traer la informacion de la variable de entorno UBICACION_DATA
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+
+tabla_elemento_fallado_1_ajustado <- read_csv(paste0(UBICACION_DATA, "tabla_elemento_fallado_1_ajustado.csv"))
 head(tabla_elemento_fallado_1_ajustado)
 
 
-tabla_eventos_ajustado <- read_csv(paste0(ubicacion_data, "/tabla_eventos_ajustado.csv"))
+tabla_eventos_ajustado <- read_csv(paste0(UBICACION_DATA, "tabla_eventos_ajustado.csv"))
 head(tabla_eventos_ajustado)
 
 
@@ -88,7 +97,7 @@ eventos_dia <- tabla_eventos_ajustado_2 %>%
 
 
 
-tipo_elemento <- read_csv("C:/Users/User/OneDrive - PUJ Cali/Archivos de EDWIN SILVA SALAS - Projecto_Grado_Javeriana/Data_Project/tipo_elemento.csv")
+tipo_elemento <- read_csv(paste0(UBICACION_DATA, "tipo_elemento.csv"))
 head(tipo_elemento)
 
 
@@ -99,7 +108,7 @@ tipo_elemento %>%
 
 
 library(readxl)
-ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(paste0(ubicacion_data, "/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls"))
+ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(paste0(UBICACION_DATA, "Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_800.xls"))
 head(ELEMENTO_FALLA_CUADRANTE_800)
 skim(ELEMENTO_FALLA_CUADRANTE_800)
 str(ELEMENTO_FALLA_CUADRANTE_800)
@@ -112,7 +121,7 @@ ELEMENTO_FALLA_CUADRANTE_800 %>%
 
 
 library(readr)
-ELEMENTO_FALLA_CUADRANTE_200 <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_200.csv"))
+ELEMENTO_FALLA_CUADRANTE_200 <- read_csv(paste0(UBICACION_DATA, "Distribución de Cuadrantes/ELEMENTO_FALLA_CUADRANTE_200.csv"))
 head(ELEMENTO_FALLA_CUADRANTE_200)
 
 skim(ELEMENTO_FALLA_CUADRANTE_200)
@@ -129,7 +138,7 @@ ELEMENTO_FALLA_CUADRANTE_200 %>%
 
 
 library(readxl)
-ELEMENTO_FALLA_PIVOTE <- read_excel(paste0(ubicacion_data, "/Distribución de Cuadrantes/ELEMENTO_FALLA_PIVOTE.xls"))
+ELEMENTO_FALLA_PIVOTE <- read_excel(paste0(UBICACION_DATA, "Distribución de Cuadrantes/ELEMENTO_FALLA_PIVOTE.xls"))
 head(ELEMENTO_FALLA_PIVOTE)
 
 library(skimr)
@@ -154,7 +163,7 @@ tabla_elemento_fallado_1_ajustado %>%
 
 
 library(readr)
-nasa_power_consolidado <- read_csv(paste0(ubicacion_data, "/Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
+nasa_power_consolidado <- read_csv(paste0(UBICACION_DATA, "Distribución de Cuadrantes/Output_Raw_API_NASA/nasa_power_consolidado.csv"))
 head(nasa_power_consolidado)
 dim(nasa_power_consolidado)
 dim(ELEMENTO_FALLA_PIVOTE)
