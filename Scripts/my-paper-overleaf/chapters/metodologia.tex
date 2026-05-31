@@ -600,57 +600,90 @@ CUC12346 & 03/01/2021 & 74.34 & 20.40 & 30.43 & 1.86 \\
 
 \subsection{Descripción de las variables}
 
-La Tabla~\ref{tab:muestra_consolidado_final_1} reúne las variables de identificación del activo y del periodo de observación. A continuación se describe el significado, origen y unidad de cada columna:
+La Tabla~\ref{tab:muestra_consolidado_final_1} reúne las variables de identificación del activo y del periodo de observación. A continuación se describe el significado, origen, unidad y clasificación estadística de cada columna. Cada variable se clasifica como \textbf{cuantitativa} o \textbf{cualitativa}; en las cualitativas se distingue si la escala es \textbf{ordinal} o \textbf{categórica} (nominal). En las cuantitativas se indica además si la medición es \textbf{discreta} o \textbf{continua}. La Tabla~\ref{tab:clasificacion_variables} sintetiza esta clasificación para todas las variables del panel consolidado.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Clasificación estadística de las variables del panel consolidado}
+\label{tab:clasificacion_variables}
+\begin{tabularx}{0.85\textwidth}{
+>{\raggedright\arraybackslash}p{5.5cm}
+>{\raggedright\arraybackslash}X
+}
+\toprule
+\textbf{Variable} & \textbf{Clasificación} \\
+\midrule
+ID ACTIVO & Cualitativa categórica \\
+TIPO & Cualitativa categórica \\
+LAT., LON., ALT. & Cuantitativa continua \\
+FECHA DIA & Cualitativa ordinal \\
+C. ELEM., C. USU., FRECUENCIA & Cuantitativa discreta \\
+VEL. VIENTO, TEMP. MED./MIN./MAX., HUM. REL., PRECIP., DURACION & Cuantitativa continua \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \begin{itemize}
-    \item \textbf{ID ACTIVO} (\texttt{ELEMENTO}): identificador único del activo eléctrico en la red de distribución. Proviene del inventario georreferenciado GIS (Sección~5.1.6, Tabla~5.5) y constituye la llave primaria del panel a nivel de activo. Permite vincular cada observación diaria con el elemento físico asociado a eventos de interrupción y con sus atributos espaciales.
+    \item \textbf{ID ACTIVO} (\texttt{ELEMENTO}): identificador único del activo eléctrico en la red de distribución. Proviene del inventario georreferenciado GIS (Sección~5.1.6, Tabla~5.5) y constituye la llave primaria del panel a nivel de activo. Permite vincular cada observación diaria con el elemento físico asociado a eventos de interrupción y con sus atributos espaciales. \textbf{Clasificación:} cualitativa categórica.
 
-    \item \textbf{TIPO}: clasificación funcional del activo según su rol en la red. Los valores observados incluyen \emph{Transformador}, \emph{Reconectador}, \emph{Aisladero}, \emph{Cuchilla} e \emph{Interruptor}, homologados en la extracción GIS para estandarizar la tipología dentro del dataset consolidado.
+    \item \textbf{TIPO}: clasificación funcional del activo según su rol en la red. Los valores observados incluyen \emph{Transformador}, \emph{Reconectador}, \emph{Aisladero}, \emph{Cuchilla} e \emph{Interruptor}, homologados en la extracción GIS para estandarizar la tipología dentro del dataset consolidado. \textbf{Clasificación:} cualitativa categórica.
 
-    \item \textbf{LAT.} (\texttt{LATITUD}): coordenada de latitud del activo, expresada en grados decimales (WGS84). Se obtiene del campo \texttt{coor\_gps\_lat} del sistema GTECH y habilita el análisis espacial de la red y la asignación de contexto geográfico a cada registro.
+    \item \textbf{LAT.} (\texttt{LATITUD}): coordenada de latitud del activo, expresada en grados decimales (WGS84). Se obtiene del campo \texttt{coor\_gps\_lat} del sistema GTECH y habilita el análisis espacial de la red y la asignación de contexto geográfico a cada registro. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{LON.} (\texttt{LONGITUD}): coordenada de longitud del activo, expresada en grados decimales (WGS84). Corresponde al campo \texttt{coor\_gps\_lon} del inventario GIS y se emplea conjuntamente con la latitud para localizar el activo en el territorio de operación.
+    \item \textbf{LON.} (\texttt{LONGITUD}): coordenada de longitud del activo, expresada en grados decimales (WGS84). Corresponde al campo \texttt{coor\_gps\_lon} del inventario GIS y se emplea conjuntamente con la latitud para localizar el activo en el territorio de operación. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{ALT.} (\texttt{ALTITUD}): cota del activo sobre el nivel del mar, en metros. Proviene del campo \texttt{coor\_z} del sistema GIS y complementa la caracterización geográfica del punto de conexión en la red.
+    \item \textbf{ALT.} (\texttt{ALTITUD}): cota del activo sobre el nivel del mar, en metros. Proviene del campo \texttt{coor\_z} del sistema GIS y complementa la caracterización geográfica del punto de conexión en la red. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{FECHA DIA} (\texttt{FECHA\_DIA}): fecha calendario de la observación, con granularidad diaria en el intervalo 2021-01-01 a 2025-12-31. Se genera mediante el cruce del inventario de activos con el calendario diario (paso~\ref{int:paso4}) y define, junto con \texttt{ID ACTIVO}, la unidad muestral del panel \textbf{activo $\times$ día}.
+    \item \textbf{FECHA DIA} (\texttt{FECHA\_DIA}): fecha calendario de la observación, con granularidad diaria en el intervalo 2021-01-01 a 2025-12-31. Se genera mediante el cruce del inventario de activos con el calendario diario (paso~\ref{int:paso4}) y define, junto con \texttt{ID ACTIVO}, la unidad muestral del panel \textbf{activo $\times$ día}. \textbf{Clasificación:} cualitativa ordinal.
 \end{itemize}
 
 \paragraph{Tabla~\ref{tab:muestra_consolidado_final_2} (severidad y clima inicial).}
 Las columnas \texttt{ID ACTIVO} y \texttt{FECHA DIA} se repiten en esta tabla para facilitar la trazabilidad de filas entre bloques consecutivos. Las variables propias de este bloque son:
 
 \begin{itemize}
-    \item \textbf{C. ELEM.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el evento de interrupción asociado al activo en el día. Proviene de la Tabla~5.2 (afectación por evento, Sección~5.1.3) e integra al panel en el paso~\ref{int:paso5}. Cuando el activo no registra falla en el día, el valor es 0.
+    \item \textbf{C. ELEM.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el evento de interrupción asociado al activo en el día. Proviene de la Tabla~5.2 (afectación por evento, Sección~5.1.3) e integra al panel en el paso~\ref{int:paso5}. Cuando el activo no registra falla en el día, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
 
-    \item \textbf{C. USU.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el evento de interrupción vinculado al activo en el día. Se obtiene de la misma fuente y mediante el mismo cruce que \texttt{CANTIDAD\_ELEMENTOS}, y constituye una medida de severidad operativa del impacto sobre la demanda. En días sin interrupción, el valor es 0.
+    \item \textbf{C. USU.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el evento de interrupción vinculado al activo en el día. Se obtiene de la misma fuente y mediante el mismo cruce que \texttt{CANTIDAD\_ELEMENTOS}, y constituye una medida de severidad operativa del impacto sobre la demanda. En días sin interrupción, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
 
-    \item \textbf{VEL. VIENTO} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~5.1.7) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{int:paso6}.
+    \item \textbf{VEL. VIENTO} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~5.1.7) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{int:paso6}. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{TEMP. MED.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día.
+    \item \textbf{TEMP. MED.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día. \textbf{Clasificación:} cuantitativa continua.
 \end{itemize}
 
 \paragraph{Tabla~\ref{tab:muestra_consolidado_final_3} (clima complementario).}
 Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIVO} y \texttt{FECHA DIA} permiten alinear filas entre tablas. Las variables climáticas restantes del bloque son:
 
 \begin{itemize}
-    \item \textbf{HUM. REL.} (\texttt{RH2M}): humedad relativa del aire a 2\,m, expresada en porcentaje (\%). Proviene del parámetro \texttt{RH2M} de NASA POWER e integra al panel por \texttt{FECHA\_DIA}.
+    \item \textbf{HUM. REL.} (\texttt{RH2M}): humedad relativa del aire a 2\,m, expresada en porcentaje (\%). Proviene del parámetro \texttt{RH2M} de NASA POWER e integra al panel por \texttt{FECHA\_DIA}. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{TEMP. MIN.} (\texttt{T2M\_MIN}): temperatura mínima diaria del aire, expresada en \textdegree C. Corresponde al parámetro \texttt{T2M\_MIN} de NASA POWER y complementa la temperatura media con el extremo inferior del rango térmico del día.
+    \item \textbf{TEMP. MIN.} (\texttt{T2M\_MIN}): temperatura mínima diaria del aire, expresada en \textdegree C. Corresponde al parámetro \texttt{T2M\_MIN} de NASA POWER y complementa la temperatura media con el extremo inferior del rango térmico del día. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{TEMP. MAX.} (\texttt{T2M\_MAX}): temperatura máxima diaria del aire, expresada en \textdegree C. Proviene del parámetro \texttt{T2M\_MAX} de NASA POWER y representa el extremo superior del rango térmico observado en el día.
+    \item \textbf{TEMP. MAX.} (\texttt{T2M\_MAX}): temperatura máxima diaria del aire, expresada en \textdegree C. Proviene del parámetro \texttt{T2M\_MAX} de NASA POWER y representa el extremo superior del rango térmico observado en el día. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{PRECIP.} (\texttt{PRECTOT}): precipitación total acumulada en el día, expresada en mm. Corresponde al parámetro \texttt{PRECTOT} de NASA POWER y permite incorporar la exposición del activo a condiciones de lluvia en la fecha de observación.
+    \item \textbf{PRECIP.} (\texttt{PRECTOT}): precipitación total acumulada en el día, expresada en mm. Corresponde al parámetro \texttt{PRECTOT} de NASA POWER y permite incorporar la exposición del activo a condiciones de lluvia en la fecha de observación. \textbf{Clasificación:} cuantitativa continua.
 \end{itemize}
 
 \paragraph{Tabla~\ref{tab:muestra_consolidado_final_4} (variables de continuidad).}
 Este bloque concentra las variables objetivo del análisis, construidas en el paso~\ref{int:paso7} a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
 
 \begin{itemize}
-    \item \textbf{DURACION}: suma de horas sin servicio del activo efectivamente transcurridas en \texttt{FECHA\_DIA}. Si una interrupción cruza la medianoche, la duración total se prorratea entre los días calendario en los que el activo permaneció desconectado. En días sin falla, el valor es 0.
+    \item \textbf{DURACION}: suma de horas sin servicio del activo efectivamente transcurridas en \texttt{FECHA\_DIA}. Si una interrupción cruza la medianoche, la duración total se prorratea entre los días calendario en los que el activo permaneció desconectado. En días sin falla, el valor es 0. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{FRECUENCIA}: número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}. En días sin falla, el valor es 0.
+    \item \textbf{FRECUENCIA}: número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}. En días sin falla, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
 \end{itemize}
 
+
+
+\textbf{Objetivo específico asociado: OE1}
+
+Una vez construido el panel consolidado, se aplican procedimientos de depuración y preprocesamiento sobre el dataset resultante. En esta fase se identifican datos faltantes, inconsistencias y valores atípicos que puedan afectar la calidad analítica del panel. Las actividades de preprocesamiento descritas a continuación preceden al análisis exploratorio (Etapa~3) y preparan el insumo base para la ingeniería de variables (Etapa~4).
+
+Las actividades de preprocesamiento desarrolladas en esta etapa se describen en las subsecciones siguientes.
+
+\subsection{Identificación de datos faltantes}
+
+\subsection{Tratamiento de valores extremos en variables cuantitativas}
 
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
@@ -674,26 +707,16 @@ Adicionalmente, en cumplimiento del Decreto 1081 de 2015, el Decreto 103 de 2015
 
 Una vez completadas las etapas de extracción, integración y preprocesamiento, se desarrolla un análisis exploratorio orientado a caracterizar las distribuciones de las variables, identificar patrones temporales y espaciales, y evaluar las relaciones entre covariables que podrían explicar la variación de $SAIDI$ y $SAIFI$. Esta etapa se concibe como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados.
 
-Para las variables cuantitativas se calculan medidas de tendencia central y dispersión, así como la proporción de valores atípicos; adicionalmente se construyen histogramas y diagramas de caja para examinar la forma de las distribuciones. En el caso de las variables categóricas, se analizan las frecuencias absolutas y relativas de cada categoría. El grado de asociación entre variables cuantitativas se evalúa mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér, con el fin de identificar redundancias y evitar problemas de multicolinealidad en la estimación del modelo. Las visualizaciones incluyen series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
+Para las variables cuantitativas se calculan medidas de tendencia central y dispersión, así como la proporción de valores atípicos; adicionalmente se construyen histogramas y diagramas de caja para examinar la forma de las distribuciones. En el caso de las variables categóricas, se analizan las frecuencias absolutas y relativas de cada categoría. El grado de asociación entre variables cuantitativas se evalúa mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér, con el fin de identificar redundancias y relaciones preliminares que orienten la depuración de variables en la Etapa~4. Las visualizaciones incluyen series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
 
 
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
-\subsection{Tratamiento de valores extremos en variables cuantitativas}
-
-\subsection{Análisis de asociación y depuración de variables cuantitativas}
-
-\subsection{Análisis de asociación y depuración de variables cualitativas}
-    
-\subsection{Codificación de variables categóricas}
-
-\subsection{Estandarización de variables cuantitativas}
+\subsection{Caracterización del panel consolidado}
 
 \subsection{Cálculo de estadísticos descriptivos}
 
 \subsection{Análisis de la distribución de variables}
-
-\subsection{Análisis de correlación y asociación}
 
 \subsection{Análisis temporal de eventos}
 
@@ -701,9 +724,11 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 
 \subsection{Visualización exploratoria}
 
-\subsection{Segmentación exploratoria}
+\subsection{Análisis de correlación y asociación}
 
 \subsection{Evaluación inicial de relaciones multivariadas}
+
+\subsection{Segmentación exploratoria}
 
 \subsection{Identificación de comportamiento atípico}
 
@@ -721,13 +746,21 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 
 \textbf{Objetivo:} construir las variables analíticas necesarias para el entrenamiento de modelos predictivos, asegurando un dataset consistente, balanceado y estadísticamente apto para la modelación.
 
-A partir de los hallazgos del EDA, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. Esto incluye la definición formal de la variable respuesta, la construcción de variables predictoras informadas por el comportamiento observado y la definición de las particiones temporales de entrenamiento y prueba.
+A partir de los hallazgos del EDA, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. Esto incluye la definición formal de la variable respuesta, la construcción de variables predictoras informadas por el comportamiento observado, la depuración y codificación de covariables, la estandarización de variables continuas y la definición de las particiones temporales de entrenamiento y prueba. El preprocesamiento orientado al modelado ---incluida la selección de variables con base en los análisis de asociación del EDA--- se concentra en esta etapa, en coherencia con criterios de estabilidad numérica, identificabilidad del modelo y validez de supuestos.
 
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
 \subsection{Construcción de variables predictoras}
 
 \subsection{Construcción de la variable respuesta}
+
+\subsection{Análisis de asociación y depuración de variables cuantitativas}
+
+\subsection{Análisis de asociación y depuración de variables cualitativas}
+
+\subsection{Codificación de variables categóricas}
+
+\subsection{Estandarización de variables cuantitativas}
 
 \subsection{Generación de ventanas temporales}
 
