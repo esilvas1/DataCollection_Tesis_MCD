@@ -3,7 +3,7 @@
 %--------------------------------------------------
 Nuestra metodología está organizada por etapas que se alinean con los objetivos específicos del proyecto. El enfoque general consiste en integrar datos, limpiarlos, analizarlos y construir modelos para predecir los indicadores $SAIDI$ y $SAIFI$ de la empresa de distribución eléctrica en Norte de Santander.
 
-Se decidió utilizar CRISP-DM (Cross-Industry Standard Process for Data Mining) como marco de referencia por ser un estándar reconocido en la industria para proyectos de ciencia de datos, el cual fue adaptado al contexto específico del sector eléctrico regulado. Las fases de CRISP-DM se implementaron de la siguiente manera: el entendimiento del negocio (Business Understanding) se desarrolla en las Secciones 1–4, donde se describen el problema, los objetivos y la justificación. Las fases de entendimiento y preparación de datos (Data Understanding y Data Preparation) corresponden a las Etapas 1, 2 y 3, en las que se integran, depuran y exploran los datos. La fase de modelado y evaluación (Modeling y Evaluation) se desarrolla en la Etapa 4, donde se construyen y validan los modelos predictivos. Finalmente, el despliegue (Deployment) corresponde a la Etapa 5, en la cual se documenta el proceso, se entrega código reproducible.
+Se decidió utilizar CRISP-DM (Cross-Industry Standard Process for Data Mining) como marco de referencia por ser un estándar reconocido en la industria para proyectos de ciencia de datos, el cual fue adaptado al contexto específico del sector eléctrico regulado. Las fases de CRISP-DM se implementaron de la siguiente manera: el entendimiento del negocio (Business Understanding) se desarrolla en las Secciones 1–4, donde se describen el problema, los objetivos y la justificación. Las fases de entendimiento y preparación de datos (Data Understanding y Data Preparation) corresponden a las Etapas 1, 2, 3 y 4, en las que se integran, depuran, exploran los datos y se construyen las variables analíticas. La fase de modelado y evaluación (Modeling y Evaluation) se desarrolla en la Etapa 5, donde se construyen y validan los modelos predictivos. Finalmente, el despliegue (Deployment) corresponde a la Etapa 6, en la cual se consolidan los resultados, se documenta el proceso y se entrega código reproducible.
 
 Esta adaptación de CRISP-DM considera los requisitos específicos del regulador (CREG, SSPD), las métricas propias del sector eléctrico ($SAIDI$, $SAIFI$) y la necesidad de que los modelos sean interpretables para su uso en la toma de decisiones.
 
@@ -266,8 +266,49 @@ WHERE c.estado = 'OPERACION';
 
 \end{lstlisting}
 
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\caption{Muestra de inventario georreferenciado de activos (GIS GTECH)}
+\label{tab:muestra_inventario_gis}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}p{1.5cm}
+>{\centering\arraybackslash}p{2.2cm}
+>{\centering\arraybackslash}p{2.2cm}
+>{\centering\arraybackslash}p{1.2cm}
+>{\centering\arraybackslash}X
+}
+\toprule
+\textbf{ELEMENTO} & \textbf{LATITUD} & \textbf{LONGITUD} & \textbf{ALTITUD} & \textbf{TIPO} \\
+\midrule
+2T01558 & 6.960719612 & -72.18029066 & 636 & Transformador \\
+2T01557 & 6.972762106 & -72.18726993 & 743 & Transformador \\
+2T01467 & 6.973200989 & -72.15472768 & 815 & Transformador \\
+2T01466 & 6.978510343 & -72.14903608 & 726 & Transformador \\
+F3199   & 6.978980206 & -72.19049387 & 832 & Aisladero \\
+PSW8910 & 6.978980206 & -72.19049387 & 832 & Aisladero \\
+2T01555 & 6.982222682 & -72.19495813 & 825 & Transformador \\
+2T01554 & 6.982742594 & -72.20226264 & 867 & Transformador \\
+2T01556 & 6.984663810 & -72.18619273 & 727 & Transformador \\
+2T01465 & 6.985402944 & -72.13537905 & 530 & Transformador \\
+F3192   & 6.987527091 & -72.20044897 & 767 & Aisladero \\
+PSW8909 & 6.987527091 & -72.20044897 & 767 & Aisladero \\
+F5217   & 6.991040416 & -72.20123180 & 726 & Aisladero \\
+PSW8908 & 6.991040416 & -72.20123180 & 726 & Aisladero \\
+2T01553 & 6.991242376 & -72.19636467 & 679 & Transformador \\
+2T01470 & 6.991396285 & -72.15644527 & 790 & Transformador \\
+ESW6924 & 6.992103744 & -72.13486380 & 453 & Aisladero \\
+F5211   & 6.992103744 & -72.13486380 & 453 & Aisladero \\
+2T01471 & 6.992290614 & -72.13485446 & 453 & Transformador \\
+2T01469 & 6.993224220 & -72.14776723 & 656 & Transformador \\
+F8201   & 6.997255476 & -72.12409341 & 361 & Aisladero \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Se repite el mismo patrón para interruptor, Cuchilla y Aisladero
+Y asi sucesivamente para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
 
 \subsection{Extracción de variables meteorológicas}
 
@@ -314,7 +355,9 @@ Estas variables fueron extraídas a nivel diario para el periodo comprendido ent
 
 La incorporación de estas variables permite enriquecer el dataset consolidado con condiciones exógenas del entorno, facilitando el análisis de su relación con la frecuencia y severidad de las interrupciones en el sistema eléctrico.
 
-\begin{table}[H]
+\subsection{Resumen metodológico de extracción e integración de bases de datos}
+
+\begin{table}[ht]
 \centering
 \small
 \caption{Resumen metodológico de extracción e integración de bases de datos}
@@ -332,21 +375,21 @@ BRAE (QA\_TFDDREGISTRO)
 \hline
 
 BRAE + QA\_TTC1 
-& CANTIDAD ELEMENTOS FALLADOS, CANTIDAD USUARIOS 
+& CANTIDAD USUARIOS, ELEMENTOS DE CONEXION 
 & JOIN por elemento y periodo, agregación por evento 
-& Base de severidad por evento (usuarios y elementos afectados) \\
+& Base de severidad por evento (usuarios) \\
 
 \hline
 
 OMS SPARD (histórico) 
-& CODIGO MANIOBRA, ELEMENTO FALLADO 
-& Filtrado de registros desde 2019, exclusión de pruebas 
+& CODIGO MANIOBRA, ELEMENTO FALLADO, ELEMENTO CAUSANTE 
+& Filtrado de registros desde 2021, exclusión de pruebas 
 & Base histórica de causa de falla \\
 
 \hline
 
 OMS SP7 (actual) 
-& MANIOBRA APERTURA, TIPO ELEMENTO, ELEMENTO FALLA 
+& MANIOBRA APERTURA, TIPO ELEMENTO, CANTIDAD ELEMENTOS FALLADOS, ELEMENTO FALLA 
 & Lectura CSV, limpieza de columnas, eliminación de duplicados 
 & Base actualizada de elementos causantes \\
 
@@ -367,6 +410,8 @@ NASA POWER
 \hline
 \end{tabular}
 \end{table}
+Lógica de in
+La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integración desarrollado en la Etapa~1. En conjunto, se consolidaron seis fuentes complementarias: BRAE como base transaccional de eventos de interrupción; BRAE + QA\_TTC1 para cuantificar la severidad operativa (usuarios afectados); OMS SPARD y OMS SP7 para identificar el elemento causante y fallado en los periodos pre y post migración del sistema; GIS (GTECH) para incorporar la georreferenciación de activos de red; y NASA POWER para enriquecer el análisis con variables climáticas diarias. Cada fuente fue sometida a reglas explícitas de filtrado, homologación y depuración, lo que permitió obtener bases consistentes y trazables que constituyen el insumo inicial para la integración y el preprocesamiento descritos en la Etapa~2.
 
 
 
@@ -375,245 +420,54 @@ NASA POWER
 
 \subsection{Lógica de integración entre sistemas}
 
+Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integración se ejecuta de forma secuencial sobre tablas intermedias, preservando trazabilidad de llaves y evitando pérdida de emparejamiento entre sistemas con esquemas distintos (BRAE, OMS SPARD, OMS SP7, GIS y NASA POWER). La secuencia aplicada fue la siguiente:
+
+{\sloppy
+\renewcommand{\theenumi}{\thesubsection.\arabic{enumi}}
+\renewcommand{\labelenumi}{\theenumi}
 \begin{enumerate}
-\item Construir tabla base desde BRAE.
-\item Anexar métricas de impacto.
-\item Completar elemento fallado con OMS.
-\item Homologar llaves.
-\item Enriquecer con GIS.
-\item Integrar clima.
-\item Generar dataset final.
-\end{enumerate}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{img/drawings/mermaid-diagram (1).png}
-    \caption{Estructura del panel de datos activo–día}
-    \label{fig:panel_activo_dia}
-\end{figure}
-
-
-\subsection{Descripción de las variables}
-
-\begin{landscape}
-
-\begin{table}[!htbp]
-\centering
-\caption{Variables de eventos y usuarios}
-\label{tab:eventos_usuarios}
-
-\begin{threeparttable}
-\small
-\renewcommand{\arraystretch}{1.2}
-
-\begin{tabularx}{\linewidth}{X X l X X X}
-\toprule
-Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
-\midrule
-
-\multicolumn{6}{l}{\textbf{Eventos de interrupción (BRAE)}}\\
-\addlinespace
-
-ID EVENTO & FDD CODIGOEVENTO & BRAE & Entero/Cadena & Identificador único de evento de interrupción & Llave principal del dataset de eventos \\
-FECHA DESCONEXION & FDD FINICIAL & BRAE & Fecha-hora & Inicio de la interrupción & Cálculo de duración y filtros de periodo \\
-FECHA CONEXION & FDD FFINAL & BRAE & Fecha-hora & Fin de la interrupción & Validación de cierre y duración \\
-CODIGO ELEMENTO EVENTO & FDD CODIGOELEMENTO & BRAE & Cadena & Elemento reportado en el detalle del evento & Cruce con usuarios y activos \\
-CANTIDAD ELEMENTOS AFECTADOS & COUNT(FDD CODIGOELEMENTO) & BRAE & Entero & Total de elementos asociados al evento & Variable de severidad \\
-
-\addlinespace
-\midrule
-
-\multicolumn{6}{l}{\textbf{Usuarios y transformadores (QA TTC1)}}\\
-\addlinespace
-
-CANTIDAD USUARIOS & SUM(CANTIDAD USUARIOS) & QA TTC1 & Entero & Total de usuarios afectados por evento & Variable de impacto \\
-TRANSFORMADOR & TC1 CODCONEX & QA TTC1 & Cadena & Código de transformador comercial & Llave de empalme con elemento del evento \\
-PERIODO & TC1 PERIODO & QA TTC1 & Cadena & Periodo de corte comercial & Alineación temporal del cruce \\
-
-\bottomrule
-\end{tabularx}
-
-\begin{tablenotes}[flushleft]
-\footnotesize
-\item Nota: Se incluyen únicamente variables clave de eventos y usuarios.
-\end{tablenotes}
-
-\end{threeparttable}
-\end{table}
-
-\restoregeometry
-\end{landscape}
-
-
-\begin{landscape}
-
-\begin{table}[!htbp]
-\centering
-\caption{Variables de operación y maniobras del sistema (OMS)}
-\label{tab:operacion_maniobras}
-
-\begin{threeparttable}
-\small
-\renewcommand{\arraystretch}{1.2}
-
-\begin{tabularx}{\linewidth}{X X l X X X}
-\toprule
-Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
-\midrule
-
-\multicolumn{6}{l}{\textbf{Operación y maniobras (OMS)}}\\
-\addlinespace
-
-CODIGO MANIOBRA & CODE / MINICIAL & OMS SPARD & Cadena & Identificador operativo de maniobra & Llave para asignar elemento causante histórico \\
-ELEMENTO FALLADO OMS & BREAKER & OMS SPARD & Cadena & Elemento causante según OMS histórico & Completa causante en eventos pre-migración \\
-MANIOBRA APERTURA & Maniobra Apertura & OMS SP7 CSV & Cadena & Identificador de maniobra en sistema actual & Llave para asignar causante post-migración \\
-TIPO ELEMENTO OMS & Tipo Elemento & OMS SP7 CSV & Cadena & Clasificación del activo causante & Enriquecimiento técnico del evento \\
-ELEMENTO FALLA SP7 & Elemento Falla & OMS SP7 CSV & Cadena & Código del elemento causante en SP7 & Completa causante en eventos recientes \\
-
-\bottomrule
-\end{tabularx}
-
-\begin{tablenotes}[flushleft]
-\footnotesize
-\item Nota: Esta tabla consolida la información de maniobras operativas y elementos causantes en sistemas OMS pre y post migración.
-\end{tablenotes}
-
-\end{threeparttable}
-\end{table}
-
-\restoregeometry
-\end{landscape}
-
-
-\begin{landscape}
-
-
-\begin{table}[!htbp]
-\centering
-\caption{Variables geográficas}
-\label{tab:geografia_clima}
-
-\begin{threeparttable}
-\small
-\renewcommand{\arraystretch}{1.2}
-
-\begin{tabularx}{\linewidth}{X X l X X X}
-\toprule
-Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
-\midrule
-
-\multicolumn{6}{l}{\textbf{Georreferenciación de activos (GTECH GIS)}}\\
-\addlinespace
-
-ELEMENTO & nodo transform v / codigo / codigo operativo & GTECH GIS & Cadena & Código normalizado del activo de red & Llave para enriquecer geografía y tipo \\
-LATITUD & coor gps lat & GTECH GIS & Decimal & Coordenada geográfica latitud & Variables espaciales para analítica \\
-LONGITUD & coor gps lon & GTECH GIS & Decimal & Coordenada geográfica longitud & Variables espaciales para analítica \\
-ALTITUD & coor z & GTECH GIS & Decimal/Entero & Cota del activo & Contexto topográfico \\
-TIPO & Tipo fijo por subconsulta & GTECH GIS & Cadena & Tipo de activo (transformador, interruptor, etc.) & Segmentación por tecnología de red \\
-UBICACION & ubicacion & GTECH GIS & Cadena & Referencia textual de ubicación del activo & Validación y soporte de trazabilidad \\
-
-\addlinespace
-\midrule
-
-\bottomrule
-\end{tabularx}
-
-\begin{tablenotes}[flushleft]
-\footnotesize
-\item Nota: Las variables climáticas se integran mediante cruce espacial y temporal con los eventos.
-\end{tablenotes}
-
-\end{threeparttable}
-\end{table}
-
-\restoregeometry
-\end{landscape}
-
-\begin{landscape}
-
-
-\begin{table}[!htbp]
-\centering
-\caption{Variables meteorológicas provenientes de NASA POWER}
-\label{tab:variables_meteorologicas}
-
-\begin{threeparttable}
-\small
-\renewcommand{\arraystretch}{1.2}
-
-\begin{tabularx}{\linewidth}{X X l X X X}
-\toprule
-Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
-\midrule
-
-\multicolumn{6}{l}{\textbf{Variables meteorológicas (NASA POWER)}}\\
-\addlinespace
-
-ID CUADRANTE & OBJECTID / id cuadrante & Excel / NASA POWER & Cadena/Entero & Identificador del cuadrante geográfico & Llave para cruce espacial con clima \\
-FECHA CONSULTA & fecha consulta & NASA POWER & Fecha & Fecha diaria de la variable meteorológica & Llave temporal para agregación y cruce \\
-LATITUD CUADRANTE & POINT Y / latitud cuadrante & Excel / NASA POWER & Decimal & Latitud usada en la consulta al API & Trazabilidad geográfica de la extracción \\
-LONGITUD CUADRANTE & POINT X / longitud cuadrante & Excel / NASA POWER & Decimal & Longitud usada en la consulta al API & Trazabilidad geográfica de la extracción \\
-PRECIPITACION TOTAL MM & PRECTOT / PRECTOTCORR & NASA POWER & Decimal & Precipitación diaria total (mm) & Variable exógena de clima para modelación \\
-TEMPERATURA MEDIA C & T2M & NASA POWER & Decimal & Temperatura media diaria (°C) & Variable exógena de clima para modelación \\
-TEMPERATURA MAXIMA C & T2M MAX & NASA POWER & Decimal & Temperatura máxima diaria (°C) & Variable exógena de clima para modelación \\
-TEMPERATURA MINIMA C & T2M MIN & NASA POWER & Decimal & Temperatura mínima diaria (°C) & Variable exógena de clima para modelación \\
-HUMEDAD RELATIVA PCT & RH2M & NASA POWER & Decimal & Humedad relativa diaria (\%) & Variable exógena de clima para modelación \\
-VELOCIDAD VIENTO MS & WS2M & NASA POWER & Decimal & Velocidad del viento (m/s) & Variable exógena de clima para modelación \\
-
-\bottomrule
-\end{tabularx}
-
-\begin{tablenotes}[flushleft]
-\footnotesize
-\item Nota: Las variables meteorológicas se integran mediante cruce espacial y temporal con los eventos de interrupción.
-\end{tablenotes}
-
-\end{threeparttable}
-\end{table}
-
-\restoregeometry
-\end{landscape}
-
-\begin{landscape}
-
-
-\begin{table}[!htbp]
-\centering
-\caption{Variables derivadas de continuidad del servicio eléctrico}
-\label{tab:variables_derivadas}
-
-\begin{threeparttable}
-\small
-\renewcommand{\arraystretch}{1.2}
-
-\begin{tabularx}{\linewidth}{X X l l X X}
-\toprule
-Campo estándar & Campo origen & Sistema origen & Tipo dato & Descripción funcional & Uso en integración \\
-\midrule
-
-\multicolumn{6}{l}{\textbf{Variables derivadas de continuidad}}\\
-\addlinespace
-
-DURACION & Fecha desconexion / Fecha conexion (derivado) & Eventos BRAE / OMS & Decimal & Horas acumuladas sin servicio del activo en el día & Variable objetivo o explicativa de continuidad \\
-FRECUENCIA & Conteo de eventos por día (derivado) & Eventos BRAE / OMS & Entero & Número de fallas del activo en el día & Variable objetivo o explicativa de continuidad \\
-\bottomrule
-\end{tabularx}
-
-\begin{tablenotes}[flushleft]
-\footnotesize
-\item Nota: Estas variables se calculan a partir de la agregación diaria de eventos de interrupción y maniobras operativas.
-\end{tablenotes}
-
-\end{threeparttable}
-\end{table}
-
-\restoregeometry
-\end{landscape}
-
-
-\subsection{Características de la tabla consolidada}
-
-La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
+    \item \label{int:paso1} \textbf{Construcción de la tabla base de eventos (BRAE).}\mbox{}\par\vspace{0.2em}\noindent
+    A partir de \texttt{BRAE.QA\_TFDDREGISTRO} se genera la tabla \texttt{tabla\_eventos} con \texttt{ID\_EVENTO}, \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}, aplicando filtros regulatorios del periodo 2021--2025, exclusión de eventos no válidos y eliminación de duplicados. Esta tabla define el universo analítico de interrupciones (95{,}280 eventos).
+
+    \item \label{int:paso2} \textbf{Construcción de la tabla de afectación por evento (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
+    En la Sección~5.1.3 se construye la Tabla~5.2 de afectación por evento, la cual consolida las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} a nivel de \texttt{ID\_EVENTO}. Su integración a la tabla base consolidada se realiza en el paso~\ref{int:paso5}.
+
+    \item \label{int:paso3} \textbf{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
+    La tabla base de eventos obtenida en la Sección~5.1.2 se construyó con el campo \texttt{ELEMENTO\_FALLADO} vacío, reservado para su completamiento en la integración. Dado el cambio de sistema OMS en el año 2023, la información del elemento causante se extrajo de forma separada en dos fuentes: la Sección~5.1.4 (\emph{Extracción del elemento causante histórico}, OMS SPARD) y la Sección~5.1.5 (\emph{Extracción del elemento causante actual}, OMS SP7). En este paso, la tabla de la Sección~5.1.2 se cruza con ambas tablas OMS, aplicando en cada caso la lógica de emparejamiento definida en su extracción:
+    \begin{itemize}
+        \item \emph{Histórico (Sección~5.1.4 -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
+        \item \emph{Actual (Sección~5.1.5 -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
+    \end{itemize}
+
+    \item \label{int:paso4} \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+    A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~5.5 (inventario georreferenciado de activos obtenido en la Sección~5.1.6), la cual se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31, empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~\ref{int:paso5} a~\ref{int:paso8}, se anexan los valores restantes de la secuencia de integración.
+
+    \item \label{int:paso5} \textbf{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla base consolidada obtenida en el paso~\ref{int:paso4}, se integran las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} provenientes de la Tabla~5.2 (afectación por evento, Sección~5.1.3), mediante el siguiente cruce de llaves:
+    \begin{itemize}
+        \item \texttt{ID\_EVENTO} $=$ \texttt{ELEMENTO}
+    \end{itemize}
+    \noindent entre la Tabla~5.2 y la tabla del paso~\ref{int:paso4}, incorporando al panel las métricas de severidad e impacto operativo asociadas a cada evento de interrupción.
+
+    \item \label{int:paso6} \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla resultante del paso~\ref{int:paso5}, se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce por \texttt{FECHA\_DIA}, incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento.
+
+    \item \label{int:paso7} \textbf{Agregación de eventos a grano activo--día.}\mbox{}\par\vspace{0.2em}\noindent
+    En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6}. Para ello, dicha tabla se cruza con la Tabla~5.1 (eventos depurados de interrupción, Sección~5.1.2), la cual contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}, mediante la llave:
+    \begin{itemize}
+        \item \texttt{ID\_EVENTO} $=$ \texttt{ELEMENTO}
+    \end{itemize}
+    \noindent entre la Tabla~5.1 y el identificador de activo de la tabla del paso~\ref{int:paso6}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
+    \begin{itemize}
+        \item \texttt{DURACION}: para cada activo y \texttt{FECHA\_DIA}, se registra la suma de horas sin servicio efectivamente transcurridas en ese día. Si un evento cruza la medianoche, la duración total se distribuye (prorratea) entre los días calendario en los que el activo permaneció desconectado.
+        \item \texttt{FRECUENCIA}: para cada activo y \texttt{FECHA\_DIA}, se registra el número de desconexiones cuyo inicio ocurre en ese día, con base en \texttt{FECHA\_DESCONEXION}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}.
+    \end{itemize}
+    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}. 
+
+    \item \label{int:paso8} \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}014{,}378$ observaciones teóricas ($A = 47{,}653$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+
+    La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
 
 Sea $A$ el número total de activos eléctricos en la red y $T$ el número total de periodos diarios observados, el tamaño teórico del panel balanceado está dado por:
 
@@ -633,127 +487,171 @@ En consecuencia, el número total de observaciones en la base consolidada se cal
 N = 47{,}653 \times 1{,}826 = 87{,}014{,}378
 \]
 
-\textbf{Objetivo específico asociado: OE1}
 
-En esta etapa se identifican datos faltantes, inconsistencias y valores atípicos. Se aplican técnicas de imputación, estandarización temporal, normalización y transformación de variables. Asimismo, se realizan validaciones cruzadas entre sistemas para garantizar consistencia y coherencia estructural.
-
-\textbf{Entregable:} Reporte técnico de depuración, preprocesamiento y estandarización de datos.
-
-El preprocesamiento se estructura en cuatro etapas secuenciales: (i) tratamiento de valores extremos en variables cuantitativas, (ii) análisis de asociación y depuración de covariables cuantitativas y cualitativas, (iii) codificación de variables categóricas y (iv) estandarización de variables continuas. Este orden responde a criterios de estabilidad numérica, identificabilidad del modelo y coherencia con los supuestos del modelo.
+\end{enumerate}
+}
 
 
-%--------------------------------------------------
-\subsection{Identificación de datos faltantes}
-    Como parte del proceso de validación y preparación de los datos, se definió un procedimiento sistemático para evaluar la presencia de valores faltantes en todas las variables consideradas para el análisis. Esta verificación se realizó a nivel de columna y de observación, con el objetivo de determinar la necesidad de aplicar técnicas de imputación o de exclusión de registros.
+\subsection{Diagrama de flujo de la secuencia de integración}
 
-    El diagnóstico de datos faltantes se aplicó una vez concluido el proceso de limpieza y filtrado estructural, y abarcó tanto las variables transaccionales como las variables de perfilamiento del cliente y las magnitudes monetarias utilizadas posteriormente en la construcción de la variable respuesta del modelo \emph{pogit}.
-    
-    En caso de detectarse valores faltantes, el diseño metodológico contemplaba la aplicación de reglas explícitas de imputación o exclusión, debidamente documentadas. No obstante, cuando el diagnóstico no evidencia la presencia de datos faltantes, se evita la introducción de supuestos adicionales asociados a mecanismos de datos incompletos, preservando así la simplicidad y coherencia del pipeline de preprocesamiento.
-    
+Este diagrama de flujo resume visualmente la secuencia de integración y la estructura del panel final, como guía para el lector, especificando las relaciones entre las tablas y las operaciones aplicadas en cada paso.
 
-Se documentarán de forma detallada las fuentes y los requisitos mínimos de los datos necesarios para garantizar consistencia en el modelado. Esta sección especifica, para cada tipo de variable, su definición, granularidad temporal y espacial, periodo histórico mínimo recomendado y criterios de volumen y representatividad.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{img/drawings/mermaid-diagram (1).png}
+    \caption{Estructura del panel de datos activo–día}
+    \label{fig:panel_activo_dia}
+\end{figure}
 
 
-El resumen de las variables requeridas es el siguiente:
+\subsection{Descripción de la tabla base consolidada}
+
+Las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} presentan una muestra de la tabla base consolidada resultante del paso~\ref{int:paso8}, con grano \textbf{activo eléctrico $\times$ día}. Por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación del activo (Tabla~\ref{tab:muestra_consolidado_final_1}), severidad y clima inicial (Tabla~\ref{tab:muestra_consolidado_final_2}), clima complementario (Tabla~\ref{tab:muestra_consolidado_final_3}) y variables de continuidad (Tabla~\ref{tab:muestra_consolidado_final_4}).
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 1: activo y fecha}
+\label{tab:muestra_consolidado_final_1}
+\begin{tabular}{l l r r r l}
+\toprule
+\textbf{ID ACTIVO} & \textbf{TIPO} & \textbf{LAT.} & \textbf{LON.} & \textbf{ALT.} & \textbf{FECHA DIA} \\
+\midrule
+AASW4819 & Aisladero      & 8.5786778 & -72.92349 & 219  & 01/01/2021 \\
+1T12452  & Transformador  & 8.5839989 & -72.92248 & 241  & 01/01/2021 \\
+REC21365 & Reconectador   & 8.5840628 & -72.92246 & 241  & 01/01/2021 \\
+CUC12345 & Cuchilla       & 7.7523729 & -73.23971 & 1236 & 01/01/2021 \\
+INT39845 & Interruptor    & 7.7476080 & -73.25551 & 1359 & 02/01/2021 \\
+AASW4820 & Aisladero      & 7.7561057 & -73.26037 & 1169 & 02/01/2021 \\
+1T12453  & Aisladero      & 7.7409332 & -73.20825 & 1636 & 02/01/2021 \\
+REC21366 & Transformador  & 7.7428641 & -73.18990 & 1542 & 02/01/2021 \\
+CUC12346 & Reconectador   & 7.7538839 & -73.17721 & 1707 & 03/01/2021 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 2: severidad y clima inicial (continuación)}
+\label{tab:muestra_consolidado_final_2}
+\begin{tabular}{l l r r r r}
+\toprule
+\textbf{ID ACTIVO} & \textbf{FECHA DIA} & \textbf{C. ELEM.} & \textbf{C. USU.} & \textbf{VEL. VIENTO} & \textbf{TEMP. MED.} \\
+\midrule
+AASW4819 & 01/01/2021 & 0   & 0    & 1.11 & 23.91 \\
+1T12452  & 01/01/2021 & 0   & 0    & 1.23 & 24.58 \\
+REC21365 & 01/01/2021 & 125 & 2015 & 0.96 & 23.04 \\
+CUC12345 & 01/01/2021 & 0   & 0    & 0.81 & 23.02 \\
+INT39845 & 02/01/2021 & 0   & 0    & 1.05 & 23.83 \\
+AASW4820 & 02/01/2021 & 0   & 0    & 1.12 & 24.08 \\
+1T12453  & 02/01/2021 & 0   & 0    & 1.08 & 24.52 \\
+REC21366 & 02/01/2021 & 0   & 0    & 1.26 & 24.37 \\
+CUC12346 & 03/01/2021 & 0   & 0    & 1.41 & 24.34 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 3: clima complementario (continuación)}
+\label{tab:muestra_consolidado_final_3}
+\begin{tabular}{l l r r r r}
+\toprule
+\textbf{ID ACTIVO} & \textbf{FECHA DIA} & \textbf{HUM. REL.} & \textbf{TEMP. MIN.} & \textbf{TEMP. MAX.} & \textbf{PRECIP.} \\
+\midrule
+AASW4819 & 01/01/2021 & 78.91 & 20.06 & 29.98 & 3.19 \\
+1T12452  & 01/01/2021 & 75.79 & 20.27 & 30.90 & 1.31 \\
+REC21365 & 01/01/2021 & 83.94 & 20.26 & 27.82 & 3.19 \\
+CUC12345 & 01/01/2021 & 79.55 & 17.92 & 30.09 & 7.28 \\
+INT39845 & 02/01/2021 & 69.70 & 19.35 & 30.79 & 1.99 \\
+AASW4820 & 02/01/2021 & 61.99 & 17.20 & 30.81 & 0.98 \\
+1T12453  & 02/01/2021 & 72.16 & 20.38 & 30.59 & 2.70 \\
+REC21366 & 02/01/2021 & 75.50 & 20.18 & 30.63 & 3.29 \\
+CUC12346 & 03/01/2021 & 74.34 & 20.40 & 30.43 & 1.86 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 4: variables de continuidad (continuación)}
+\label{tab:muestra_consolidado_final_4}
+\begin{tabular}{r r}
+\toprule
+\textbf{DURACION} & \textbf{FRECUENCIA} \\
+\midrule
+0     & 0 \\
+0     & 0 \\
+4.215 & 3 \\
+0     & 0 \\
+0     & 0 \\
+0     & 0 \\
+0     & 0 \\
+0     & 0 \\
+0     & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} corresponden al mismo conjunto de observaciones en el mismo orden. Los registros sin interrupción en el día presentan \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}.
+
+\subsection{Descripción de las variables}
+
+La Tabla~\ref{tab:muestra_consolidado_final_1} reúne las variables de identificación del activo y del periodo de observación. A continuación se describe el significado, origen y unidad de cada columna:
 
 \begin{itemize}
-    \item \textbf{Indicadores de calidad}
-    \begin{itemize}
-        \item Variables: $SAIDI$, $SAIFI$ históricos por circuito o zona.
-        \item Granularidad: registro por evento con sello temporal (fecha/hora).
-        \item Periodo: entre el 1 de enero de 2020 y el 31 de octubre de 2025.
-        \item Volumen: se registran todos los eventos ocurridos durante el periodo.
-    \end{itemize}
+    \item \textbf{ID ACTIVO} (\texttt{ELEMENTO}): identificador único del activo eléctrico en la red de distribución. Proviene del inventario georreferenciado GIS (Sección~5.1.6, Tabla~5.5) y constituye la llave primaria del panel a nivel de activo. Permite vincular cada observación diaria con el elemento físico asociado a eventos de interrupción y con sus atributos espaciales.
 
-    \item \textbf{Técnicas / operativas}
-    \begin{itemize}
-        \item Variables: duración y frecuencia de interrupciones, número de usuarios afectados, longitud de circuito, nivel de tensión, antigüedad de equipos.
-        \item Variables recomendadas: carga máxima, densidad de transformadores, tipo de red (aérea/subterránea), tipo de terreno.
-        \item Granularidad: por evento y por circuito; agregados diarios o mensuales para análisis exploratorio.
-    \end{itemize}
+    \item \textbf{TIPO}: clasificación funcional del activo según su rol en la red. Los valores observados incluyen \emph{Transformador}, \emph{Reconectador}, \emph{Aisladero}, \emph{Cuchilla} e \emph{Interruptor}, homologados en la extracción GIS para estandarizar la tipología dentro del dataset consolidado.
 
-    \item \textbf{Mantenimiento}
-    \begin{itemize}
-        \item Variables: número y fecha de mantenimientos preventivos y correctivos por activo.
-        \item Recomendadas: tipo de mantenimiento, tiempo promedio de atención, cuadrillas, historial de poda.
-        \item Periodo: coincidente con $SAIDI$/$SAIFI$.
-    \end{itemize}
+    \item \textbf{LAT.} (\texttt{LATITUD}): coordenada de latitud del activo, expresada en grados decimales (WGS84). Se obtiene del campo \texttt{coor\_gps\_lat} del sistema GTECH y habilita el análisis espacial de la red y la asignación de contexto geográfico a cada registro.
 
-    \item \textbf{Ambientales / climáticas}
-    \begin{itemize}
-        \item Variables: precipitación, velocidad de viento, temperatura, ocurrencia de descargas eléctricas.
-        \item Recomendadas: índices climáticos, datos satelitales, anomalías por estación.
-        \item Granularidad: diaria u horaria según disponibilidad; coincidente con $SAIDI$/$SAIFI$.
-    \end{itemize}
+    \item \textbf{LON.} (\texttt{LONGITUD}): coordenada de longitud del activo, expresada en grados decimales (WGS84). Corresponde al campo \texttt{coor\_gps\_lon} del inventario GIS y se emplea conjuntamente con la latitud para localizar el activo en el territorio de operación.
 
-    \item \textbf{Regulatorias / externas}
-    \begin{itemize}
-        \item Variables: límites de calidad CREG, registros de compensaciones y reportes regulatorios.
-        \item Recomendadas: variaciones normativas históricas, indicadores regionales comparativos.
-    \end{itemize}
+    \item \textbf{ALT.} (\texttt{ALTITUD}): cota del activo sobre el nivel del mar, en metros. Proviene del campo \texttt{coor\_z} del sistema GIS y complementa la caracterización geográfica del punto de conexión en la red.
+
+    \item \textbf{FECHA DIA} (\texttt{FECHA\_DIA}): fecha calendario de la observación, con granularidad diaria en el intervalo 2021-01-01 a 2025-12-31. Se genera mediante el cruce del inventario de activos con el calendario diario (paso~\ref{int:paso4}) y define, junto con \texttt{ID ACTIVO}, la unidad muestral del panel \textbf{activo $\times$ día}.
 \end{itemize}
 
-\textbf{Criterios generales de calidad y muestreo:}
+\paragraph{Tabla~\ref{tab:muestra_consolidado_final_2} (severidad y clima inicial).}
+Las columnas \texttt{ID ACTIVO} y \texttt{FECHA DIA} se repiten en esta tabla para facilitar la trazabilidad de filas entre bloques consecutivos. Las variables propias de este bloque son:
 
 \begin{itemize}
-    \item \textbf{Trazabilidad:} cada registro debe conservar metadatos (origen, timestamp, identificador de activo o circuito).
-    
-    \item \textbf{Sincronización temporal:} definir protocolo de alineamiento (UTC/local, ventana de tolerancia) y reglas para resolución de conflictos.
-    
-    \item \textbf{Umbrales mínimos de completitud:} porcentaje mínimo aceptable de datos por variable (por ejemplo $\geq 80\%$) y políticas de imputación o exclusión debidamente documentadas.
-    
-    \item \textbf{Representatividad de eventos extremos:} registrar y etiquetar eventos extremos (tormentas, catástrofes) para análisis separado; si son escasos, aplicar técnicas de augmentación o enfoques de modelado robusto.
+    \item \textbf{C. ELEM.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el evento de interrupción asociado al activo en el día. Proviene de la Tabla~5.2 (afectación por evento, Sección~5.1.3) e integra al panel en el paso~\ref{int:paso5}. Cuando el activo no registra falla en el día, el valor es 0.
+
+    \item \textbf{C. USU.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el evento de interrupción vinculado al activo en el día. Se obtiene de la misma fuente y mediante el mismo cruce que \texttt{CANTIDAD\_ELEMENTOS}, y constituye una medida de severidad operativa del impacto sobre la demanda. En días sin interrupción, el valor es 0.
+
+    \item \textbf{VEL. VIENTO} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~5.1.7) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{int:paso6}.
+
+    \item \textbf{TEMP. MED.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día.
 \end{itemize}
 
-Esta especificación formará parte del catálogo de datos y del entregable \emph{Informe de consolidación de datos}, y condiciona las decisiones metodológicas posteriores (ingeniería de variables, selección de modelos y validación).
-
-\subsubsection{Mapeo: variable $\rightarrow$ sistema origen}
-
-Se propone el siguiente mapeo inicial:
+\paragraph{Tabla~\ref{tab:muestra_consolidado_final_3} (clima complementario).}
+Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIVO} y \texttt{FECHA DIA} permiten alinear filas entre tablas. Las variables climáticas restantes del bloque son:
 
 \begin{itemize}
-    \item \textbf{Indicadores de calidad}
-    \begin{itemize}
-        \item Origen primario: OMS (reportes de eventos) y CIS (población conectada).
-        \item Variables: $SAIDI$, $SAIFI$ (históricos por circuito o zona).
-    \end{itemize}
+    \item \textbf{HUM. REL.} (\texttt{RH2M}): humedad relativa del aire a 2\,m, expresada en porcentaje (\%). Proviene del parámetro \texttt{RH2M} de NASA POWER e integra al panel por \texttt{FECHA\_DIA}.
 
-    \item \textbf{Técnicas / operativas}
-    \begin{itemize}
-        \item Orígenes: OMS (eventos), SCADA (tiempos, mediciones, alarmas), GIS (topología, longitud), CIS / inventario (usuarios, transformadores, nivel de tensión).
-        \item Variables: duración, frecuencia, \texttt{usuarios\_afectados}, \texttt{longitud\_circuito}, \texttt{nivel\_tension}, \texttt{antiguedad\_activo}, \texttt{carga\_max}.
-    \end{itemize}
+    \item \textbf{TEMP. MIN.} (\texttt{T2M\_MIN}): temperatura mínima diaria del aire, expresada en \textdegree C. Corresponde al parámetro \texttt{T2M\_MIN} de NASA POWER y complementa la temperatura media con el extremo inferior del rango térmico del día.
 
-    \item \textbf{Mantenimiento}
-    \begin{itemize}
-        \item Origen: CIS, sistema de gestión de activos y registros de mantenimiento; registros internos OMS cuando aplique.
-        \item Variables: \texttt{fecha\_mantenimiento}, \texttt{tipo\_mantenimiento}, \texttt{activo\_id}, \texttt{duracion\_intervencion}, \texttt{cuadrilla}.
-    \end{itemize}
+    \item \textbf{TEMP. MAX.} (\texttt{T2M\_MAX}): temperatura máxima diaria del aire, expresada en \textdegree C. Proviene del parámetro \texttt{T2M\_MAX} de NASA POWER y representa el extremo superior del rango térmico observado en el día.
 
-    \item \textbf{Ambientales / climáticas}
-    \begin{itemize}
-        \item Origen: IDEAM (estaciones), estaciones meteorológicas locales, datos satelitales.
-        \item Variables: precipitación, viento, temperatura, descargas eléctricas, índices climáticos.
-    \end{itemize}
-
-    \item \textbf{Regulatorias / externas}
-    \begin{itemize}
-        \item Origen: documentación CREG, SSPD y bases regulatorias internas.
-        \item Variables: \texttt{limites\_CREG}, \texttt{compensaciones\_reportadas}, \texttt{exclusiones\_normativas}.
-    \end{itemize}
-
-    \item \textbf{GIS (atributos estáticos / espaciales)}
-    \begin{itemize}
-        \item Origen: GIS corporativo.
-        \item Variables: \texttt{circuit\_id}, \texttt{geometry}, \texttt{tipo\_red} (aérea/subterránea), longitud, \texttt{coordenadas\_nodo}, \texttt{tipo\_terreno}, \texttt{densidad\_transformadores}.
-    \end{itemize}
-
-    \item \textbf{SCADA (telemedida y eventos detectados)}
-    \begin{itemize}
-        \item Origen: SCADA.
-        \item Variables: mediciones (corriente, tensión), alarmas, timestamps de detección.
-    \end{itemize}
+    \item \textbf{PRECIP.} (\texttt{PRECTOT}): precipitación total acumulada en el día, expresada en mm. Corresponde al parámetro \texttt{PRECTOT} de NASA POWER y permite incorporar la exposición del activo a condiciones de lluvia en la fecha de observación.
 \end{itemize}
+
+\paragraph{Tabla~\ref{tab:muestra_consolidado_final_4} (variables de continuidad).}
+Este bloque concentra las variables objetivo del análisis, construidas en el paso~\ref{int:paso7} a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
+
+\begin{itemize}
+    \item \textbf{DURACION}: suma de horas sin servicio del activo efectivamente transcurridas en \texttt{FECHA\_DIA}. Si una interrupción cruza la medianoche, la duración total se prorratea entre los días calendario en los que el activo permaneció desconectado. En días sin falla, el valor es 0.
+
+    \item \textbf{FRECUENCIA}: número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}. En días sin falla, el valor es 0.
+\end{itemize}
+
+
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 
@@ -768,58 +666,146 @@ La fiabilidad técnica de las fuentes climáticas y ambientales está respaldada
 Adicionalmente, en cumplimiento del Decreto 1081 de 2015, el Decreto 103 de 2015, la Ley 1712 de 2014 (Ley de Transparencia) y la Resolución 1519 de 2020 del MINTIC, el IDEAM garantiza que la información publicada sea auditable, actualizada y accesible, respaldada por canales institucionales de difusión, monitoreo interno e integridad documental. Estas disposiciones fortalecen la calidad estadística y aseguran que las series climáticas oficiales cumplan criterios formales de confiabilidad, oportunidad y validez técnica a escala nacional~\cite{ref41,ref42,ref43}.
 
 
-
-\subsection{Tratamiento de valores extremos en variables cuantitativas}
-
-    
-
-\subsection{Análisis de asociación y depuración de variables cuantitativas}
-
-   
-
-
-\subsection{Análisis de asociación y depuración de variables cualitativas}
-
-    
-    
-\subsection{Codificación de variables categóricas}
-
-    
-
-\subsection{Estandarización de variables cuantitativas}
-
-
-\section{Etapa 3 – Análisis descriptivo y exploratorio}
+\section{Etapa 3 – Análisis descriptivo y exploratorio de datos (EDA)}
 
 \textbf{Objetivo específico asociado: OE2}
 
-Se desarrolla un análisis exploratorio con el fin de identificar tendencias temporales, patrones espaciales, estacionalidades, correlaciones entre variables y primeras aproximaciones a los factores que podrían explicar la variación de $SAIDI$ y $SAIFI$. El análisis incluye visualizaciones avanzadas como series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
+\textbf{Objetivo:} comprender el comportamiento de los datos e identificar patrones, relaciones y comportamientos relevantes que orienten las decisiones de modelado.
+
+Una vez completadas las etapas de extracción, integración y preprocesamiento, se desarrolla un análisis exploratorio orientado a caracterizar las distribuciones de las variables, identificar patrones temporales y espaciales, y evaluar las relaciones entre covariables que podrían explicar la variación de $SAIDI$ y $SAIFI$. Esta etapa se concibe como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados.
+
+Para las variables cuantitativas se calculan medidas de tendencia central y dispersión, así como la proporción de valores atípicos; adicionalmente se construyen histogramas y diagramas de caja para examinar la forma de las distribuciones. En el caso de las variables categóricas, se analizan las frecuencias absolutas y relativas de cada categoría. El grado de asociación entre variables cuantitativas se evalúa mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér, con el fin de identificar redundancias y evitar problemas de multicolinealidad en la estimación del modelo. Las visualizaciones incluyen series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
+
+
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
+
+\subsection{Tratamiento de valores extremos en variables cuantitativas}
+
+\subsection{Análisis de asociación y depuración de variables cuantitativas}
+
+\subsection{Análisis de asociación y depuración de variables cualitativas}
+    
+\subsection{Codificación de variables categóricas}
+
+\subsection{Estandarización de variables cuantitativas}
+
+\subsection{Cálculo de estadísticos descriptivos}
+
+\subsection{Análisis de la distribución de variables}
+
+\subsection{Análisis de correlación y asociación}
+
+\subsection{Análisis temporal de eventos}
+
+\subsection{Identificación de patrones y tendencias}
+
+\subsection{Visualización exploratoria}
+
+\subsection{Segmentación exploratoria}
+
+\subsection{Evaluación inicial de relaciones multivariadas}
+
+\subsection{Identificación de comportamiento atípico}
+
+\subsection{Resultados y entregables de la etapa}
+
+
+\textbf{Resultado:} conocimiento exploratorio del comportamiento de los datos y hallazgos relevantes para el modelado.
 
 \textbf{Entregable:} Documento de análisis descriptivo y exploratorio (EDA).
 
-\section{Etapa 4 – Modelado predictivo y evaluativo}
+
+\section{Etapa 4 – Ingeniería de variables y preparación del modelo}
+
+\textbf{Objetivo específico asociado: OE2}
+
+\textbf{Objetivo:} construir las variables analíticas necesarias para el entrenamiento de modelos predictivos, asegurando un dataset consistente, balanceado y estadísticamente apto para la modelación.
+
+A partir de los hallazgos del EDA, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. Esto incluye la definición formal de la variable respuesta, la construcción de variables predictoras informadas por el comportamiento observado y la definición de las particiones temporales de entrenamiento y prueba.
+
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
+
+\subsection{Construcción de variables predictoras}
+
+\subsection{Construcción de la variable respuesta}
+
+\subsection{Generación de ventanas temporales}
+
+\subsection{Partición de datos en entrenamiento y prueba}
+
+\subsection{Construcción de matrices de diseño}
+
+\subsection{Reducción de dimensionalidad}
+
+\subsection{Segmentación analítica}
+
+\subsection{Transformaciones adicionales para modelado}
+
+\subsection{Resultados y entregables de la etapa}
+
+\textbf{Resultado:} dataset analítico listo para entrenamiento y validación del modelo.
+
+\textbf{Entregable:} Reporte técnico de ingeniería de variables y dataset analítico documentado.
+
+
+\section{Etapa 5 – Modelado predictivo y evaluativo}
 
 \textbf{Objetivo específico asociado: OE2 y OE3}
 
-En esta etapa se desarrollan y evalúan diversos modelos estadísticos y de aprendizaje automático para estimar $SAIDI$ y $SAIFI$ por circuito o área. La selección del enfoque (supervisado, no supervisado o híbrido) se determinará según los hallazgos del análisis exploratorio, la naturaleza de los datos disponibles y los requerimientos de interpretabilidad.
+\textbf{Objetivo:} entrenar, validar y evaluar modelos predictivos utilizando métricas de desempeño que permitan estimar $SAIDI$ y $SAIFI$ por circuito o área.
 
-La evaluación comparativa considera métricas de error como $RMSE$, $MAE$ y $MAPE$, así como estabilidad del modelo y validez de supuestos. Además, se realiza un análisis de importancia de variables mediante técnicas interpretables, con el objetivo de identificar los factores operativos, técnicos o climáticos que influyen de manera significativa en la calidad del servicio.
+En esta etapa se desarrollan y evalúan diversos modelos estadísticos y de aprendizaje automático. La selección del enfoque (supervisado, no supervisado o híbrido) se determina según los hallazgos del análisis exploratorio, la naturaleza de los datos disponibles y los requerimientos de interpretabilidad. La evaluación comparativa considera métricas de error como $RMSE$, $MAE$ y $MAPE$, así como la estabilidad del modelo y la validez de supuestos. Adicionalmente, se realiza un análisis de importancia de variables mediante técnicas interpretables, con el objetivo de identificar los factores operativos, técnicos o climáticos que influyen de manera significativa en la calidad del servicio.
+
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
+
+\subsection{Selección de algoritmos}
+
+\subsection{Entrenamiento del modelo}
+
+\subsection{Validación del modelo}
+
+\subsection{Ajuste de hiperparámetros}
+
+\subsection{Evaluación de desempeño}
+
+\subsection{Comparación de modelos}
+
+\subsection{Interpretación de resultados}
+
+\subsection{Resultados y entregables de la etapa}
+
+\textbf{Resultado:} modelo predictivo validado y evaluado técnicamente.
 
 \textbf{Entregables:} Informe de evaluación comparativa de modelos predictivos (OE3) y reporte técnico de importancia de variables (OE2).
 
 
-Una vez completadas las etapas de limpieza, validación y construcción de variables, se realizó un análisis exploratorio de los datos con el objetivo de caracterizar las distribuciones de las variables, identificar patrones relevantes y apoyar las decisiones de selección y depuración de covariables para la modelación. Esta etapa se concibió como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados.
-
-Para las variables cuantitativas, se calcularon medidas de tendencia central y dispersión, así como la proporción de valores atípicos. Adicionalmente, se construyeron histogramas y diagramas de caja para examinar la forma de las distribuciones y detectar posibles asimetrías o colas largas que pudieran afectar la estimación de los componentes del modelo. En el caso de las variables categóricas, se analizaron las frecuencias absolutas y relativas de cada categoría, con el fin de identificar concentraciones excesivas o niveles con baja representatividad.
-
-Posteriormente, se evaluó el grado de asociación entre variables cuantitativas mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér. Estos análisis se utilizaron como insumo para identificar redundancias entre covariables y apoyar decisiones de depuración, con el propósito de evitar problemas de multicolinealidad en la estimación del modelo.
-
-    
-\section{Etapa 5 – Documentación y reportes}
+\section{Etapa 6 – Cierre metodológico, documentación y reportes}
 
 \textbf{Objetivo específico asociado: OE1–OE2–OE3}
 
-En la etapa final se consolidan los resultados del proyecto y se documentan de forma integral las técnicas aplicadas, transformaciones realizadas y código reproducible (en R o Python). El capítulo incluye apéndices técnicos, tablas de validación, bibliografía y lineamientos de reproducibilidad.
+\textbf{Objetivo:} presentar los resultados obtenidos y documentar el proceso metodológico desarrollado, asegurando la reproducibilidad y la trazabilidad de los hallazgos.
+
+En la etapa final se consolidan los resultados del proyecto y se documentan de forma integral las técnicas aplicadas, las transformaciones realizadas y el código reproducible (en R o Python). El capítulo incluye apéndices técnicos, tablas de validación, bibliografía y lineamientos de reproducibilidad, así como una discusión orientada a interpretar los hallazgos en términos técnicos y operativos para la toma de decisiones del operador de red.
+
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
+
+\subsection{Presentación de resultados del modelo}
+
+\subsection{Métricas de desempeño}
+
+\subsection{Hallazgos principales}
+
+\subsection{Interpretación técnica y operativa}
+
+\subsection{Generación de reportes}
+
+\subsection{Discusión de resultados}
+
+\subsection{Limitaciones y trabajos futuros}
+
+\subsection{Resultados y entregables de la etapa}
+
+\textbf{Resultado:} documentación final del proyecto y resultados consolidados.
 
 \textbf{Entregables:} Compendio de documentación del proyecto (informe final, informe descriptivo, informe de evaluación de modelos y reporte técnico de variables relevantes), código reproducible y documentación detallada de procesos y transformaciones.
    
