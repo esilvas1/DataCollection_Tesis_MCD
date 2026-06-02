@@ -1,0 +1,389 @@
+---
+title: "Consolidacion de la informacion"
+author: "Edwin Silva"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+# Creacion de data final consolidada
+
+
+
+## Librerias
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+## Sincronizar con variable de entorno
+
+```{r}
+# Cargar variables de entorno desde .env (raiz del proyecto)
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+
+```
+
+## Carga de datos TIPO_ELEMENTO
+
+```{r}
+path_tipo_elemento <- file.path(UBICACION_DATA, "tipo_elemento.csv")
+tipo_elemento <- read_csv(path_tipo_elemento, show_col_types = FALSE)
+
+# eliminar la columna Ubicacion de tipo_elemento
+tipo_elemento <- tipo_elemento %>%
+  select(-UBICACION)
+
+dim(tipo_elemento)
+n_distinct(tipo_elemento$ELEMENTO)
+```
+
+## Paso 5.2.1.4 — Panel activo × día
+
+Construcción de la tabla base consolidada según el paso **5.2.1.4** de `metodologia.tex`: producto cartesiano entre el inventario georreferenciado (`tipo_elemento`, Tabla 5.5) y el calendario diario **2021-01-01** a **2025-12-31**, con campo `FECHA_DIA`. Cardinal teórico: **$N = A \times T$** (en la corrida de referencia: $A = 47\,649$, $T = 1\,826$, $N = 87\,007\,074$).
+
+```{r paso-5-2-1-4}
+# Inventario de activos sin duplicados por ELEMENTO
+inventario_activos <- tipo_elemento %>%
+  distinct(ELEMENTO, .keep_all = TRUE)
+
+duplicados_inventario <- nrow(tipo_elemento) - nrow(inventario_activos)
+if (duplicados_inventario > 0) {
+  message("Registros duplicados eliminados en inventario: ", duplicados_inventario)
+}
+
+# Calendario diario del periodo de análisis
+calendario_diario <- tibble(
+  FECHA_DIA = seq(
+    from = as.Date("2021-01-01"),
+    to   = as.Date("2025-12-31"),
+    by   = "day"
+  )
+)
+
+# Producto cartesiano activo × día
+data_consolidada <- inventario_activos %>%
+  crossing(calendario_diario) %>%
+  select(ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, FECHA_DIA)
+
+# Validación N = A × T (referencia metodologia: A = 47 649, T = 1 826, N = 87 007 074)
+A <- nrow(inventario_activos)
+T <- nrow(calendario_diario)
+N <- nrow(data_consolidada)
+
+validacion_panel <- tibble(
+  activos_A = A,
+  dias_T = T,
+  observaciones_N = N,
+  esperado_AxT = A * T,
+  coincide = N == A * T
+)
+
+validacion_panel
+head(data_consolidada, 10)
+dim(data_consolidada)
+```
+
+**Nota:** este panel tiene **$N = 87\,007\,074$** filas (`$A \times T$`, con $A$ y $T$ de `validacion_panel`). Requiere memoria RAM considerable; para inspección use `head()` o filtros por activo/fecha en lugar de `View()` completo.
+
+
+## Paso 5.2.1.5 — Integración de CANTIDAD_ELEMENTOS y CANTIDAD_USUARIOS
+
+Sobre el panel del paso 5.2.1.4 ($N = A \times T$ filas). Se toman los valores directamente de `tabla_eventos_ajustado.csv` (`ELEMENTOS_AFECTADOS` y `USUARIOS_AFECTADOS`), asociados al activo (`ELEMENTO` = `COMPONENTE_FALLADO`) cuando `as.Date(FECHA_DESCONEXION) = FECHA_DIA`. El `left_join` **no cambia** el número de filas del panel. Si el mismo activo tuvo varias desconexiones el mismo día, **no se suman** los valores: se conserva un único registro por par activo–día (el primero por `ID_EVENTO`).
+
+```{r paso-5-2-1-5}
+tabla_eventos <- read_csv(
+  file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"),
+  show_col_types = FALSE
+) %>%
+  mutate(
+    FECHA_DESCONEXION = dmy_hm(FECHA_DESCONEXION),
+    FECHA_CONEXION = dmy_hm(FECHA_CONEXION),
+    FECHA_DIA = as.Date(FECHA_DESCONEXION)
+  )
+
+# Severidad por evento desde el mismo archivo de eventos ajustados
+eventos_afectacion_crudo <- tabla_eventos %>%
+  distinct(ID_EVENTO, FECHA_DIA, COMPONENTE_FALLADO, .keep_all = TRUE) %>%
+  transmute(
+    ELEMENTO = COMPONENTE_FALLADO,
+    FECHA_DIA,
+    ID_EVENTO,
+    CANTIDAD_ELEMENTOS = ELEMENTOS_AFECTADOS,
+    CANTIDAD_USUARIOS = USUARIOS_AFECTADOS
+  )
+
+duplicados_mismo_dia <- eventos_afectacion_crudo %>%
+  count(ELEMENTO, FECHA_DIA, name = "n_eventos") %>%
+  filter(n_eventos > 1)
+
+afectacion_activo_dia <- eventos_afectacion_crudo %>%
+  group_by(ELEMENTO, FECHA_DIA) %>%
+  arrange(ID_EVENTO, .by_group = TRUE) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(ELEMENTO, FECHA_DIA, CANTIDAD_ELEMENTOS, CANTIDAD_USUARIOS)
+
+# Integración al panel activo × día
+data_consolidada <- data_consolidada %>%
+  left_join(afectacion_activo_dia, by = c("ELEMENTO", "FECHA_DIA")) %>%
+  mutate(
+    CANTIDAD_ELEMENTOS = replace_na(CANTIDAD_ELEMENTOS, 0),
+    CANTIDAD_USUARIOS = replace_na(CANTIDAD_USUARIOS, 0)
+  )
+
+# Control: activo 1T00018 el 2025-10-12 debe ser 1 elemento y 92 usuarios
+control_1T00018 <- data_consolidada %>%
+  filter(ELEMENTO == "1T00018", FECHA_DIA == as.Date("2025-10-12")) %>%
+  select(ELEMENTO, FECHA_DIA, CANTIDAD_ELEMENTOS, CANTIDAD_USUARIOS)
+
+validacion_paso_5 <- tibble(
+  filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
+  activos_dia_con_afectacion = nrow(afectacion_activo_dia),
+  activos_dia_con_varias_desconexiones = nrow(duplicados_mismo_dia),
+  filas_con_cant_elementos_mayor_0 = sum(data_consolidada$CANTIDAD_ELEMENTOS > 0),
+  filas_con_cant_usuarios_mayor_0 = sum(data_consolidada$CANTIDAD_USUARIOS > 0)
+)
+
+validacion_paso_5
+control_1T00018
+head(
+  data_consolidada %>%
+    filter(CANTIDAD_ELEMENTOS > 0 | CANTIDAD_USUARIOS > 0),
+  10
+)
+
+dim(data_consolidada)
+```
+
+## Paso 5.2.1.6 — Integración de variables climáticas (NASA POWER)
+
+Sobre el panel del paso 5.2.1.5 (mismo $N = A \times T$). Se integran las variables climáticas desde `nasa_consolidado.csv` mediante `left_join` por `ELEMENTO = origen_ELEMENTO` y `FECHA_DIA = fecha_consulta`, sin alterar el cardinal del panel.
+
+```{r paso-5-2-1-6}
+path_nasa_ubicacion <- file.path(
+  UBICACION_DATA,
+  "Distribución de Cuadrantes",
+  "Output_Raw_API_NASA",
+  "nasa_power_por_puntos",
+  "nasa_consolidado.csv"
+)
+path_nasa_descargas <- file.path("C:/Users/ESILVAS/Downloads", "nasa_consolidado.csv")
+
+path_nasa_consolidado <- if (file.exists(path_nasa_ubicacion)) {
+  path_nasa_ubicacion
+} else if (file.exists(path_nasa_descargas)) {
+  path_nasa_descargas
+} else {
+  stop("No se encontro nasa_consolidado.csv en UBICACION_DATA ni en Downloads.")
+}
+
+vars_clima <- c(
+  "fecha_consulta",
+  "origen_ELEMENTO",
+  "velocidad_viento_ms",
+  "temperatura_media_c",
+  "humedad_relativa_pct",
+  "temperatura_minima_c",
+  "temperatura_maxima_c",
+  "precipitacion_total_mm"
+)
+
+nasa_clima <- read_csv(
+  path_nasa_consolidado,
+  col_select = all_of(vars_clima),
+  show_col_types = FALSE
+) %>%
+  mutate(FECHA_DIA = as.Date(fecha_consulta)) %>%
+  rename(ELEMENTO = origen_ELEMENTO) %>%
+  select(
+    ELEMENTO,
+    FECHA_DIA,
+    velocidad_viento_ms,
+    temperatura_media_c,
+    humedad_relativa_pct,
+    temperatura_minima_c,
+    temperatura_maxima_c,
+    precipitacion_total_mm
+  ) %>%
+  distinct(ELEMENTO, FECHA_DIA, .keep_all = TRUE)
+
+data_consolidada <- data_consolidada %>%
+  left_join(nasa_clima, by = c("ELEMENTO", "FECHA_DIA"))
+
+validacion_paso_6 <- tibble(
+  filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
+  filas_nasa_clima = nrow(nasa_clima),
+  filas_con_clima = sum(!is.na(data_consolidada$velocidad_viento_ms)),
+  filas_sin_clima = sum(is.na(data_consolidada$velocidad_viento_ms))
+)
+
+validacion_paso_6
+head(
+  data_consolidada %>%
+    filter(!is.na(velocidad_viento_ms)),
+  10
+)
+names(data_consolidada)
+dim(data_consolidada)
+```
+
+## Paso 5.2.1.7 — Agregación de variables objetivo (DURACION_min y FRECUENCIA)
+
+Sobre el panel del paso 5.2.1.6 (mismo $N = A \times T$). Según el paso **5.2.1.7** de `metodologia.tex`, usando la Tabla 5.1 (`tabla_eventos_ajustado.csv`):
+
+- **DURACION_min:** duración total del evento en minutos, `(FECHA_CONEXION - FECHA_DESCONEXION)`, asignada al día de `FECHA_DESCONEXION` (sin prorrateo).
+- **FRECUENCIA:** número de desconexiones cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese día.
+- Sin interrupción en el día: `DURACION_min = 0` y `FRECUENCIA = 0`.
+- Varios eventos el mismo día: se suman las duraciones y se cuenta cada desconexión.
+- La Tabla~5.1 puede repetir el mismo \texttt{ID\_EVENTO} con distintas \texttt{FECHA\_CONEXION}; se conserva una fila por evento con \texttt{min(FECHA\_DESCONEXION)} y \texttt{max(FECHA\_CONEXION)}.
+
+```{r paso-5-2-1-7}
+if (!exists("tabla_eventos")) {
+  tabla_eventos <- read_csv(
+    file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"),
+    show_col_types = FALSE
+  )
+}
+
+# El paso 5 solo garantizaba FECHA_DESCONEXION; ambas deben ser POSIXct
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    FECHA_DESCONEXION = if (inherits(FECHA_DESCONEXION, "POSIXt")) {
+      FECHA_DESCONEXION
+    } else {
+      dmy_hm(FECHA_DESCONEXION)
+    },
+    FECHA_CONEXION = if (inherits(FECHA_CONEXION, "POSIXt")) {
+      FECHA_CONEXION
+    } else {
+      dmy_hm(FECHA_CONEXION)
+    }
+  )
+
+# Un registro por evento: la tabla repite ID_EVENTO con FECHA_CONEXION actualizada
+eventos_continuidad <- tabla_eventos %>%
+  filter(
+    !is.na(FECHA_DESCONEXION),
+    !is.na(FECHA_CONEXION),
+    !is.na(COMPONENTE_FALLADO),
+    COMPONENTE_FALLADO != ""
+  ) %>%
+  group_by(ID_EVENTO, COMPONENTE_FALLADO) %>%
+  summarise(
+    FECHA_DESCONEXION = min(FECHA_DESCONEXION, na.rm = TRUE),
+    FECHA_CONEXION = max(FECHA_CONEXION, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(FECHA_CONEXION >= FECHA_DESCONEXION)
+
+# DURACION_min y FRECUENCIA: ambas al día de FECHA_DESCONEXION (sin prorrateo)
+continuidad_activo_dia <- eventos_continuidad %>%
+  mutate(
+    ELEMENTO = COMPONENTE_FALLADO,
+    FECHA_DIA = as.Date(FECHA_DESCONEXION),
+    DURACION_min = as.numeric(
+      difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = "mins")
+    )
+  ) %>%
+  group_by(ELEMENTO, FECHA_DIA) %>%
+  summarise(
+    DURACION_min = sum(DURACION_min, na.rm = TRUE),
+    FRECUENCIA = n(),
+    .groups = "drop"
+  )
+
+data_consolidada <- data_consolidada %>%
+  left_join(continuidad_activo_dia, by = c("ELEMENTO", "FECHA_DIA")) %>%
+  mutate(
+    DURACION_min = replace_na(DURACION_min, 0),
+    FRECUENCIA = replace_na(FRECUENCIA, 0)
+  )
+
+validacion_paso_7 <- tibble(
+  eventos_validos = nrow(eventos_continuidad),
+  activos_dia_continuidad = nrow(continuidad_activo_dia),
+  filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
+  activos_dia_con_duracion = sum(data_consolidada$DURACION_min > 0),
+  activos_dia_con_frecuencia = sum(data_consolidada$FRECUENCIA > 0),
+  filas_sin_interrupcion = sum(
+    data_consolidada$DURACION_min == 0 & data_consolidada$FRECUENCIA == 0
+  )
+)
+
+validacion_paso_7
+
+# Control BELC35 26/09/2024: 4 eventos; DURACION_min esperada ~935 min (sin prorrateo)
+control_belc35_20240926 <- eventos_continuidad %>%
+  filter(
+    COMPONENTE_FALLADO == "BELC35",
+    as.Date(FECHA_DESCONEXION) == as.Date("2024-09-26")
+  ) %>%
+  mutate(
+    DURACION_min_evento = as.numeric(
+      difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = "mins")
+    )
+  ) %>%
+  arrange(FECHA_DESCONEXION)
+
+control_belc35_panel <- data_consolidada %>%
+  filter(ELEMENTO == "BELC35", FECHA_DIA == as.Date("2024-09-26")) %>%
+  select(ELEMENTO, FECHA_DIA, DURACION_min, FRECUENCIA)
+
+control_belc35_20240926
+control_belc35_panel
+
+head(
+  data_consolidada %>%
+    filter(DURACION_min > 0 | FRECUENCIA > 0),
+  10
+)
+names(data_consolidada)
+dim(data_consolidada)
+
+muestra_interrupciones <- data_consolidada %>%
+  filter(DURACION_min > 0 | FRECUENCIA > 0) %>%
+  slice(1:10000)
+
+if (nrow(muestra_interrupciones) == 0) {
+  stop(
+    "No hay filas con DURACION_min > 0 o FRECUENCIA > 0. ",
+    "Revise eventos_validos en validacion_paso_7 y el parseo de fechas."
+  )
+}
+
+path_muestra <- file.path(UBICACION_DATA, "data_consolidada_10000.csv")
+write_csv(muestra_interrupciones, path_muestra)
+message("Exportadas ", nrow(muestra_interrupciones), " filas a: ", path_muestra)
+
+
+path_completly_data <- file.path(UBICACION_DATA, "data_consolidada.csv")
+write_csv(data_consolidada, path_completly_data)
+message("Exportadas ", nrow(data_consolidada), " filas a: ", path_completly_data)
+
+
+```
+
+# leer la data consolidada data_consolidada.csv de la ubicacion de la variable de entorno UBICACION_DATA
+```{r}
+data_consolidada <- read_csv(file.path(UBICACION_DATA, "data_consolidada.csv"))
+head(data_consolidada)
+dim(data_consolidada)
+```

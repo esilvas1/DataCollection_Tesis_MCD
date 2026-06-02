@@ -1,0 +1,259 @@
+---
+title: "Identificacion de valores extremos"
+author: "Edwin Henao"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Identificación de valores extremos (Sección 5.3.3)
+
+Panel consolidado **activo × día** (`data_consolidada.csv`).  
+Referencia metodológica: $N = A \times T = 47\,649 \times 1\,826 = 87\,007\,074$ filas.
+
+```{r setup}
+library(tidyverse)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_consolidada <- file.path(UBICACION_DATA, "data_consolidada.csv")
+if (!file.exists(path_consolidada)) {
+  stop("No se encontro: ", path_consolidada)
+}
+```
+
+```{r lectura}
+message("Leyendo panel consolidado (puede tardar varios minutos)...")
+tabla_base_consolidada <- read_csv(path_consolidada, show_col_types = FALSE)
+
+dim(tabla_base_consolidada)
+```
+
+```{r variables_cuantitativas}
+variables_cuantitativas <- tabla_base_consolidada %>%
+  select_if(is.numeric) %>%
+  names()
+
+variables_cuantitativas
+```
+
+Las coordenadas geográficas (`LATITUD`, `LONGITUD`, `ALTITUD`) describen la ubicación
+del activo y no son objeto de tratamiento de valores extremos, por lo que se excluyen
+del análisis. Se evalúan las variables de severidad, climáticas y de continuidad.
+
+```{r seleccion_variables}
+vars_excluir <- c("LATITUD", "LONGITUD", "ALTITUD")
+vars_evaluar <- setdiff(variables_cuantitativas, vars_excluir)
+
+# Variables con días sin evento (cero-infladas): el IQR sobre todo el panel
+# es poco informativo (Q1 = Q3 = 0). Se analizan también sobre días con evento (> 0).
+vars_evento <- intersect(
+  c("CANTIDAD_ELEMENTOS", "CANTIDAD_USUARIOS", "DURACION_min", "FRECUENCIA"),
+  vars_evaluar
+)
+
+vars_evaluar
+vars_evento
+```
+
+## Reglas univariadas (IQR ampliado y percentiles)
+
+Para cada variable se calculan los cuartiles y se marcan como valores extremos los que
+caen fuera de:
+
+- **IQR 1.5:** \([Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]\) (regla clásica de Tukey).
+- **IQR 3.0:** \([Q_1 - 3\,\mathrm{IQR},\; Q_3 + 3\,\mathrm{IQR}]\) (regla ampliada, extremos severos).
+- **Percentiles:** por debajo de P1 o por encima de P99.
+
+```{r funcion_resumen_outliers}
+resumen_extremos <- function(x) {
+  x <- x[!is.na(x)]
+  n <- length(x)
+  q <- quantile(x, probs = c(0.01, 0.25, 0.50, 0.75, 0.99), names = FALSE)
+  p1 <- q[1]; Q1 <- q[2]; mediana <- q[3]; Q3 <- q[4]; p99 <- q[5]
+  IQR_v <- Q3 - Q1
+  li15 <- Q1 - 1.5 * IQR_v; ls15 <- Q3 + 1.5 * IQR_v
+  li30 <- Q1 - 3.0 * IQR_v; ls30 <- Q3 + 3.0 * IQR_v
+
+  out15 <- sum(x < li15 | x > ls15)
+  out30 <- sum(x < li30 | x > ls30)
+  outp  <- sum(x < p1 | x > p99)
+
+  tibble(
+    n = n,
+    min = min(x), Q1 = Q1, mediana = mediana, Q3 = Q3, max = max(x),
+    IQR = IQR_v,
+    lim_inf_15 = li15, lim_sup_15 = ls15,
+    n_out_iqr15 = out15, pct_out_iqr15 = round(100 * out15 / n, 3),
+    n_out_iqr30 = out30, pct_out_iqr30 = round(100 * out30 / n, 3),
+    p1 = p1, p99 = p99,
+    n_out_p1p99 = outp, pct_out_p1p99 = round(100 * outp / n, 3)
+  )
+}
+```
+
+```{r outliers_panel_completo}
+# Resumen sobre todo el panel (incluye días sin evento = 0)
+resumen_outliers_panel <- map_dfr(
+  vars_evaluar,
+  ~ resumen_extremos(tabla_base_consolidada[[.x]]) %>%
+    mutate(variable = .x, .before = 1)
+)
+
+resumen_outliers_panel
+```
+
+```{r outliers_dias_con_evento}
+# Resumen sobre días con evento (> 0) para variables cero-infladas
+resumen_outliers_evento <- map_dfr(
+  vars_evento,
+  function(v) {
+    x <- tabla_base_consolidada[[v]]
+    x <- x[!is.na(x) & x > 0]
+    resumen_extremos(x) %>%
+      mutate(variable = v, .before = 1)
+  }
+)
+
+resumen_outliers_evento
+```
+
+## Diagramas de caja e histogramas
+
+Con \(N \approx 87\) millones de filas, los gráficos se construyen sobre una muestra
+aleatoria para mantener el costo computacional acotado; la forma de la distribución
+y la presencia de extremos se preservan.
+
+```{r muestra_grafica}
+set.seed(2025)
+n_muestra <- 200000
+
+muestra <- tabla_base_consolidada %>%
+  select(all_of(vars_evaluar)) %>%
+  slice_sample(n = min(n_muestra, nrow(tabla_base_consolidada)))
+
+# Variables climáticas (continuas, sin cero-inflado relevante)
+vars_clima <- intersect(
+  c("velocidad_viento_ms", "temperatura_media_c", "humedad_relativa_pct",
+    "temperatura_minima_c", "temperatura_maxima_c", "precipitacion_total_mm"),
+  vars_evaluar
+)
+```
+
+```{r boxplot_clima, fig.width=11, fig.height=6}
+boxplot_clima <- muestra %>%
+  select(all_of(vars_clima)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor)) %>%
+  ggplot(aes(x = variable, y = valor)) +
+  geom_boxplot(fill = "#90CAF9", outlier.alpha = 0.15, outlier.size = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 3) +
+  labs(
+    title = "Diagramas de caja — variables climáticas",
+    subtitle = paste0("Muestra de ", format(nrow(muestra), big.mark = "."), " observaciones"),
+    x = NULL, y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+
+boxplot_clima
+```
+
+```{r histograma_clima, fig.width=11, fig.height=6}
+histograma_clima <- muestra %>%
+  select(all_of(vars_clima)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor)) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(bins = 40, fill = "#A5D6A7", color = "white") +
+  facet_wrap(~ variable, scales = "free", ncol = 3) +
+  labs(
+    title = "Histogramas — variables climáticas",
+    subtitle = paste0("Muestra de ", format(nrow(muestra), big.mark = "."), " observaciones"),
+    x = NULL, y = "Frecuencia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+histograma_clima
+```
+
+```{r boxplot_evento, fig.width=11, fig.height=5}
+# Variables de evento: solo días con evento (> 0)
+muestra_evento <- tabla_base_consolidada %>%
+  select(all_of(vars_evento)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor), valor > 0)
+
+boxplot_evento <- muestra_evento %>%
+  ggplot(aes(x = variable, y = valor)) +
+  geom_boxplot(fill = "#F8BBD0", outlier.alpha = 0.2, outlier.size = 0.6) +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Diagramas de caja — variables de severidad y continuidad (días con evento)",
+    x = NULL, y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+
+boxplot_evento
+```
+
+```{r histograma_evento, fig.width=11, fig.height=5}
+histograma_evento <- muestra_evento %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(bins = 40, fill = "#FFCC80", color = "white") +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Histogramas — variables de severidad y continuidad (días con evento)",
+    x = NULL, y = "Frecuencia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+histograma_evento
+```
+
+## Exportar resultados
+
+```{r exportar}
+write_csv(
+  resumen_outliers_panel,
+  file.path(UBICACION_DATA, "resumen_valores_extremos_panel.csv")
+)
+write_csv(
+  resumen_outliers_evento,
+  file.path(UBICACION_DATA, "resumen_valores_extremos_dias_evento.csv")
+)
+
+ggsave(file.path(UBICACION_DATA, "boxplot_valores_extremos_clima.png"),
+       boxplot_clima, width = 11, height = 6, dpi = 300, bg = "white")
+ggsave(file.path(UBICACION_DATA, "histograma_valores_extremos_clima.png"),
+       histograma_clima, width = 11, height = 6, dpi = 300, bg = "white")
+ggsave(file.path(UBICACION_DATA, "boxplot_valores_extremos_evento.png"),
+       boxplot_evento, width = 11, height = 5, dpi = 300, bg = "white")
+ggsave(file.path(UBICACION_DATA, "histograma_valores_extremos_evento.png"),
+       histograma_evento, width = 11, height = 5, dpi = 300, bg = "white")
+
+message("Resumenes y graficos de valores extremos guardados en UBICACION_DATA")
+```

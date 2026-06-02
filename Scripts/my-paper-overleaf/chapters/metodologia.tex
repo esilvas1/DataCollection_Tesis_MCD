@@ -411,12 +411,12 @@ NASA POWER
 \end{tabular}
 \end{table}
 Lógica de in
-La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integración desarrollado en la Etapa~1. En conjunto, se consolidaron seis fuentes complementarias: BRAE como base transaccional de eventos de interrupción; BRAE + QA\_TTC1 para cuantificar la severidad operativa (usuarios afectados); OMS SPARD y OMS SP7 para identificar el elemento causante y fallado en los periodos pre y post migración del sistema; GIS (GTECH) para incorporar la georreferenciación de activos de red; y NASA POWER para enriquecer el análisis con variables climáticas diarias. Cada fuente fue sometida a reglas explícitas de filtrado, homologación y depuración, lo que permitió obtener bases consistentes y trazables que constituyen el insumo inicial para la integración y el preprocesamiento descritos en la Etapa~2.
+La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integración desarrollado en la Etapa~1. En conjunto, se consolidaron seis fuentes complementarias: BRAE como base transaccional de eventos de interrupción; BRAE + QA\_TTC1 para cuantificar la severidad operativa (usuarios afectados); OMS SPARD y OMS SP7 para identificar el elemento causante y fallado en los periodos pre y post migración del sistema; GIS (GTECH) para incorporar la georreferenciación de activos de red; y NASA POWER para enriquecer el análisis con variables climáticas diarias. Cada fuente fue sometida a reglas explícitas de filtrado, homologación y depuración, lo que permitió obtener bases consistentes y trazables que constituyen el insumo inicial para la integración del panel descrita en la Etapa~2.
 
 
 
 
-\section{Etapa 2 - Integración, depuración y preprocesamiento de datos}
+\section{Etapa 2 - Integración y depuración de datos}
 
 \subsection{Lógica de integración entre sistemas}
 
@@ -440,32 +440,28 @@ Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integraci
     \end{itemize}
 
     \item \label{int:paso4} \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-    A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~5.5 (inventario georreferenciado de activos obtenido en la Sección~5.1.6), la cual se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31, empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~\ref{int:paso5} a~\ref{int:paso8}, se anexan los valores restantes de la secuencia de integración.
+    A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~5.5 (inventario georreferenciado de activos obtenido en la Sección~5.1.6), del cual se conserva un registro por \texttt{ELEMENTO} ($A = 47{,}649$ activos únicos), y se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31 ($T = 1{,}826$ días), empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, con cardinal $N = A \times T = 47{,}649 \times 1{,}826 = 87{,}007{,}074$ observaciones, definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~\ref{int:paso5} a~\ref{int:paso8}, se anexan los valores restantes de la secuencia de integración.
 
     \item \label{int:paso5} \textbf{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
     Sobre la tabla base consolidada obtenida en el paso~\ref{int:paso4}, se integran las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} provenientes de la Tabla~5.2 (afectación por evento, Sección~5.1.3), mediante el siguiente cruce de llaves:
     \begin{itemize}
         \item \texttt{ID\_EVENTO} $=$ \texttt{ELEMENTO}
     \end{itemize}
-    \noindent entre la Tabla~5.2 y la tabla del paso~\ref{int:paso4}, incorporando al panel las métricas de severidad e impacto operativo asociadas a cada evento de interrupción.
+    \noindent entre la Tabla~5.2 y la tabla del paso~\ref{int:paso4}, incorporando al panel las métricas de severidad e impacto operativo asociadas a cada evento de interrupción. La integración se realiza mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), de modo que el panel conserva $N = 87{,}007{,}074$ filas.
 
     \item \label{int:paso6} \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla resultante del paso~\ref{int:paso5}, se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce por \texttt{FECHA\_DIA}, incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento.
+    Sobre la tabla resultante del paso~\ref{int:paso5} ($N = 87{,}007{,}074$ filas), se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento, sin modificar el cardinal del panel.
 
-    \item \label{int:paso7} \textbf{Agregación de eventos a grano activo--día.}\mbox{}\par\vspace{0.2em}\noindent
-    En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6}. Para ello, dicha tabla se cruza con la Tabla~5.1 (eventos depurados de interrupción, Sección~5.1.2), la cual contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}, mediante la llave:
+    \item \label{int:paso7} \textbf{Agregación de variables objetivo (\texttt{DURACION\_min} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
+    En este paso se construyen las columnas \texttt{DURACION\_min} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6} ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
     \begin{itemize}
-        \item \texttt{ID\_EVENTO} $=$ \texttt{ELEMENTO}
+        \item \texttt{DURACION\_min}: duración total del evento en minutos, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días).
+        \item \texttt{FRECUENCIA}: número de desconexiones cuyo inicio ocurre en \texttt{FECHA\_DIA}.
     \end{itemize}
-    \noindent entre la Tabla~5.1 y el identificador de activo de la tabla del paso~\ref{int:paso6}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
-    \begin{itemize}
-        \item \texttt{DURACION}: para cada activo y \texttt{FECHA\_DIA}, se registra la suma de horas sin servicio efectivamente transcurridas en ese día. Si un evento cruza la medianoche, la duración total se distribuye (prorratea) entre los días calendario en los que el activo permaneció desconectado.
-        \item \texttt{FRECUENCIA}: para cada activo y \texttt{FECHA\_DIA}, se registra el número de desconexiones cuyo inicio ocurre en ese día, con base en \texttt{FECHA\_DESCONEXION}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}.
-    \end{itemize}
-    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}. 
+    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}.
 
     \item \label{int:paso8} \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}014{,}378$ observaciones teóricas ($A = 47{,}653$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
 
     La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
 
@@ -477,14 +473,14 @@ N = A \times T
 
 donde:
 \begin{itemize}
-    \item $A = 47{,}653$ corresponde al número total de activos eléctricos de la red,
+    \item $A = 47{,}649$ corresponde al número de activos eléctricos únicos en la Tabla~5.5 (inventario GIS, un registro por \texttt{ELEMENTO}),
     \item $T = 1{,}826$ corresponde al número de días observados (cinco años de información diaria).
 \end{itemize}
 
 En consecuencia, el número total de observaciones en la base consolidada se calcula como:
 
 \[
-N = 47{,}653 \times 1{,}826 = 87{,}014{,}378
+N = 47{,}649 \times 1{,}826 = 87{,}007{,}074
 \]
 
 
@@ -677,14 +673,7 @@ Este bloque concentra las variables objetivo del análisis, construidas en el pa
 
 \textbf{Objetivo específico asociado: OE1}
 
-Una vez construido el panel consolidado, se aplican procedimientos de depuración y preprocesamiento sobre el dataset resultante. En esta fase se identifican datos faltantes, inconsistencias y valores atípicos que puedan afectar la calidad analítica del panel. Las actividades de preprocesamiento descritas a continuación preceden al análisis exploratorio (Etapa~3) y preparan el insumo base para la ingeniería de variables (Etapa~4).
-
-Las actividades de preprocesamiento desarrolladas en esta etapa se describen en las subsecciones siguientes.
-
-\subsection{Identificación de datos faltantes}
-
-\subsection{Tratamiento de valores extremos en variables cuantitativas}
-
+Una vez construido el panel consolidado (pasos de integración~\ref{int:paso4}--\ref{int:paso8}), la Etapa~2 cierra con la evidencia institucional de calidad de las fuentes. El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 
@@ -705,14 +694,133 @@ Adicionalmente, en cumplimiento del Decreto 1081 de 2015, el Decreto 103 de 2015
 
 \textbf{Objetivo:} comprender el comportamiento de los datos e identificar patrones, relaciones y comportamientos relevantes que orienten las decisiones de modelado.
 
-Una vez completadas las etapas de extracción, integración y preprocesamiento, se desarrolla un análisis exploratorio orientado a caracterizar las distribuciones de las variables, identificar patrones temporales y espaciales, y evaluar las relaciones entre covariables que podrían explicar la variación de $SAIDI$ y $SAIFI$. Esta etapa se concibe como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados.
+Una vez completadas las etapas de extracción e integración (Etapas~1 y~2), se desarrolla un análisis exploratorio orientado a caracterizar las distribuciones de las variables, diagnosticar la calidad del panel (valores faltantes y extremos), identificar patrones temporales y espaciales, y evaluar las relaciones entre covariables que podrían explicar la variación de $SAIDI$ y $SAIFI$. Esta etapa se concibe como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados y a fundamentar las decisiones de imputación y transformación de la Etapa~4.
 
 Para las variables cuantitativas se calculan medidas de tendencia central y dispersión, así como la proporción de valores atípicos; adicionalmente se construyen histogramas y diagramas de caja para examinar la forma de las distribuciones. En el caso de las variables categóricas, se analizan las frecuencias absolutas y relativas de cada categoría. El grado de asociación entre variables cuantitativas se evalúa mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér, con el fin de identificar redundancias y relaciones preliminares que orienten la depuración de variables en la Etapa~4. Las visualizaciones incluyen series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
 
 
-Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes. Tras la caracterización del panel, se documentan el diagnóstico de datos faltantes (Sección~\ref{sec:identificacion_datos_faltantes}) y la identificación de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}); a continuación se profundiza en estadísticos descriptivos, distribuciones, patrones temporales y asociaciones entre variables.
 
-\subsection{Caracterización del panel consolidado}
+\subsection{Identificación de datos faltantes}
+
+\label{sec:identificacion_datos_faltantes}
+
+Sobre el panel consolidado final (\texttt{data\_consolidada.csv}), con $N = 87{,}007{,}074$ observaciones (grano activo eléctrico $\times$ día), se realizó un diagnóstico sistemático de valores faltantes (\texttt{NA}) con dos enfoques complementarios: (i)~conteo de \texttt{NA} por variable y (ii)~conteo de observaciones del panel con al menos un \texttt{NA} por fila. El objetivo fue cuantificar la magnitud y localizar el origen de la incompletitud como insumo del EDA y para fundamentar las decisiones de imputación o exclusión en la Etapa~4.
+
+En el análisis por columna, para cada una de las $16$ variables del panel se calculó el número absoluto de \texttt{NA} y su porcentaje respecto a $N$. En el análisis por fila, se determinó cuántas observaciones $(i,t)$ presentan cero, uno o más campos incompletos, junto con el máximo de variables faltantes registradas en una misma fila.
+
+Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{int:paso6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{,}401{,}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{,}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~\ref{int:paso5} y~\ref{int:paso7} asignan $0$ en días sin evento.
+
+A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas; $3{,}431{,}054$ filas ($3{,}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/grafico_datos_faltantes_por_variable.png}
+    \caption{Porcentaje de valores faltantes por variable en el panel consolidado ($N = 87{,}007{,}074$).}
+    \label{fig:faltantes_por_variable}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Resumen de valores faltantes por variable en el panel consolidado}
+\label{tab:resumen_datos_faltantes}
+\begin{tabular}{l r r}
+\toprule
+\textbf{Variable} & \textbf{$n$ de \texttt{NA}} & \textbf{\% sobre $N$} \\
+\midrule
+\texttt{velocidad\_viento\_ms} & 3{,}401{,}838 & 3,91 \\
+\texttt{temperatura\_media\_c} & 3{,}401{,}838 & 3,91 \\
+\texttt{humedad\_relativa\_pct} & 3{,}401{,}838 & 3,91 \\
+\texttt{temperatura\_minima\_c} & 3{,}401{,}838 & 3,91 \\
+\texttt{temperatura\_maxima\_c} & 3{,}401{,}838 & 3,91 \\
+\texttt{precipitacion\_total\_mm} & 3{,}401{,}838 & 3,91 \\
+\texttt{ALTITUD} & 32{,}868 & 0,04 \\
+\midrule
+\multicolumn{3}{l}{\textit{Resto de variables del panel:} $0$ \texttt{NA} ($0$~\%)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent En síntesis, la calidad estructural del panel es alta en variables operativas de interrupción (sin \texttt{NA}), y la incompletitud relevante para el modelado se limita al bloque climático y, en menor medida, a \texttt{ALTITUD}. Las reglas de imputación o exclusión se definen con base en este diagnóstico y se aplican en la Etapa~4.
+
+\subsection{Identificación de valores extremos en variables cuantitativas}
+
+\label{sec:identificacion_valores_extremos}
+
+Sobre el mismo panel consolidado se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y mediante diagramas de caja e histogramas. El análisis se orienta a distinguir observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos.
+
+Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}) describen la ubicación del activo y no son objeto de tratamiento de extremos, por lo que se excluyen. Se evaluaron las variables de severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}), las seis variables climáticas y las de continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA}). Para cada variable se aplicaron tres reglas univariadas: (i)~rango intercuartílico de Tukey, que marca como extremo todo valor fuera de $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango intercuartílico ampliado, con factor $3{,}0$ para extremos severos; y (iii)~regla de percentiles, que marca los valores por debajo de P1 o por encima de P99.
+
+\paragraph{Variables climáticas.} El diagnóstico se realizó sobre el panel completo. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{,}000$ observaciones.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Valores extremos en variables climáticas (panel completo)}
+\label{tab:extremos_clima}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
+\midrule
+\texttt{velocidad\_viento\_ms}   & 1,20  & 0,03  & 0,00 & 1,60 \\
+\texttt{temperatura\_media\_c}   & 25,47 & 0,02  & 0,00 & 1,99 \\
+\texttt{humedad\_relativa\_pct}  & 69,08 & 0,00  & 0,00 & 1,98 \\
+\texttt{temperatura\_minima\_c}  & 20,91 & 0,20  & 0,00 & 1,99 \\
+\texttt{temperatura\_maxima\_c}  & 31,32 & 0,05  & 0,00 & 1,99 \\
+\texttt{precipitacion\_total\_mm} & 0,50 & 10,38 & 5,30 & 1,00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima.png}
+    \caption{Diagramas de caja de las variables climáticas (muestra de $200{,}000$ observaciones).}
+    \label{fig:boxplot_clima}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima.png}
+    \caption{Histogramas de las variables climáticas (muestra de $200{,}000$ observaciones).}
+    \label{fig:histograma_clima}
+\end{figure}
+
+\paragraph{Variables de severidad y continuidad.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION\_min} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días). La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Valores extremos en variables de severidad y continuidad (días con evento, $\text{valor} > 0$)}
+\label{tab:extremos_evento}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
+\midrule
+\texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 2   & 2{,}469   & 14,91 & 11,78 \\
+\texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 23  & 34{,}622  & 14,50 & 10,83 \\
+\texttt{DURACION\_min}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
+\texttt{FRECUENCIA}          & 48{,}364 & 1   & 6         & 1,96  & 1,96  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento.png}
+    \caption{Diagramas de caja de las variables de severidad y continuidad en días con evento.}
+    \label{fig:boxplot_evento}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento.png}
+    \caption{Histogramas de las variables de severidad y continuidad en días con evento.}
+    \label{fig:histograma_evento}
+\end{figure}
+
+\noindent En síntesis, en las variables climáticas los valores extremos son escasos y operativamente plausibles (con la precipitación marcada por su asimetría natural), mientras que en las variables de severidad y continuidad la cola pesada es propia del fenómeno de interrupciones. Casos puntuales como duraciones cercanas a los $231$~días sugieren posibles inconsistencias de registro y se marcan para revisión. No se aplican transformaciones ni exclusiones en esta etapa; las decisiones de tratamiento (winsorización, transformación logarítmica o exclusión justificada) se documentan y ejecutan en la Etapa~4 a partir de este diagnóstico.
 
 \subsection{Cálculo de estadísticos descriptivos}
 
@@ -729,8 +837,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \subsection{Evaluación inicial de relaciones multivariadas}
 
 \subsection{Segmentación exploratoria}
-
-\subsection{Identificación de comportamiento atípico}
 
 \subsection{Resultados y entregables de la etapa}
 

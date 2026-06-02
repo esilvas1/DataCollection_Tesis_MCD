@@ -1,0 +1,23 @@
+{
+  "r.rpath.windows": "C:\\Program Files\\R\\R-4.5.1\\bin\\R.exe",
+  "r.rterm.windows": "C:\\Users\\ESILVAS\\AppData\\Local\\Programs\\Python\\Python313\\Scripts\\radian.exe",
+  "r.alwaysUseActiveTerminal": false,
+  "r.sessionWatcher": true,
+  "r.plot.useHttpgd": true,
+  "files.associations": {
+    "*.R": "r",
+    "*.r": "r",
+    "*.Rmd": "rmd",
+    "*.rmd": "rmd"
+  },
+  "[r]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false
+  },
+  "[rmd]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false
+  }
+}
