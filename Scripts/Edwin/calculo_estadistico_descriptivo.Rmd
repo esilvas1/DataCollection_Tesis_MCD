@@ -1,0 +1,453 @@
+---
+title: "Calculo de estadisticos descriptivos"
+author: "Edwin Silva"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Cálculo de estadísticos descriptivos (Sección 5.3.3)
+
+Panel consolidado **activo × día** (`data_consolidada.csv`).  
+Referencia metodológica: $N = A \times T = 47\,649 \times 1\,826 = 87\,007\,074$ filas.
+
+Complementa el diagnóstico de faltantes (5.3.1) y de extremos (5.3.2) con medidas de
+tendencia central y dispersión, proporción de ceros y frecuencias de variables categóricas.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_consolidada <- file.path(UBICACION_DATA, "data_consolidada.csv")
+if (!file.exists(path_consolidada)) {
+  stop("No se encontro: ", path_consolidada)
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r lectura}
+message("Leyendo panel consolidado (puede tardar varios minutos)...")
+tabla_base_consolidada <- read_csv(path_consolidada, show_col_types = FALSE)
+
+if (!inherits(tabla_base_consolidada$FECHA_DIA, "Date")) {
+  tabla_base_consolidada <- tabla_base_consolidada %>%
+    mutate(FECHA_DIA = as.Date(FECHA_DIA))
+}
+
+N_panel <- nrow(tabla_base_consolidada)
+N_panel
+```
+
+```{r definicion_grupos}
+vars_clima <- c(
+  "velocidad_viento_ms", "temperatura_media_c", "humedad_relativa_pct",
+  "temperatura_minima_c", "temperatura_maxima_c", "precipitacion_total_mm"
+)
+
+vars_evento <- c(
+  "CANTIDAD_ELEMENTOS", "CANTIDAD_USUARIOS", "DURACION_min", "FRECUENCIA"
+)
+
+vars_clima <- intersect(vars_clima, names(tabla_base_consolidada))
+vars_evento <- intersect(vars_evento, names(tabla_base_consolidada))
+```
+
+## Función de resumen descriptivo
+
+```{r funcion_resumen_descriptivo}
+resumen_descriptivo <- function(x, incluir_pct_cero = FALSE) {
+  n_total <- length(x)
+  x_ok <- x[!is.na(x)]
+  n <- length(x_ok)
+  n_na <- n_total - n
+  pct_na <- if (n_total > 0) round(100 * n_na / n_total, 4) else NA_real_
+
+  if (n == 0) {
+    return(tibble(
+      n_total = n_total, n = 0L, n_na = n_na, pct_na = pct_na,
+      pct_cero = NA_real_, media = NA_real_, sd = NA_real_,
+      min = NA_real_, p25 = NA_real_, mediana = NA_real_,
+      p75 = NA_real_, max = NA_real_, cv_pct = NA_real_
+    ))
+  }
+
+  q <- quantile(x_ok, probs = c(0.25, 0.50, 0.75), names = FALSE)
+  media_v <- mean(x_ok)
+  sd_v <- sd(x_ok)
+  pct_cero <- if (incluir_pct_cero) round(100 * mean(x_ok == 0), 4) else NA_real_
+  cv_pct <- if (!is.na(media_v) && media_v != 0) round(100 * sd_v / abs(media_v), 4) else NA_real_
+
+  tibble(
+    n_total = n_total,
+    n = n,
+    n_na = n_na,
+    pct_na = pct_na,
+    pct_cero = pct_cero,
+    media = round(media_v, 4),
+    sd = round(sd_v, 4),
+    min = min(x_ok),
+    p25 = q[1],
+    mediana = q[2],
+    p75 = q[3],
+    max = max(x_ok),
+    cv_pct = cv_pct
+  )
+}
+```
+
+## Variables climáticas (panel completo, sin NA)
+
+```{r descriptivo_clima}
+resumen_descriptivo_clima <- map_dfr(
+  vars_clima,
+  ~ resumen_descriptivo(tabla_base_consolidada[[.x]]) %>%
+    mutate(variable = .x, ambito = "panel_completo", .before = 1)
+)
+
+resumen_descriptivo_clima
+```
+
+## Altitud
+
+```{r descriptivo_altitud}
+resumen_descriptivo_altitud <- resumen_descriptivo(tabla_base_consolidada$ALTITUD) %>%
+  mutate(variable = "ALTITUD", ambito = "panel_completo", .before = 1)
+
+resumen_descriptivo_altitud
+```
+
+## Variables de severidad y continuidad
+
+### Panel completo (incluye días sin evento = 0)
+
+```{r descriptivo_evento_panel}
+resumen_descriptivo_evento_panel <- map_dfr(
+  vars_evento,
+  ~ resumen_descriptivo(
+    tabla_base_consolidada[[.x]],
+    incluir_pct_cero = TRUE
+  ) %>%
+    mutate(variable = .x, ambito = "panel_completo", .before = 1)
+)
+
+resumen_descriptivo_evento_panel
+```
+
+### Días con evento (valor > 0)
+
+```{r descriptivo_evento_positivo}
+resumen_descriptivo_evento_positivo <- map_dfr(
+  vars_evento,
+  function(v) {
+    x <- tabla_base_consolidada[[v]]
+    x <- x[!is.na(x) & x > 0]
+    resumen_descriptivo(x) %>%
+      mutate(variable = v, ambito = "dias_con_evento", .before = 1)
+  }
+)
+
+resumen_descriptivo_evento_positivo
+```
+
+## Variable categórica TIPO
+
+```{r frecuencias_tipo}
+frecuencias_tipo_filas <- tabla_base_consolidada %>%
+  count(TIPO, name = "n_filas") %>%
+  mutate(
+    pct_filas = round(100 * n_filas / sum(n_filas), 4),
+    tipo_conteo = "filas_panel"
+  )
+
+frecuencias_tipo_activos <- tabla_base_consolidada %>%
+  distinct(ELEMENTO, TIPO) %>%
+  count(TIPO, name = "n_activos") %>%
+  mutate(
+    pct_activos = round(100 * n_activos / sum(n_activos), 4),
+    tipo_conteo = "activos_distintos"
+  )
+
+frecuencias_tipo <- bind_rows(
+  frecuencias_tipo_filas %>%
+    rename(n = n_filas, pct = pct_filas),
+  frecuencias_tipo_activos %>%
+    rename(n = n_activos, pct = pct_activos)
+) %>%
+  select(TIPO, tipo_conteo, n, pct)
+
+frecuencias_tipo
+```
+
+## Resumen temporal (días con interrupción por año)
+
+```{r eventos_por_anio}
+eventos_por_anio <- tabla_base_consolidada %>%
+  mutate(anio = year(FECHA_DIA)) %>%
+  summarise(
+    n_filas = n(),
+    dias_con_elementos = sum(CANTIDAD_ELEMENTOS > 0, na.rm = TRUE),
+    dias_con_usuarios = sum(CANTIDAD_USUARIOS > 0, na.rm = TRUE),
+    dias_con_duracion = sum(DURACION_min > 0, na.rm = TRUE),
+    dias_con_frecuencia = sum(FRECUENCIA > 0, na.rm = TRUE),
+    .by = anio
+  ) %>%
+  mutate(
+    pct_dias_con_evento = round(100 * dias_con_frecuencia / n_filas, 4)
+  )
+
+eventos_por_anio
+```
+
+## Gráficos
+
+```{r grafico_frecuencias_tipo, fig.width=10, fig.height=5}
+grafico_frecuencias_tipo <- frecuencias_tipo_filas %>%
+  mutate(TIPO = fct_reorder(TIPO, n_filas)) %>%
+  ggplot(aes(x = TIPO, y = n_filas, fill = TIPO)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(format(n_filas, big.mark = "."), "\n(", pct_filas, "%)")),
+    vjust = -0.2,
+    size = 3.2,
+    fontface = "bold"
+  ) +
+  scale_y_continuous(
+    labels = scales::label_number(big.mark = "."),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(
+    title = "Distribución de filas del panel por TIPO de activo",
+    subtitle = paste0("N = ", format(N_panel, big.mark = "."), " observaciones activo × día"),
+    x = "TIPO", y = "Número de filas"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+grafico_frecuencias_tipo
+```
+
+```{r grafico_pct_cero_evento, fig.width=9, fig.height=5}
+grafico_pct_cero_evento <- resumen_descriptivo_evento_panel %>%
+  mutate(variable = fct_reorder(variable, pct_cero)) %>%
+  ggplot(aes(x = variable, y = pct_cero, fill = variable)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(
+    aes(label = paste0(round(pct_cero, 2), "%")),
+    vjust = -0.3,
+    fontface = "bold",
+    size = 3.5
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.08))) +
+  labs(
+    title = "Proporción de ceros en variables de interrupción",
+    subtitle = "Panel completo (días sin evento = 0)",
+    x = NULL, y = "% observaciones en cero"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
+
+grafico_pct_cero_evento
+```
+
+```{r grafico_medias_clima, fig.width=10, fig.height=5}
+etiquetas_clima <- c(
+  velocidad_viento_ms = "Viento (m/s)",
+  temperatura_media_c = "Temp. media (°C)",
+  humedad_relativa_pct = "Humedad (%)",
+  temperatura_minima_c = "Temp. mín. (°C)",
+  temperatura_maxima_c = "Temp. máx. (°C)",
+  precipitacion_total_mm = "Precip. (mm)"
+)
+
+grafico_medias_clima <- resumen_descriptivo_clima %>%
+  mutate(
+    etiqueta = etiquetas_clima[variable],
+    etiqueta = fct_reorder(etiqueta, media)
+  ) %>%
+  ggplot(aes(x = etiqueta, y = media, fill = etiqueta)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  geom_errorbar(
+    aes(ymin = media - sd, ymax = media + sd),
+    width = 0.15,
+    linewidth = 0.6
+  ) +
+  geom_text(aes(label = round(media, 2)), vjust = -0.5, fontface = "bold", size = 3.2) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(
+    title = "Media y desviación estándar — variables climáticas",
+    subtitle = "Barras de error: ± 1 DE (observaciones sin NA)",
+    x = NULL, y = "Valor"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+grafico_medias_clima
+```
+
+```{r grafico_eventos_por_anio, fig.width=9, fig.height=5}
+grafico_eventos_por_anio <- eventos_por_anio %>%
+  ggplot(aes(x = factor(anio), y = dias_con_frecuencia)) +
+  geom_col(fill = "#FFAB91", width = 0.65) +
+  geom_line(aes(group = 1), color = "#D84315", linewidth = 1) +
+  geom_point(color = "#D84315", size = 2.5) +
+  geom_text(
+    aes(label = format(dias_con_frecuencia, big.mark = ".")),
+    vjust = -0.4,
+    fontface = "bold",
+    size = 3.2
+  ) +
+  scale_y_continuous(
+    labels = scales::label_number(big.mark = "."),
+    expand = expansion(mult = c(0, 0.12))
+  ) +
+  labs(
+    title = "Días activo × día con al menos una interrupción (FRECUENCIA > 0)",
+    subtitle = "Por año calendario",
+    x = "Año", y = "Número de filas"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+grafico_eventos_por_anio
+```
+
+```{r grafico_mediana_evento, fig.width=9, fig.height=5}
+grafico_mediana_evento <- resumen_descriptivo_evento_positivo %>%
+  mutate(
+    variable = fct_reorder(variable, mediana),
+    etiqueta = paste0(round(mediana, 1), " (mediana)")
+  ) %>%
+  ggplot(aes(x = variable, y = mediana, fill = variable)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = etiqueta), vjust = -0.3, fontface = "bold", size = 3.2) +
+  scale_fill_brewer(palette = "Set3") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Mediana en días con evento (valor > 0)",
+    subtitle = "Severidad y continuidad",
+    x = NULL, y = "Mediana"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 25, hjust = 1)
+  )
+
+grafico_mediana_evento
+```
+
+## Exportar tablas y gráficos
+
+```{r exportar}
+# --- CSV en UBICACION_DATA ---
+write_csv(
+  resumen_descriptivo_clima,
+  file.path(UBICACION_DATA, "resumen_descriptivo_clima.csv")
+)
+write_csv(
+  resumen_descriptivo_altitud,
+  file.path(UBICACION_DATA, "resumen_descriptivo_altitud.csv")
+)
+write_csv(
+  resumen_descriptivo_evento_panel,
+  file.path(UBICACION_DATA, "resumen_descriptivo_evento_panel.csv")
+)
+write_csv(
+  resumen_descriptivo_evento_positivo,
+  file.path(UBICACION_DATA, "resumen_descriptivo_evento_dias_evento.csv")
+)
+write_csv(
+  frecuencias_tipo,
+  file.path(UBICACION_DATA, "frecuencias_tipo.csv")
+)
+write_csv(
+  eventos_por_anio,
+  file.path(UBICACION_DATA, "resumen_eventos_por_anio.csv")
+)
+
+# Tabla unificada (todas las cuantitativas)
+resumen_descriptivo_cuantitativas <- bind_rows(
+  resumen_descriptivo_clima,
+  resumen_descriptivo_altitud,
+  resumen_descriptivo_evento_panel,
+  resumen_descriptivo_evento_positivo
+)
+write_csv(
+  resumen_descriptivo_cuantitativas,
+  file.path(UBICACION_DATA, "resumen_descriptivo_cuantitativas.csv")
+)
+
+# --- PNG en UBICACION_DATA ---
+graficos <- list(
+  grafico_frecuencias_tipo = list(plot = grafico_frecuencias_tipo, w = 10, h = 5),
+  grafico_pct_cero_evento = list(plot = grafico_pct_cero_evento, w = 9, h = 5),
+  grafico_medias_clima = list(plot = grafico_medias_clima, w = 10, h = 5),
+  grafico_eventos_por_anio = list(plot = grafico_eventos_por_anio, w = 9, h = 5),
+  grafico_mediana_evento = list(plot = grafico_mediana_evento, w = 9, h = 5)
+)
+
+for (nom in names(graficos)) {
+  archivo <- paste0(nom, ".png")
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = graficos[[nom]]$plot,
+    width = graficos[[nom]]$w,
+    height = graficos[[nom]]$h,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+
+message("Archivos guardados en: ", UBICACION_DATA)
+if (dir.exists(path_img_tesis)) {
+  message("Graficos copiados a: ", normalizePath(path_img_tesis))
+}
+```
+
+## Archivos generados
+
+| Archivo | Contenido |
+|---------|-----------|
+| `resumen_descriptivo_clima.csv` | Estadísticos climáticos (sin NA) |
+| `resumen_descriptivo_altitud.csv` | Estadísticos de ALTITUD |
+| `resumen_descriptivo_evento_panel.csv` | Evento/continuidad en panel completo (% ceros) |
+| `resumen_descriptivo_evento_dias_evento.csv` | Evento/continuidad con valor > 0 |
+| `resumen_descriptivo_cuantitativas.csv` | Unión de tablas cuantitativas |
+| `frecuencias_tipo.csv` | Frecuencias por TIPO (filas y activos) |
+| `resumen_eventos_por_anio.csv` | Días con interrupción por año |
+| `grafico_*.png` | Cinco figuras para la tesis |
