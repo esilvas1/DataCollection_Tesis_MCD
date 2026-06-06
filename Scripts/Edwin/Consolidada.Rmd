@@ -248,10 +248,10 @@ dim(data_consolidada)
 
 Sobre el panel del paso 5.2.1.6 (mismo $N = A \times T$). Según el paso **5.2.1.7** de `metodologia.tex`, usando la Tabla 5.1 (`tabla_eventos_ajustado.csv`). La variable **DURACION** (minutos) se guarda en el CSV con el nombre de columna `DURACION_min`:
 
-- **DURACION** (columna `DURACION_min`): duración total del evento en minutos, `(FECHA_CONEXION - FECHA_DESCONEXION)`, asignada al día de `FECHA_DESCONEXION` (sin prorrateo).
-- **FRECUENCIA:** número de desconexiones cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese día.
+- **DURACION** (columna `DURACION_min`): duración del evento en minutos, **prorrateada por día**. Cuando un evento abarca varios días (`FECHA_DESCONEXION` y `FECHA_CONEXION` en fechas distintas), su duración se reparte entre cada `FECHA_DIA` según los minutos que el evento ocupa dentro de ese día (intersección del intervalo del evento con cada día calendario). Para un evento de 3 días, el primer día recibe los minutos desde `FECHA_DESCONEXION` hasta medianoche, los días intermedios reciben 1.440 min cada uno, y el último día recibe los minutos desde medianoche hasta `FECHA_CONEXION`.
+- **FRECUENCIA:** número de desconexiones cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese día (no se prorratea; se cuenta en el día de inicio).
 - Sin interrupción en el día: `DURACION_min = 0` y `FRECUENCIA = 0`.
-- Varios eventos el mismo día: se suman las duraciones y se cuenta cada desconexión.
+- Varios eventos que ocupan el mismo día: se suman las duraciones prorrateadas de cada uno.
 - La Tabla~5.1 puede repetir el mismo \texttt{ID\_EVENTO} con distintas \texttt{FECHA\_CONEXION}; se conserva una fila por evento con \texttt{min(FECHA\_DESCONEXION)} y \texttt{max(FECHA\_CONEXION)}.
 
 ```{r paso-5-2-1-7}
@@ -293,20 +293,45 @@ eventos_continuidad <- tabla_eventos %>%
   ) %>%
   filter(FECHA_CONEXION >= FECHA_DESCONEXION)
 
-# DURACION_min y FRECUENCIA: ambas al día de FECHA_DESCONEXION (sin prorrateo)
-continuidad_activo_dia <- eventos_continuidad %>%
+# DURACION_min: prorrateada por día (minutos del evento que caen en cada FECHA_DIA).
+# Se expande cada evento a una fila por día abarcado y se calcula la intersección
+# del intervalo [FECHA_DESCONEXION, FECHA_CONEXION] con cada día calendario.
+duracion_dia <- eventos_continuidad %>%
   mutate(
     ELEMENTO = COMPONENTE_FALLADO,
-    FECHA_DIA = as.Date(FECHA_DESCONEXION),
+    n_dias = as.integer(as.Date(FECHA_CONEXION) - as.Date(FECHA_DESCONEXION)) + 1L
+  ) %>%
+  uncount(n_dias, .id = "i") %>%
+  mutate(
+    FECHA_DIA = as.Date(FECHA_DESCONEXION) + (i - 1L),
+    inicio_dia = as.POSIXct(FECHA_DIA, tz = "UTC"),
+    fin_dia = inicio_dia + days(1),
+    overlap_inicio = pmax(FECHA_DESCONEXION, inicio_dia),
+    overlap_fin = pmin(FECHA_CONEXION, fin_dia),
     DURACION_min = as.numeric(
-      difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = "mins")
+      difftime(overlap_fin, overlap_inicio, units = "mins")
     )
   ) %>%
+  filter(DURACION_min > 0) %>%
   group_by(ELEMENTO, FECHA_DIA) %>%
-  summarise(
-    DURACION_min = sum(DURACION_min, na.rm = TRUE),
-    FRECUENCIA = n(),
-    .groups = "drop"
+  summarise(DURACION_min = sum(DURACION_min, na.rm = TRUE), .groups = "drop")
+
+# FRECUENCIA: desconexiones cuyo inicio (FECHA_DESCONEXION) ocurre en el día.
+frecuencia_dia <- eventos_continuidad %>%
+  mutate(
+    ELEMENTO = COMPONENTE_FALLADO,
+    FECHA_DIA = as.Date(FECHA_DESCONEXION)
+  ) %>%
+  group_by(ELEMENTO, FECHA_DIA) %>%
+  summarise(FRECUENCIA = n(), .groups = "drop")
+
+continuidad_activo_dia <- full_join(
+  duracion_dia, frecuencia_dia,
+  by = c("ELEMENTO", "FECHA_DIA")
+) %>%
+  mutate(
+    DURACION_min = replace_na(DURACION_min, 0),
+    FRECUENCIA = replace_na(FRECUENCIA, 0)
   )
 
 data_consolidada <- data_consolidada %>%
@@ -330,14 +355,25 @@ validacion_paso_7 <- tibble(
 
 validacion_paso_7
 
-# Control BELC35 26/09/2024: 4 eventos; DURACION_min esperada ~935 min (sin prorrateo)
+# Control BELC35 26/09/2024: eventos que tocan el día y su aporte prorrateado.
+# DURACION_min del panel = suma de los minutos de cada evento que caen dentro del día.
 control_belc35_20240926 <- eventos_continuidad %>%
   filter(
     COMPONENTE_FALLADO == "BELC35",
-    as.Date(FECHA_DESCONEXION) == as.Date("2024-09-26")
+    as.Date(FECHA_DESCONEXION) <= as.Date("2024-09-26"),
+    as.Date(FECHA_CONEXION) >= as.Date("2024-09-26")
   ) %>%
   mutate(
-    DURACION_min_evento = as.numeric(
+    inicio_dia = as.POSIXct(as.Date("2024-09-26"), tz = "UTC"),
+    fin_dia = inicio_dia + days(1),
+    DURACION_min_dia = as.numeric(
+      difftime(
+        pmin(FECHA_CONEXION, fin_dia),
+        pmax(FECHA_DESCONEXION, inicio_dia),
+        units = "mins"
+      )
+    ),
+    DURACION_min_evento_total = as.numeric(
       difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = "mins")
     )
   ) %>%

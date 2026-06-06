@@ -11,7 +11,7 @@
 
 <meta name="author" content="Edwin Silva" />
 
-<meta name="date" content="2026-06-01" />
+<meta name="date" content="2026-06-06" />
 
 <title>Consolidacion de la informacion</title>
 
@@ -352,7 +352,7 @@ display: none;
 
 <h1 class="title toc-ignore">Consolidacion de la informacion</h1>
 <h4 class="author">Edwin Silva</h4>
-<h4 class="date">2026-06-01</h4>
+<h4 class="date">2026-06-06</h4>
 
 </div>
 
@@ -386,8 +386,23 @@ de entorno UBICACION_DATA</a></li>
 <h1>Creacion de data final consolidada</h1>
 <div id="librerias" class="section level2">
 <h2>Librerias</h2>
-<pre class="r"><code>library(tidyverse)
-library(lubridate)</code></pre>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## Warning: package &#39;tidyverse&#39; was built under R version 4.5.2</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 4.5.2</code></pre>
+<pre><code>## Warning: package &#39;readr&#39; was built under R version 4.5.2</code></pre>
+<pre><code>## Warning: package &#39;stringr&#39; was built under R version 4.5.2</code></pre>
+<pre><code>## Warning: package &#39;forcats&#39; was built under R version 4.5.2</code></pre>
+<pre><code>## -- Attaching core tidyverse packages ------------------------------------------------------------- tidyverse 2.0.0 --
+## v dplyr     1.1.4     v readr     2.1.5
+## v forcats   1.0.1     v stringr   1.6.0
+## v ggplot2   4.0.2     v tibble    3.3.0
+## v lubridate 1.9.4     v tidyr     1.3.1
+## v purrr     1.0.4     
+## -- Conflicts ------------------------------------------------------------------------------- tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+## i Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+<pre class="r"><code>library(lubridate)</code></pre>
 </div>
 <div id="sincronizar-con-variable-de-entorno" class="section level2">
 <h2>Sincronizar con variable de entorno</h2>
@@ -425,7 +440,9 @@ dim(tipo_elemento)</code></pre>
 cartesiano entre el inventario georreferenciado
 (<code>tipo_elemento</code>, Tabla 5.5) y el calendario diario
 <strong>2021-01-01</strong> a <strong>2025-12-31</strong>, con campo
-<code>FECHA_DIA</code>.</p>
+<code>FECHA_DIA</code>. Cardinal teórico: <strong><span class="math inline">\(N = A \times T\)</span></strong> (en la corrida de
+referencia: <span class="math inline">\(A = 47\,649\)</span>, <span class="math inline">\(T = 1\,826\)</span>, <span class="math inline">\(N
+= 87\,007\,074\)</span>).</p>
 <pre class="r"><code># Inventario de activos sin duplicados por ELEMENTO
 inventario_activos &lt;- tipo_elemento %&gt;%
   distinct(ELEMENTO, .keep_all = TRUE)
@@ -449,7 +466,7 @@ data_consolidada &lt;- inventario_activos %&gt;%
   crossing(calendario_diario) %&gt;%
   select(ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD, FECHA_DIA)
 
-# Validación N = A × T (metodologia: A ≈ 47 653, T = 1 826)
+# Validación N = A × T (referencia metodologia: A = 47 649, T = 1 826, N = 87 007 074)
 A &lt;- nrow(inventario_activos)
 T &lt;- nrow(calendario_diario)
 N &lt;- nrow(data_consolidada)
@@ -483,23 +500,27 @@ validacion_panel</code></pre>
 ## 10 1T00001  Transformador    7.92    -72.5     296 2021-01-10</code></pre>
 <pre class="r"><code>dim(data_consolidada)</code></pre>
 <pre><code>## [1] 87007074        6</code></pre>
-<p><strong>Nota:</strong> este panel tiene del orden de <strong>87
-millones</strong> de filas (<code>A × T</code>). Requiere memoria RAM
-considerable; para inspección use <code>head()</code> o filtros por
-activo/fecha en lugar de <code>View()</code> completo.</p>
+<p><strong>Nota:</strong> este panel tiene <strong><span class="math inline">\(N = 87\,007\,074\)</span></strong> filas
+(<code>$A \times T$</code>, con <span class="math inline">\(A\)</span> y
+<span class="math inline">\(T\)</span> de
+<code>validacion_panel</code>). Requiere memoria RAM considerable; para
+inspección use <code>head()</code> o filtros por activo/fecha en lugar
+de <code>View()</code> completo.</p>
 </div>
 <div id="paso-5.2.1.5-integración-de-cantidad_elementos-y-cantidad_usuarios" class="section level2">
 <h2>Paso 5.2.1.5 — Integración de CANTIDAD_ELEMENTOS y
 CANTIDAD_USUARIOS</h2>
-<p>Se toman los valores directamente de
+<p>Sobre el panel del paso 5.2.1.4 (<span class="math inline">\(N = A
+\times T\)</span> filas). Se toman los valores directamente de
 <code>tabla_eventos_ajustado.csv</code>
 (<code>ELEMENTOS_AFECTADOS</code> y <code>USUARIOS_AFECTADOS</code>),
 asociados al activo (<code>ELEMENTO</code> =
 <code>COMPONENTE_FALLADO</code>) cuando
-<code>as.Date(FECHA_DESCONEXION) = FECHA_DIA</code>. Si el mismo activo
-tuvo varias desconexiones el mismo día, <strong>no se suman</strong> los
-valores: se conserva un único registro por par activo–día (el primero
-por <code>ID_EVENTO</code>).</p>
+<code>as.Date(FECHA_DESCONEXION) = FECHA_DIA</code>. El
+<code>left_join</code> <strong>no cambia</strong> el número de filas del
+panel. Si el mismo activo tuvo varias desconexiones el mismo día,
+<strong>no se suman</strong> los valores: se conserva un único registro
+por par activo–día (el primero por <code>ID_EVENTO</code>).</p>
 <pre class="r"><code>tabla_eventos &lt;- read_csv(
   file.path(UBICACION_DATA, &quot;tabla_eventos_ajustado.csv&quot;),
   show_col_types = FALSE
@@ -547,6 +568,7 @@ control_1T00018 &lt;- data_consolidada %&gt;%
 
 validacion_paso_5 &lt;- tibble(
   filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
   activos_dia_con_afectacion = nrow(afectacion_activo_dia),
   activos_dia_con_varias_desconexiones = nrow(duplicados_mismo_dia),
   filas_con_cant_elementos_mayor_0 = sum(data_consolidada$CANTIDAD_ELEMENTOS &gt; 0),
@@ -554,12 +576,12 @@ validacion_paso_5 &lt;- tibble(
 )
 
 validacion_paso_5</code></pre>
-<pre><code>## # A tibble: 1 x 5
-##   filas_panel activos_dia_con_afectacion activos_dia_con_varias~1 filas_con_cant_eleme~2 filas_con_cant_usuar~3
-##         &lt;int&gt;                      &lt;int&gt;                    &lt;int&gt;                  &lt;int&gt;                  &lt;int&gt;
-## 1    87007074                      91279                     1225                  48375                  48375
-## # i abbreviated names: 1: activos_dia_con_varias_desconexiones, 2: filas_con_cant_elementos_mayor_0,
-## #   3: filas_con_cant_usuarios_mayor_0</code></pre>
+<pre><code>## # A tibble: 1 x 6
+##   filas_panel coincide_N_paso_4 activos_dia_con_afectacion activos_dia_con_varias_desconexi~1 filas_con_cant_eleme~2
+##         &lt;int&gt; &lt;lgl&gt;                                  &lt;int&gt;                              &lt;int&gt;                  &lt;int&gt;
+## 1    87007074 TRUE                                   91279                               1225                  48375
+## # i abbreviated names: 1: activos_dia_con_varias_desconexiones, 2: filas_con_cant_elementos_mayor_0
+## # i 1 more variable: filas_con_cant_usuarios_mayor_0 &lt;int&gt;</code></pre>
 <pre class="r"><code>control_1T00018</code></pre>
 <pre><code>## # A tibble: 1 x 4
 ##   ELEMENTO FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS
@@ -588,11 +610,11 @@ validacion_paso_5</code></pre>
 </div>
 <div id="paso-5.2.1.6-integración-de-variables-climáticas-nasa-power" class="section level2">
 <h2>Paso 5.2.1.6 — Integración de variables climáticas (NASA POWER)</h2>
-<p>Se integran las variables climáticas desde
-<code>nasa_consolidado.csv</code> mediante
-<code>FECHA_DIA = fecha_consulta</code>. Como el archivo contiene clima
-por coordenada de activo, también se usa
-<code>ELEMENTO = origen_ELEMENTO</code> para evitar duplicar filas del
+<p>Sobre el panel del paso 5.2.1.5 (mismo <span class="math inline">\(N
+= A \times T\)</span>). Se integran las variables climáticas desde
+<code>nasa_consolidado.csv</code> mediante <code>left_join</code> por
+<code>ELEMENTO = origen_ELEMENTO</code> y
+<code>FECHA_DIA = fecha_consulta</code>, sin alterar el cardinal del
 panel.</p>
 <pre class="r"><code>path_nasa_ubicacion &lt;- file.path(
   UBICACION_DATA,
@@ -646,34 +668,35 @@ data_consolidada &lt;- data_consolidada %&gt;%
 
 validacion_paso_6 &lt;- tibble(
   filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
   filas_nasa_clima = nrow(nasa_clima),
   filas_con_clima = sum(!is.na(data_consolidada$velocidad_viento_ms)),
   filas_sin_clima = sum(is.na(data_consolidada$velocidad_viento_ms))
 )
 
 validacion_paso_6</code></pre>
-<pre><code>## # A tibble: 1 x 4
-##   filas_panel filas_nasa_clima filas_con_clima filas_sin_clima
-##         &lt;int&gt;            &lt;int&gt;           &lt;int&gt;           &lt;int&gt;
-## 1    87007074         83605237        83605236         3401838</code></pre>
+<pre><code>## # A tibble: 1 x 5
+##   filas_panel coincide_N_paso_4 filas_nasa_clima filas_con_clima filas_sin_clima
+##         &lt;int&gt; &lt;lgl&gt;                        &lt;int&gt;           &lt;int&gt;           &lt;int&gt;
+## 1    87007074 TRUE                      83605237        83605236         3401838</code></pre>
 <pre class="r"><code>head(
   data_consolidada %&gt;%
     filter(!is.na(velocidad_viento_ms)),
   10
 )</code></pre>
 <pre><code>## # A tibble: 10 x 14
-##    ELEMENTO TIPO   LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
-##    &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
-##  1 1T00001  Trans~    7.92    -72.5     296 2021-01-01                  0                 0                1.11
-##  2 1T00001  Trans~    7.92    -72.5     296 2021-01-02                  0                 0                1.23
-##  3 1T00001  Trans~    7.92    -72.5     296 2021-01-03                  0                 0                0.96
-##  4 1T00001  Trans~    7.92    -72.5     296 2021-01-04                  0                 0                0.81
-##  5 1T00001  Trans~    7.92    -72.5     296 2021-01-05                  0                 0                1.05
-##  6 1T00001  Trans~    7.92    -72.5     296 2021-01-06                  0                 0                1.12
-##  7 1T00001  Trans~    7.92    -72.5     296 2021-01-07                  0                 0                1.08
-##  8 1T00001  Trans~    7.92    -72.5     296 2021-01-08                  0                 0                1.26
-##  9 1T00001  Trans~    7.92    -72.5     296 2021-01-09                  0                 0                1.41
-## 10 1T00001  Trans~    7.92    -72.5     296 2021-01-10                  0                 0                1.54
+##    ELEMENTO TIPO        LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
+##    &lt;chr&gt;    &lt;chr&gt;         &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
+##  1 1T00001  Transforma~    7.92    -72.5     296 2021-01-01                  0                 0                1.11
+##  2 1T00001  Transforma~    7.92    -72.5     296 2021-01-02                  0                 0                1.23
+##  3 1T00001  Transforma~    7.92    -72.5     296 2021-01-03                  0                 0                0.96
+##  4 1T00001  Transforma~    7.92    -72.5     296 2021-01-04                  0                 0                0.81
+##  5 1T00001  Transforma~    7.92    -72.5     296 2021-01-05                  0                 0                1.05
+##  6 1T00001  Transforma~    7.92    -72.5     296 2021-01-06                  0                 0                1.12
+##  7 1T00001  Transforma~    7.92    -72.5     296 2021-01-07                  0                 0                1.08
+##  8 1T00001  Transforma~    7.92    -72.5     296 2021-01-08                  0                 0                1.26
+##  9 1T00001  Transforma~    7.92    -72.5     296 2021-01-09                  0                 0                1.41
+## 10 1T00001  Transforma~    7.92    -72.5     296 2021-01-10                  0                 0                1.54
 ## # i 5 more variables: temperatura_media_c &lt;dbl&gt;, humedad_relativa_pct &lt;dbl&gt;, temperatura_minima_c &lt;dbl&gt;,
 ## #   temperatura_maxima_c &lt;dbl&gt;, precipitacion_total_mm &lt;dbl&gt;</code></pre>
 <pre class="r"><code>names(data_consolidada)</code></pre>
@@ -687,19 +710,30 @@ validacion_paso_6</code></pre>
 <div id="paso-5.2.1.7-agregación-de-variables-objetivo-duracion-y-frecuencia" class="section level2">
 <h2>Paso 5.2.1.7 — Agregación de variables objetivo (DURACION y
 FRECUENCIA)</h2>
-<p>Según el paso <strong>5.2.1.7</strong> de
+<p>Sobre el panel del paso 5.2.1.6 (mismo <span class="math inline">\(N
+= A \times T\)</span>). Según el paso <strong>5.2.1.7</strong> de
 <code>metodologia.tex</code>, usando la Tabla 5.1
-(<code>tabla_eventos_ajustado.csv</code>):</p>
+(<code>tabla_eventos_ajustado.csv</code>). La variable
+<strong>DURACION</strong> (minutos) se guarda en el CSV con el nombre de
+columna <code>DURACION_min</code>:</p>
 <ul>
-<li><strong>DURACION_min:</strong> duración total del evento en minutos,
-<code>(FECHA_CONEXION - FECHA_DESCONEXION)</code>, asignada al día de
-<code>FECHA_DESCONEXION</code> (sin prorrateo).</li>
+<li><strong>DURACION</strong> (columna <code>DURACION_min</code>):
+duración del evento en minutos, <strong>prorrateada por día</strong>.
+Cuando un evento abarca varios días (<code>FECHA_DESCONEXION</code> y
+<code>FECHA_CONEXION</code> en fechas distintas), su duración se reparte
+entre cada <code>FECHA_DIA</code> según los minutos que el evento ocupa
+dentro de ese día (intersección del intervalo del evento con cada día
+calendario). Para un evento de 3 días, el primer día recibe los minutos
+desde <code>FECHA_DESCONEXION</code> hasta medianoche, los días
+intermedios reciben 1.440 min cada uno, y el último día recibe los
+minutos desde medianoche hasta <code>FECHA_CONEXION</code>.</li>
 <li><strong>FRECUENCIA:</strong> número de desconexiones cuyo inicio
-(<code>FECHA_DESCONEXION</code>) ocurre en ese día.</li>
+(<code>FECHA_DESCONEXION</code>) ocurre en ese día (no se prorratea; se
+cuenta en el día de inicio).</li>
 <li>Sin interrupción en el día: <code>DURACION_min = 0</code> y
 <code>FRECUENCIA = 0</code>.</li>
-<li>Varios eventos el mismo día: se suman las duraciones y se cuenta
-cada desconexión.</li>
+<li>Varios eventos que ocupan el mismo día: se suman las duraciones
+prorrateadas de cada uno.</li>
 <li>La Tabla~5.1 puede repetir el mismo con distintas ; se conserva una
 fila por evento con y .</li>
 </ul>
@@ -741,20 +775,45 @@ eventos_continuidad &lt;- tabla_eventos %&gt;%
   ) %&gt;%
   filter(FECHA_CONEXION &gt;= FECHA_DESCONEXION)
 
-# DURACION_min y FRECUENCIA: ambas al día de FECHA_DESCONEXION (sin prorrateo)
-continuidad_activo_dia &lt;- eventos_continuidad %&gt;%
+# DURACION_min: prorrateada por día (minutos del evento que caen en cada FECHA_DIA).
+# Se expande cada evento a una fila por día abarcado y se calcula la intersección
+# del intervalo [FECHA_DESCONEXION, FECHA_CONEXION] con cada día calendario.
+duracion_dia &lt;- eventos_continuidad %&gt;%
   mutate(
     ELEMENTO = COMPONENTE_FALLADO,
-    FECHA_DIA = as.Date(FECHA_DESCONEXION),
+    n_dias = as.integer(as.Date(FECHA_CONEXION) - as.Date(FECHA_DESCONEXION)) + 1L
+  ) %&gt;%
+  uncount(n_dias, .id = &quot;i&quot;) %&gt;%
+  mutate(
+    FECHA_DIA = as.Date(FECHA_DESCONEXION) + (i - 1L),
+    inicio_dia = as.POSIXct(FECHA_DIA, tz = &quot;UTC&quot;),
+    fin_dia = inicio_dia + days(1),
+    overlap_inicio = pmax(FECHA_DESCONEXION, inicio_dia),
+    overlap_fin = pmin(FECHA_CONEXION, fin_dia),
     DURACION_min = as.numeric(
-      difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = &quot;mins&quot;)
+      difftime(overlap_fin, overlap_inicio, units = &quot;mins&quot;)
     )
   ) %&gt;%
+  filter(DURACION_min &gt; 0) %&gt;%
   group_by(ELEMENTO, FECHA_DIA) %&gt;%
-  summarise(
-    DURACION_min = sum(DURACION_min, na.rm = TRUE),
-    FRECUENCIA = n(),
-    .groups = &quot;drop&quot;
+  summarise(DURACION_min = sum(DURACION_min, na.rm = TRUE), .groups = &quot;drop&quot;)
+
+# FRECUENCIA: desconexiones cuyo inicio (FECHA_DESCONEXION) ocurre en el día.
+frecuencia_dia &lt;- eventos_continuidad %&gt;%
+  mutate(
+    ELEMENTO = COMPONENTE_FALLADO,
+    FECHA_DIA = as.Date(FECHA_DESCONEXION)
+  ) %&gt;%
+  group_by(ELEMENTO, FECHA_DIA) %&gt;%
+  summarise(FRECUENCIA = n(), .groups = &quot;drop&quot;)
+
+continuidad_activo_dia &lt;- full_join(
+  duracion_dia, frecuencia_dia,
+  by = c(&quot;ELEMENTO&quot;, &quot;FECHA_DIA&quot;)
+) %&gt;%
+  mutate(
+    DURACION_min = replace_na(DURACION_min, 0),
+    FRECUENCIA = replace_na(FRECUENCIA, 0)
   )
 
 data_consolidada &lt;- data_consolidada %&gt;%
@@ -768,6 +827,7 @@ validacion_paso_7 &lt;- tibble(
   eventos_validos = nrow(eventos_continuidad),
   activos_dia_continuidad = nrow(continuidad_activo_dia),
   filas_panel = nrow(data_consolidada),
+  coincide_N_paso_4 = nrow(data_consolidada) == N,
   activos_dia_con_duracion = sum(data_consolidada$DURACION_min &gt; 0),
   activos_dia_con_frecuencia = sum(data_consolidada$FRECUENCIA &gt; 0),
   filas_sin_interrupcion = sum(
@@ -776,19 +836,31 @@ validacion_paso_7 &lt;- tibble(
 )
 
 validacion_paso_7</code></pre>
-<pre><code>## # A tibble: 1 x 6
-##   eventos_validos activos_dia_continuidad filas_panel activos_dia_con_duracion activos_dia_con_frecuencia
-##             &lt;int&gt;                   &lt;int&gt;       &lt;int&gt;                    &lt;int&gt;                      &lt;int&gt;
-## 1           92568                   91267    87007074                    48364                      48364
+<pre><code>## # A tibble: 1 x 7
+##   eventos_validos activos_dia_continui~1 filas_panel coincide_N_paso_4 activos_dia_con_dura~2 activos_dia_con_frec~3
+##             &lt;int&gt;                  &lt;int&gt;       &lt;int&gt; &lt;lgl&gt;                              &lt;int&gt;                  &lt;int&gt;
+## 1           92568                 179416    87007074 TRUE                               94654                  48364
+## # i abbreviated names: 1: activos_dia_continuidad, 2: activos_dia_con_duracion, 3: activos_dia_con_frecuencia
 ## # i 1 more variable: filas_sin_interrupcion &lt;int&gt;</code></pre>
-<pre class="r"><code># Control BELC35 26/09/2024: 4 eventos; DURACION_min esperada ~935 min (sin prorrateo)
+<pre class="r"><code># Control BELC35 26/09/2024: eventos que tocan el día y su aporte prorrateado.
+# DURACION_min del panel = suma de los minutos de cada evento que caen dentro del día.
 control_belc35_20240926 &lt;- eventos_continuidad %&gt;%
   filter(
     COMPONENTE_FALLADO == &quot;BELC35&quot;,
-    as.Date(FECHA_DESCONEXION) == as.Date(&quot;2024-09-26&quot;)
+    as.Date(FECHA_DESCONEXION) &lt;= as.Date(&quot;2024-09-26&quot;),
+    as.Date(FECHA_CONEXION) &gt;= as.Date(&quot;2024-09-26&quot;)
   ) %&gt;%
   mutate(
-    DURACION_min_evento = as.numeric(
+    inicio_dia = as.POSIXct(as.Date(&quot;2024-09-26&quot;), tz = &quot;UTC&quot;),
+    fin_dia = inicio_dia + days(1),
+    DURACION_min_dia = as.numeric(
+      difftime(
+        pmin(FECHA_CONEXION, fin_dia),
+        pmax(FECHA_DESCONEXION, inicio_dia),
+        units = &quot;mins&quot;
+      )
+    ),
+    DURACION_min_evento_total = as.numeric(
       difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = &quot;mins&quot;)
     )
   ) %&gt;%
@@ -799,36 +871,37 @@ control_belc35_panel &lt;- data_consolidada %&gt;%
   select(ELEMENTO, FECHA_DIA, DURACION_min, FRECUENCIA)
 
 control_belc35_20240926</code></pre>
-<pre><code>## # A tibble: 4 x 5
-##   ID_EVENTO COMPONENTE_FALLADO FECHA_DESCONEXION   FECHA_CONEXION      DURACION_min_evento
-##       &lt;dbl&gt; &lt;chr&gt;              &lt;dttm&gt;              &lt;dttm&gt;                            &lt;dbl&gt;
-## 1   4.24e17 BELC35             2024-09-26 02:11:00 2024-09-26 02:14:00                   3
-## 2   4.24e17 BELC35             2024-09-26 03:18:00 2024-09-26 07:23:00                 245
-## 3   4.24e17 BELC35             2024-09-26 03:19:00 2024-09-26 07:00:00                 221
-## 4   4.24e17 BELC35             2024-09-26 23:56:00 2024-09-27 07:17:00                 441</code></pre>
+<pre><code>## # A tibble: 4 x 8
+##   ID_EVENTO COMPONENTE_FALLADO FECHA_DESCONEXION   FECHA_CONEXION      inicio_dia          fin_dia            
+##       &lt;dbl&gt; &lt;chr&gt;              &lt;dttm&gt;              &lt;dttm&gt;              &lt;dttm&gt;              &lt;dttm&gt;             
+## 1   4.24e17 BELC35             2024-09-26 02:11:00 2024-09-26 02:14:00 2024-09-26 00:00:00 2024-09-27 00:00:00
+## 2   4.24e17 BELC35             2024-09-26 03:18:00 2024-09-26 07:23:00 2024-09-26 00:00:00 2024-09-27 00:00:00
+## 3   4.24e17 BELC35             2024-09-26 03:19:00 2024-09-26 07:00:00 2024-09-26 00:00:00 2024-09-27 00:00:00
+## 4   4.24e17 BELC35             2024-09-26 23:56:00 2024-09-27 07:17:00 2024-09-26 00:00:00 2024-09-27 00:00:00
+## # i 2 more variables: DURACION_min_dia &lt;dbl&gt;, DURACION_min_evento_total &lt;dbl&gt;</code></pre>
 <pre class="r"><code>control_belc35_panel</code></pre>
 <pre><code>## # A tibble: 1 x 4
 ##   ELEMENTO FECHA_DIA  DURACION_min FRECUENCIA
 ##   &lt;chr&gt;    &lt;date&gt;            &lt;dbl&gt;      &lt;int&gt;
-## 1 BELC35   2024-09-26          910          4</code></pre>
+## 1 BELC35   2024-09-26          473          4</code></pre>
 <pre class="r"><code>head(
   data_consolidada %&gt;%
     filter(DURACION_min &gt; 0 | FRECUENCIA &gt; 0),
   10
 )</code></pre>
 <pre><code>## # A tibble: 10 x 16
-##    ELEMENTO TIPO   LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
-##    &lt;chr&gt;    &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
-##  1 1T00010  Trans~    7.92    -72.5     286 2025-06-04                  1                70                1.89
-##  2 1T00012  Trans~    7.92    -72.5     285 2024-06-11                  1                43                1.92
-##  3 1T00015  Trans~    7.92    -72.5     286 2024-08-23                  1                95                1.33
-##  4 1T00018  Trans~    7.92    -72.5     286 2024-04-22                  1                92                1.3 
-##  5 1T00018  Trans~    7.92    -72.5     286 2025-07-27                  1                92                2.17
-##  6 1T00018  Trans~    7.92    -72.5     286 2025-10-12                  1                92                0.84
-##  7 1T00018  Trans~    7.92    -72.5     286 2025-11-09                  1                92                1.95
-##  8 1T00018  Trans~    7.92    -72.5     286 2025-11-25                  1                92                1.6 
-##  9 1T00019  Trans~    7.92    -72.5     288 2024-08-22                  1                97                1.44
-## 10 1T00021  Trans~    7.92    -72.5     288 2025-10-16                  1               136                1.06
+##    ELEMENTO TIPO        LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
+##    &lt;chr&gt;    &lt;chr&gt;         &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
+##  1 1T00010  Transforma~    7.92    -72.5     286 2025-06-04                  1                70                1.89
+##  2 1T00012  Transforma~    7.92    -72.5     285 2024-06-11                  1                43                1.92
+##  3 1T00015  Transforma~    7.92    -72.5     286 2024-08-23                  1                95                1.33
+##  4 1T00018  Transforma~    7.92    -72.5     286 2024-04-22                  1                92                1.3 
+##  5 1T00018  Transforma~    7.92    -72.5     286 2025-07-27                  1                92                2.17
+##  6 1T00018  Transforma~    7.92    -72.5     286 2025-10-12                  1                92                0.84
+##  7 1T00018  Transforma~    7.92    -72.5     286 2025-10-13                  0                 0                0.45
+##  8 1T00018  Transforma~    7.92    -72.5     286 2025-11-09                  1                92                1.95
+##  9 1T00018  Transforma~    7.92    -72.5     286 2025-11-25                  1                92                1.6 
+## 10 1T00019  Transforma~    7.92    -72.5     288 2024-08-22                  1                97                1.44
 ## # i 7 more variables: temperatura_media_c &lt;dbl&gt;, humedad_relativa_pct &lt;dbl&gt;, temperatura_minima_c &lt;dbl&gt;,
 ## #   temperatura_maxima_c &lt;dbl&gt;, precipitacion_total_mm &lt;dbl&gt;, DURACION_min &lt;dbl&gt;, FRECUENCIA &lt;int&gt;</code></pre>
 <pre class="r"><code>names(data_consolidada)</code></pre>
@@ -864,24 +937,24 @@ message(&quot;Exportadas &quot;, nrow(data_consolidada), &quot; filas a: &quot;,
 variable de entorno UBICACION_DATA</h1>
 <pre class="r"><code>data_consolidada &lt;- read_csv(file.path(UBICACION_DATA, &quot;data_consolidada.csv&quot;))</code></pre>
 <pre><code>## Rows: 87007074 Columns: 16
-## -- Column specification ----------------------------------------------------------------------------------------
+## -- Column specification ---------------------------------------------------------------------------------------------
 ## Delimiter: &quot;,&quot;
 ## chr   (2): ELEMENTO, TIPO
-## dbl  (13): LATITUD, LONGITUD, ALTITUD, CANTIDAD_ELEMENTOS, CANTIDAD_USUARIOS, velocidad_viento_ms, temperat...
+## dbl  (13): LATITUD, LONGITUD, ALTITUD, CANTIDAD_ELEMENTOS, CANTIDAD_USUARIOS, velocidad_viento_ms, temperatura_m...
 ## date  (1): FECHA_DIA
 ## 
 ## i Use `spec()` to retrieve the full column specification for this data.
 ## i Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 <pre class="r"><code>head(data_consolidada)</code></pre>
 <pre><code>## # A tibble: 6 x 16
-##   ELEMENTO TIPO    LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
-##   &lt;chr&gt;    &lt;chr&gt;     &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
-## 1 1T00001  Transf~    7.92    -72.5     296 2021-01-01                  0                 0                1.11
-## 2 1T00001  Transf~    7.92    -72.5     296 2021-01-02                  0                 0                1.23
-## 3 1T00001  Transf~    7.92    -72.5     296 2021-01-03                  0                 0                0.96
-## 4 1T00001  Transf~    7.92    -72.5     296 2021-01-04                  0                 0                0.81
-## 5 1T00001  Transf~    7.92    -72.5     296 2021-01-05                  0                 0                1.05
-## 6 1T00001  Transf~    7.92    -72.5     296 2021-01-06                  0                 0                1.12
+##   ELEMENTO TIPO         LATITUD LONGITUD ALTITUD FECHA_DIA  CANTIDAD_ELEMENTOS CANTIDAD_USUARIOS velocidad_viento_ms
+##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt; &lt;date&gt;                  &lt;dbl&gt;             &lt;dbl&gt;               &lt;dbl&gt;
+## 1 1T00001  Transformad~    7.92    -72.5     296 2021-01-01                  0                 0                1.11
+## 2 1T00001  Transformad~    7.92    -72.5     296 2021-01-02                  0                 0                1.23
+## 3 1T00001  Transformad~    7.92    -72.5     296 2021-01-03                  0                 0                0.96
+## 4 1T00001  Transformad~    7.92    -72.5     296 2021-01-04                  0                 0                0.81
+## 5 1T00001  Transformad~    7.92    -72.5     296 2021-01-05                  0                 0                1.05
+## 6 1T00001  Transformad~    7.92    -72.5     296 2021-01-06                  0                 0                1.12
 ## # i 7 more variables: temperatura_media_c &lt;dbl&gt;, humedad_relativa_pct &lt;dbl&gt;, temperatura_minima_c &lt;dbl&gt;,
 ## #   temperatura_maxima_c &lt;dbl&gt;, precipitacion_total_mm &lt;dbl&gt;, DURACION_min &lt;dbl&gt;, FRECUENCIA &lt;dbl&gt;</code></pre>
 <pre class="r"><code>dim(data_consolidada)</code></pre>
