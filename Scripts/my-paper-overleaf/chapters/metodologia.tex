@@ -420,48 +420,48 @@ La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integraci�
 
 \subsection{Lógica de integración entre sistemas}
 
-Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integración se ejecuta de forma secuencial sobre tablas intermedias, preservando trazabilidad de llaves y evitando pérdida de emparejamiento entre sistemas con esquemas distintos (BRAE, OMS SPARD, OMS SP7, GIS y NASA POWER). La secuencia aplicada fue la siguiente:
+Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integración se ejecuta de forma secuencial sobre tablas intermedias, preservando trazabilidad de llaves y evitando pérdida de emparejamiento entre sistemas con esquemas distintos (BRAE, OMS SPARD, OMS SP7, GIS y NASA POWER). La secuencia aplicada fue la siguiente.
 
 {\sloppy
 \renewcommand{\theenumi}{\thesubsection.\arabic{enumi}}
 \renewcommand{\labelenumi}{\theenumi}
 \begin{enumerate}
-    \item \label{int:paso1} \textbf{Construcción de la tabla base de eventos (BRAE).}\mbox{}\par\vspace{0.2em}\noindent
+    \item \textbf{Construcción de la tabla base de eventos (BRAE).}\mbox{}\par\vspace{0.2em}\noindent
     A partir de \texttt{BRAE.QA\_TFDDREGISTRO} se genera la tabla \texttt{tabla\_eventos} con \texttt{ID\_EVENTO}, \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}, aplicando filtros regulatorios del periodo 2021--2025, exclusión de eventos no válidos y eliminación de duplicados. Esta tabla define el universo analítico de interrupciones (95{,}280 eventos).
 
-    \item \label{int:paso2} \textbf{Construcción de la tabla de afectación por evento (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
-    En la Sección~5.1.3 se construye la Tabla~5.2 de afectación por evento, la cual consolida las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} a nivel de \texttt{ID\_EVENTO}. Su integración a la tabla base consolidada se realiza en el paso~\ref{int:paso5}.
+    \item \textbf{Construcción de la tabla de afectación por evento (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
+    En la Sección~5.1.3 se construye la Tabla~5.2 de afectación por evento, la cual consolida las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} a nivel de \texttt{ID\_EVENTO}. Su integración a la tabla base consolidada se realiza en el paso~5.2.1.5.
 
-    \item \label{int:paso3} \textbf{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
+    \item \textbf{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
     La tabla base de eventos obtenida en la Sección~5.1.2 se construyó con el campo \texttt{ELEMENTO\_FALLADO} vacío, reservado para su completamiento en la integración. Dado el cambio de sistema OMS en el año 2023, la información del elemento causante se extrajo de forma separada en dos fuentes: la Sección~5.1.4 (\emph{Extracción del elemento causante histórico}, OMS SPARD) y la Sección~5.1.5 (\emph{Extracción del elemento causante actual}, OMS SP7). En este paso, la tabla de la Sección~5.1.2 se cruza con ambas tablas OMS, aplicando en cada caso la lógica de emparejamiento definida en su extracción:
     \begin{itemize}
         \item \emph{Histórico (Sección~5.1.4 -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
         \item \emph{Actual (Sección~5.1.5 -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
     \end{itemize}
 
-    \item \label{int:paso4} \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-    A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~5.5 (inventario georreferenciado de activos obtenido en la Sección~5.1.6), del cual se conserva un registro por \texttt{ELEMENTO} ($A = 47{,}649$ activos únicos), y se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31 ($T = 1{,}826$ días), empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, con cardinal $N = A \times T = 47{,}649 \times 1{,}826 = 87{,}007{,}074$ observaciones, definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~\ref{int:paso5} a~\ref{int:paso8}, se anexan los valores restantes de la secuencia de integración.
+    \item \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+    A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~5.5 (inventario georreferenciado de activos obtenido en la Sección~5.1.6), del cual se conserva un registro por \texttt{ELEMENTO} ($A = 47{,}649$ activos únicos), y se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31 ($T = 1{,}826$ días), empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, con cardinal $N = A \times T = 47{,}649 \times 1{,}826 = 87{,}007{,}074$ observaciones, definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~5.2.1.5 a~5.2.1.8, se anexan los valores restantes de la secuencia de integración. El detalle del procedimiento para los pasos~5.2.1.4 a~5.2.1.8 se documenta en \href{\urlconsolidada}{Consolidada.html}.
 
-    \item \label{int:paso5} \textbf{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla base consolidada obtenida en el paso~\ref{int:paso4}, se integran las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} provenientes de la Tabla~5.2 (afectación por evento, Sección~5.1.3), mediante el siguiente cruce de llaves:
+    \item \textbf{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (Tabla~5.2).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla base consolidada obtenida en el paso~5.2.1.4, se integran las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} provenientes de la Tabla~5.2 (afectación por evento, Sección~5.1.3), mediante el siguiente cruce de llaves:
     \begin{itemize}
         \item \texttt{ID\_EVENTO} $=$ \texttt{ELEMENTO}
     \end{itemize}
-    \noindent entre la Tabla~5.2 y la tabla del paso~\ref{int:paso4}, incorporando al panel las métricas de severidad e impacto operativo asociadas a cada evento de interrupción. La integración se realiza mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), de modo que el panel conserva $N = 87{,}007{,}074$ filas.
+    \noindent entre la Tabla~5.2 y la tabla del paso~5.2.1.4, incorporando al panel las métricas de severidad e impacto operativo asociadas a cada evento de interrupción. La integración se realiza mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), de modo que el panel conserva $N = 87{,}007{,}074$ filas.
 
-    \item \label{int:paso6} \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla resultante del paso~\ref{int:paso5} ($N = 87{,}007{,}074$ filas), se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento, sin modificar el cardinal del panel.
+    \item \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla resultante del paso~5.2.1.5 ($N = 87{,}007{,}074$ filas), se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento, sin modificar el cardinal del panel.
 
-    \item \label{int:paso7} \textbf{Agregación de variables objetivo (\texttt{DURACION} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
-    En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6} ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
+    \item \textbf{Agregación de variables objetivo (\texttt{DURACION} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
+    En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~5.2.1.6 ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
     \begin{itemize}
         \item \texttt{DURACION} (minutos): duración total del evento, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días).
         \item \texttt{FRECUENCIA}: número de desconexiones cuyo inicio ocurre en \texttt{FECHA\_DIA}.
     \end{itemize}
     \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}.
 
-    \item \label{int:paso8} \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+    \item \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+    Sobre la tabla base consolidada definida en el paso~5.2.1.4, y una vez anexados los valores de los pasos~5.2.1.5 a~5.2.1.7, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
 
     La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
 
@@ -502,7 +502,7 @@ Este diagrama de flujo resume visualmente la secuencia de integración y la estr
 
 \subsection{Descripción de la tabla base consolidada}
 
-Las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} presentan una muestra de la tabla base consolidada resultante del paso~\ref{int:paso8}, con grano \textbf{activo eléctrico $\times$ día}. Por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación del activo (Tabla~\ref{tab:muestra_consolidado_final_1}), severidad y clima inicial (Tabla~\ref{tab:muestra_consolidado_final_2}), clima complementario (Tabla~\ref{tab:muestra_consolidado_final_3}) y variables de continuidad (Tabla~\ref{tab:muestra_consolidado_final_4}).
+Las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} presentan una muestra de la tabla base consolidada resultante del paso~5.2.1.8, con grano \textbf{activo eléctrico $\times$ día}. Por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación del activo (Tabla~\ref{tab:muestra_consolidado_final_1}), severidad y clima inicial (Tabla~\ref{tab:muestra_consolidado_final_2}), clima complementario (Tabla~\ref{tab:muestra_consolidado_final_3}) y variables de continuidad (Tabla~\ref{tab:muestra_consolidado_final_4}).
 
 \begin{table}[H]
 \centering
@@ -631,18 +631,18 @@ VEL. VIENTO, TEMP. MED./MIN./MAX., HUM. REL., PRECIP., DURACION & Cuantitativa c
 
     \item \textbf{ALT.} (\texttt{ALTITUD}): cota del activo sobre el nivel del mar, en metros. Proviene del campo \texttt{coor\_z} del sistema GIS y complementa la caracterización geográfica del punto de conexión en la red. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{FECHA DIA} (\texttt{FECHA\_DIA}): fecha calendario de la observación, con granularidad diaria en el intervalo 2021-01-01 a 2025-12-31. Se genera mediante el cruce del inventario de activos con el calendario diario (paso~\ref{int:paso4}) y define, junto con \texttt{ID ACTIVO}, la unidad muestral del panel \textbf{activo $\times$ día}. \textbf{Clasificación:} cualitativa ordinal.
+    \item \textbf{FECHA DIA} (\texttt{FECHA\_DIA}): fecha calendario de la observación, con granularidad diaria en el intervalo 2021-01-01 a 2025-12-31. Se genera mediante el cruce del inventario de activos con el calendario diario (paso~5.2.1.4) y define, junto con \texttt{ID ACTIVO}, la unidad muestral del panel \textbf{activo $\times$ día}. \textbf{Clasificación:} cualitativa ordinal.
 \end{itemize}
 
 \paragraph{Tabla~\ref{tab:muestra_consolidado_final_2} (severidad y clima inicial).}
 Las columnas \texttt{ID ACTIVO} y \texttt{FECHA DIA} se repiten en esta tabla para facilitar la trazabilidad de filas entre bloques consecutivos. Las variables propias de este bloque son:
 
 \begin{itemize}
-    \item \textbf{C. ELEM.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el evento de interrupción asociado al activo en el día. Proviene de la Tabla~5.2 (afectación por evento, Sección~5.1.3) e integra al panel en el paso~\ref{int:paso5}. Cuando el activo no registra falla en el día, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
+    \item \textbf{C. ELEM.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el evento de interrupción asociado al activo en el día. Proviene de la Tabla~5.2 (afectación por evento, Sección~5.1.3) e integra al panel en el paso~5.2.1.5. Cuando el activo no registra falla en el día, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
 
     \item \textbf{C. USU.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el evento de interrupción vinculado al activo en el día. Se obtiene de la misma fuente y mediante el mismo cruce que \texttt{CANTIDAD\_ELEMENTOS}, y constituye una medida de severidad operativa del impacto sobre la demanda. En días sin interrupción, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
 
-    \item \textbf{VEL. VIENTO} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~5.1.7) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{int:paso6}. \textbf{Clasificación:} cuantitativa continua.
+    \item \textbf{VEL. VIENTO} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~5.1.7) e integra al panel por \texttt{FECHA\_DIA} en el paso~5.2.1.6. \textbf{Clasificación:} cuantitativa continua.
 
     \item \textbf{TEMP. MED.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día. \textbf{Clasificación:} cuantitativa continua.
 \end{itemize}
@@ -661,7 +661,7 @@ Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIV
 \end{itemize}
 
 \paragraph{Tabla~\ref{tab:muestra_consolidado_final_4} (variables de continuidad).}
-Este bloque concentra las variables objetivo del análisis, construidas en el paso~\ref{int:paso7} a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
+Este bloque concentra las variables objetivo del análisis, construidas en el paso~5.2.1.7 a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
 
 \begin{itemize}
     \item \textbf{DURACION} (\texttt{DURACION}, en \textbf{minutos}): duración total del evento de interrupción, calculada como la diferencia entre \texttt{FECHA\_CONEXION} y \texttt{FECHA\_DESCONEXION} y asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días calendario). En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa continua.
@@ -673,7 +673,7 @@ Este bloque concentra las variables objetivo del análisis, construidas en el pa
 
 \textbf{Objetivo específico asociado: OE1}
 
-Una vez construido el panel consolidado (pasos de integración~\ref{int:paso4}--\ref{int:paso8}), la Etapa~2 cierra con la evidencia institucional de calidad de las fuentes. El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
+Una vez construido el panel consolidado (pasos de integración~5.2.1.4--5.2.1.8), la Etapa~2 cierra con la evidencia institucional de calidad de las fuentes. El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 
@@ -709,7 +709,7 @@ Sobre el panel consolidado final (\texttt{data\_consolidada.csv}), con $N = 87{,
 
 En el análisis por columna, para cada una de las $16$ variables del panel se calculó el número absoluto de \texttt{NA} y su porcentaje respecto a $N$. En el análisis por fila, se determinó cuántas observaciones $(i,t)$ presentan cero, uno o más campos incompletos, junto con el máximo de variables faltantes registradas en una misma fila.
 
-Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{int:paso6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{,}401{,}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{,}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~\ref{int:paso5} y~\ref{int:paso7} asignan $0$ en días sin evento.
+Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~5.2.1.6. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{,}401{,}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{,}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~5.2.1.5 y~5.2.1.7 asignan $0$ en días sin evento.
 
 A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas; $3{,}431{,}054$ filas ($3{,}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
 
@@ -892,7 +892,7 @@ La \texttt{precipitacion\_total\_mm} exhibe el comportamiento más heterogéneo:
 
 \paragraph{Variables de severidad y continuidad en días con evento.} El subconjunto con $\text{valor} > 0$ comprende $48{,}375$ registros para \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS}, y $48{,}364$ para \texttt{DURACION} y \texttt{FRECUENCIA} (diferencia mínima asociada a casos con afectación sin duración registrada o viceversa). La Tabla~\ref{tab:desc_evento_positivo} y la Figura~\ref{fig:desc_mediana_evento} resumen la distribución condicional.
 
-En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media $22{,}3$; P75 $= 11$; máximo $2{,}469$), y la de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios (media $290{,}8$; P75 $= 117$; máximo $34{,}622$), evidenciando colas pesadas hacia eventos de gran impacto. En continuidad, \texttt{DURACION} presenta mediana de $417$~min ($\approx 7$~h), media de $1{,}527{,}6$~min ($\approx 25{,}5$~h), P25 de $170$~min y P75 de $1{,}293$~min, con máximo de $332{,}395$~min; \texttt{FRECUENCIA} es casi constante en $1$ interrupción por día en este subconjunto (mediana y moda $= 1$; media $1{,}02$; máximo $6$), coherente con la regla de conteo del paso~\ref{int:paso7} (un evento se contabiliza en el día de \texttt{FECHA\_DESCONEXION}).
+En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media $22{,}3$; P75 $= 11$; máximo $2{,}469$), y la de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios (media $290{,}8$; P75 $= 117$; máximo $34{,}622$), evidenciando colas pesadas hacia eventos de gran impacto. En continuidad, \texttt{DURACION} presenta mediana de $417$~min ($\approx 7$~h), media de $1{,}527{,}6$~min ($\approx 25{,}5$~h), P25 de $170$~min y P75 de $1{,}293$~min, con máximo de $332{,}395$~min; \texttt{FRECUENCIA} es casi constante en $1$ interrupción por día en este subconjunto (mediana y moda $= 1$; media $1{,}02$; máximo $6$), coherente con la regla de conteo del paso~5.2.1.7 (un evento se contabiliza en el día de \texttt{FECHA\_DESCONEXION}).
 
 \begin{table}[H]
 \centering
