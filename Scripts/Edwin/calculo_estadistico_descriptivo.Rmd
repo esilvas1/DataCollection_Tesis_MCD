@@ -16,6 +16,9 @@ Referencia metodológica: $N = A \times T = 47\,649 \times 1\,826 = 87\,007\,074
 Complementa el diagnóstico de faltantes (5.3.1) y de extremos (5.3.2) con medidas de
 tendencia central y dispersión, proporción de ceros y frecuencias de variables categóricas.
 
+En el código se accede a la duración mediante la columna `DURACION_min` del CSV; en la
+tesis esta variable se denomina **DURACION** y sus valores están en **minutos**.
+
 ```{r setup}
 library(tidyverse)
 library(lubridate)

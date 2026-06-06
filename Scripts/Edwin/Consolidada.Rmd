@@ -244,11 +244,11 @@ names(data_consolidada)
 dim(data_consolidada)
 ```
 
-## Paso 5.2.1.7 — Agregación de variables objetivo (DURACION_min y FRECUENCIA)
+## Paso 5.2.1.7 — Agregación de variables objetivo (DURACION y FRECUENCIA)
 
-Sobre el panel del paso 5.2.1.6 (mismo $N = A \times T$). Según el paso **5.2.1.7** de `metodologia.tex`, usando la Tabla 5.1 (`tabla_eventos_ajustado.csv`):
+Sobre el panel del paso 5.2.1.6 (mismo $N = A \times T$). Según el paso **5.2.1.7** de `metodologia.tex`, usando la Tabla 5.1 (`tabla_eventos_ajustado.csv`). La variable **DURACION** (minutos) se guarda en el CSV con el nombre de columna `DURACION_min`:
 
-- **DURACION_min:** duración total del evento en minutos, `(FECHA_CONEXION - FECHA_DESCONEXION)`, asignada al día de `FECHA_DESCONEXION` (sin prorrateo).
+- **DURACION** (columna `DURACION_min`): duración total del evento en minutos, `(FECHA_CONEXION - FECHA_DESCONEXION)`, asignada al día de `FECHA_DESCONEXION` (sin prorrateo).
 - **FRECUENCIA:** número de desconexiones cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese día.
 - Sin interrupción en el día: `DURACION_min = 0` y `FRECUENCIA = 0`.
 - Varios eventos el mismo día: se suman las duraciones y se cuenta cada desconexión.

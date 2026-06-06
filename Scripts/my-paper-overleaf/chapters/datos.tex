@@ -32,7 +32,7 @@ La construcción del conjunto de datos sigue la siguiente lógica:
 Las variables de eventos se definen así:
 
 \begin{itemize}
-    \item \textbf{DURACION (horas):} suma total de horas sin servicio del activo dentro del día.
+    \item \textbf{DURACION (minutos):} duración total del evento de interrupción, expresada en minutos, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días). En días sin falla, el valor es $0$.
     
     \item \textbf{FRECUENCIA:} número de interrupciones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en el día.
 \end{itemize}

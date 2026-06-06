@@ -399,7 +399,7 @@ Logica estructural:
 
 Reglas para variables de evento en el dia:
 
-- `DURACION` (horas): suma de horas sin servicio del activo dentro del dia.
+- `DURACION` (minutos): duración total del evento de interrupción en minutos, asignada al día de `FECHA_DESCONEXION` (sin prorrateo entre días).
 - `FRECUENCIA`: numero de interrupciones del activo cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese dia.
 
 Si un evento cruza medianoche, la duracion debe prorratearse por dia. Formula sugerida:
@@ -461,7 +461,7 @@ La tabla consolidada final tiene una estimacion de:
 | TEMPERATURA_MINIMA_C | T2M_MIN | NASA POWER | Decimal | Temperatura minima diaria (C) | Variable exogena de clima para modelacion |
 | HUMEDAD_RELATIVA_PCT | RH2M | NASA POWER | Decimal | Humedad relativa diaria (%) | Variable exogena de clima para modelacion |
 | VELOCIDAD_VIENTO_MS | WS2M | NASA POWER | Decimal | Velocidad diaria del viento (m/s) | Variable exogena de clima para modelacion |
-| DURACION | FECHA_DESCONEXION/FECHA_CONEXION (derivado) | BRAE/OMS (eventos) | Decimal | Horas acumuladas sin servicio del activo en el dia | Variable objetivo/explicativa de continuidad |
+| DURACION | FECHA_DESCONEXION/FECHA_CONEXION (derivado) | BRAE/OMS (eventos) | Decimal | Minutos de duración del evento asignados al día de desconexión | Variable objetivo/explicativa de continuidad |
 | FRECUENCIA | Conteo de eventos por dia (derivado) | BRAE/OMS (eventos) | Entero | Numero de fallas del activo en el dia | Variable objetivo/explicativa de continuidad |
 
 Reglas de estandarizacion recomendadas:

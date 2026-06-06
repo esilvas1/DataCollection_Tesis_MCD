@@ -452,16 +452,16 @@ Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integraci
     \item \label{int:paso6} \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
     Sobre la tabla resultante del paso~\ref{int:paso5} ($N = 87{,}007{,}074$ filas), se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento, sin modificar el cardinal del panel.
 
-    \item \label{int:paso7} \textbf{Agregación de variables objetivo (\texttt{DURACION\_min} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
-    En este paso se construyen las columnas \texttt{DURACION\_min} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6} ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
+    \item \label{int:paso7} \textbf{Agregación de variables objetivo (\texttt{DURACION} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
+    En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{int:paso6} ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
     \begin{itemize}
-        \item \texttt{DURACION\_min}: duración total del evento en minutos, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días).
+        \item \texttt{DURACION} (minutos): duración total del evento, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días).
         \item \texttt{FRECUENCIA}: número de desconexiones cuyo inicio ocurre en \texttt{FECHA\_DIA}.
     \end{itemize}
-    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}.
+    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}.
 
     \item \label{int:paso8} \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+    Sobre la tabla base consolidada definida en el paso~\ref{int:paso4}, y una vez anexados los valores de los pasos~\ref{int:paso5} a~\ref{int:paso7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
 
     La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. En términos formales, cada observación se identifica mediante el par $(i,t)$, donde $i$ denota el activo eléctrico y $t$ el día dentro del periodo de análisis. Bajo esta estructura, el conjunto de datos permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio.
 
@@ -664,9 +664,9 @@ Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIV
 Este bloque concentra las variables objetivo del análisis, construidas en el paso~\ref{int:paso7} a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
 
 \begin{itemize}
-    \item \textbf{DURACION}: suma de horas sin servicio del activo efectivamente transcurridas en \texttt{FECHA\_DIA}. Si una interrupción cruza la medianoche, la duración total se prorratea entre los días calendario en los que el activo permaneció desconectado. En días sin falla, el valor es 0. \textbf{Clasificación:} cuantitativa continua.
+    \item \textbf{DURACION} (\texttt{DURACION}, en \textbf{minutos}): duración total del evento de interrupción, calculada como la diferencia entre \texttt{FECHA\_CONEXION} y \texttt{FECHA\_DESCONEXION} y asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días calendario). En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa continua.
 
-    \item \textbf{FRECUENCIA}: número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento, aun cuando la interrupción se extienda a días posteriores; en esos casos, la duración continúa distribuyéndose en los días sucesivos mediante la regla de \texttt{DURACION}. En días sin falla, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
+    \item \textbf{FRECUENCIA} (\texttt{FRECUENCIA}): número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento. En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa discreta.
 \end{itemize}
 
 
@@ -709,7 +709,7 @@ Sobre el panel consolidado final (\texttt{data\_consolidada.csv}), con $N = 87{,
 
 En el análisis por columna, para cada una de las $16$ variables del panel se calculó el número absoluto de \texttt{NA} y su porcentaje respecto a $N$. En el análisis por fila, se determinó cuántas observaciones $(i,t)$ presentan cero, uno o más campos incompletos, junto con el máximo de variables faltantes registradas en una misma fila.
 
-Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{int:paso6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{,}401{,}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{,}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~\ref{int:paso5} y~\ref{int:paso7} asignan $0$ en días sin evento.
+Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{int:paso6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{,}401{,}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{,}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~\ref{int:paso5} y~\ref{int:paso7} asignan $0$ en días sin evento.
 
 A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas; $3{,}431{,}054$ filas ($3{,}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
 
@@ -750,7 +750,7 @@ A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas;
 
 Sobre el mismo panel consolidado se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y mediante diagramas de caja e histogramas. El análisis se orienta a distinguir observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos.
 
-Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}) describen la ubicación del activo y no son objeto de tratamiento de extremos, por lo que se excluyen. Se evaluaron las variables de severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}), las seis variables climáticas y las de continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA}). Para cada variable se aplicaron tres reglas univariadas: (i)~rango intercuartílico de Tukey, que marca como extremo todo valor fuera de $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango intercuartílico ampliado, con factor $3{,}0$ para extremos severos; y (iii)~regla de percentiles, que marca los valores por debajo de P1 o por encima de P99.
+Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}) describen la ubicación del activo y no son objeto de tratamiento de extremos, por lo que se excluyen. Se evaluaron las variables de severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}), las seis variables climáticas y las de continuidad (\texttt{DURACION}, \texttt{FRECUENCIA}). Para cada variable se aplicaron tres reglas univariadas: (i)~rango intercuartílico de Tukey, que marca como extremo todo valor fuera de $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango intercuartílico ampliado, con factor $3{,}0$ para extremos severos; y (iii)~regla de percentiles, que marca los valores por debajo de P1 o por encima de P99.
 
 \paragraph{Variables climáticas.} El diagnóstico se realizó sobre el panel completo. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{,}000$ observaciones.
 
@@ -787,7 +787,7 @@ Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTIT
     \label{fig:histograma_clima}
 \end{figure}
 
-\paragraph{Variables de severidad y continuidad.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION\_min} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días). La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+\paragraph{Variables de severidad y continuidad.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días). La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
 
 \begin{table}[H]
 \centering
@@ -800,7 +800,7 @@ Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTIT
 \midrule
 \texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 2   & 2{,}469   & 14,91 & 11,78 \\
 \texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 23  & 34{,}622  & 14,50 & 10,83 \\
-\texttt{DURACION\_min}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
+\texttt{DURACION}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
 \texttt{FRECUENCIA}          & 48{,}364 & 1   & 6         & 1,96  & 1,96  \\
 \bottomrule
 \end{tabular}
@@ -826,7 +826,7 @@ Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTIT
 
 \label{sec:estadisticos_descriptivos}
 
-Tras el diagnóstico de completitud (Sección~\ref{sec:identificacion_datos_faltantes}) y el análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}), se calculó un conjunto sistemático de estadísticos descriptivos sobre el panel consolidado \texttt{data\_consolidada.csv} ($N = 87{,}007{,}074$ observaciones activo~$\times$~día).
+Tras el diagnóstico de completitud (Sección~\ref{sec:identificacion_datos_faltantes}) y el análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}), se calculó un conjunto sistemático de estadísticos descriptivos sobre el panel consolidado ($N = 87{,}007{,}074$ observaciones activo~$\times$~día).
 
 Para cada variable cuantitativa se estimaron: (i)~conteo de observaciones válidas ($n$) y porcentaje de \texttt{NA} respecto a $N$; (ii)~para variables de interrupción, el porcentaje de ceros sobre el panel completo; (iii)~medidas de tendencia central (media y mediana); (iv)~medidas de dispersión (desviación estándar y coeficiente de variación en porcentaje); y (v)~cuantiles de orden 25, 50 y 75~\%, junto con los valores mínimo y máximo. En variables categóricas se reportaron frecuencias absolutas y relativas. Dado que las variables de severidad y continuidad están dominadas por ceros (días sin falla), el análisis cuantitativo se presenta en dos ámbitos complementarios: \emph{panel completo} e \emph{días con evento} ($\text{valor} > 0$), coherente con la estrategia de la Sección~\ref{sec:identificacion_valores_extremos}.
 
@@ -864,7 +864,7 @@ La \texttt{precipitacion\_total\_mm} exhibe el comportamiento más heterogéneo:
 
 \paragraph{Altitud.} Sobre $n = 86{,}974{,}206$ observaciones con \texttt{ALTITUD} no faltante ($0{,}04$~\% de \texttt{NA}), la cota presenta media de $840$~m, mediana de $513$~m, P25 de $259$~m, P75 de $1{,}356$~m y máximo de $3{,}767$~m, con desviación estándar de $738$~m (CV $= 87{,}9$~\%). La diferencia entre media y mediana indica asimetría positiva: la mayor parte de los activos se ubica en cotas moderadas, con una cola hacia zonas de mayor elevación en el territorio de operación.
 
-\paragraph{Variables de severidad y continuidad en el panel completo.} La Tabla~\ref{tab:desc_evento_panel} y la Figura~\ref{fig:desc_pct_cero_evento} documentan la estructura cero-inflada del panel. El $99{,}94$~\% de las filas registra cero en \texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}, \texttt{DURACION\_min} y \texttt{FRECUENCIA}, de modo que las medias globales son cercanas a cero (por ejemplo, media de \texttt{CANTIDAD\_USUARIOS} $= 0{,}16$ usuarios y media de \texttt{DURACION\_min} $= 0{,}85$ minutos) y no representan el comportamiento típico \emph{cuando ocurre} una interrupción. Los máximos globales (\texttt{CANTIDAD\_ELEMENTOS} $= 2{,}469$; \texttt{CANTIDAD\_USUARIOS} $= 34{,}622$; \texttt{DURACION\_min} $= 332{,}395$; \texttt{FRECUENCIA} $= 6$) coinciden con los hallazgos de la Sección~\ref{sec:identificacion_valores_extremos} y confirman la necesidad de analizar el subconjunto de días con evento por separado.
+\paragraph{Variables de severidad y continuidad en el panel completo.} La Tabla~\ref{tab:desc_evento_panel} y la Figura~\ref{fig:desc_pct_cero_evento} documentan la estructura cero-inflada del panel. El $99{,}94$~\% de las filas registra cero en \texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}, \texttt{DURACION} y \texttt{FRECUENCIA}, de modo que las medias globales son cercanas a cero (por ejemplo, media de \texttt{CANTIDAD\_USUARIOS} $= 0{,}16$ usuarios y media de \texttt{DURACION} $= 0{,}85$ minutos) y no representan el comportamiento típico \emph{cuando ocurre} una interrupción. Los máximos globales (\texttt{CANTIDAD\_ELEMENTOS} $= 2{,}469$; \texttt{CANTIDAD\_USUARIOS} $= 34{,}622$; \texttt{DURACION} $= 332{,}395$; \texttt{FRECUENCIA} $= 6$) coinciden con los hallazgos de la Sección~\ref{sec:identificacion_valores_extremos} y confirman la necesidad de analizar el subconjunto de días con evento por separado.
 
 \begin{table}[H]
 \centering
@@ -877,7 +877,7 @@ La \texttt{precipitacion\_total\_mm} exhibe el comportamiento más heterogéneo:
 \midrule
 \texttt{CANTIDAD\_ELEMENTOS} & 99,94 & 0,01 & 1,74 & 0 & 2{,}469 & --- \\
 \texttt{CANTIDAD\_USUARIOS}  & 99,94 & 0,16 & 28,06 & 0 & 34{,}622 & --- \\
-\texttt{DURACION\_min}       & 99,94 & 0,85 & 133,34 & 0 & 332{,}395 & --- \\
+\texttt{DURACION}       & 99,94 & 0,85 & 133,34 & 0 & 332{,}395 & --- \\
 \texttt{FRECUENCIA}          & 99,94 & 0,00 & 0,02 & 0 & 6 & --- \\
 \bottomrule
 \end{tabular}
@@ -890,9 +890,9 @@ La \texttt{precipitacion\_total\_mm} exhibe el comportamiento más heterogéneo:
     \label{fig:desc_pct_cero_evento}
 \end{figure}
 
-\paragraph{Variables de severidad y continuidad en días con evento.} El subconjunto con $\text{valor} > 0$ comprende $48{,}375$ registros para \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS}, y $48{,}364$ para \texttt{DURACION\_min} y \texttt{FRECUENCIA} (diferencia mínima asociada a casos con afectación sin duración registrada o viceversa). La Tabla~\ref{tab:desc_evento_positivo} y la Figura~\ref{fig:desc_mediana_evento} resumen la distribución condicional.
+\paragraph{Variables de severidad y continuidad en días con evento.} El subconjunto con $\text{valor} > 0$ comprende $48{,}375$ registros para \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS}, y $48{,}364$ para \texttt{DURACION} y \texttt{FRECUENCIA} (diferencia mínima asociada a casos con afectación sin duración registrada o viceversa). La Tabla~\ref{tab:desc_evento_positivo} y la Figura~\ref{fig:desc_mediana_evento} resumen la distribución condicional.
 
-En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media $22{,}3$; P75 $= 11$; máximo $2{,}469$), y la de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios (media $290{,}8$; P75 $= 117$; máximo $34{,}622$), evidenciando colas pesadas hacia eventos de gran impacto. En continuidad, \texttt{DURACION\_min} presenta mediana de $417$~min ($\approx 7$~h), media de $1{,}527{,}6$~min ($\approx 25{,}5$~h), P25 de $170$~min y P75 de $1{,}293$~min, con máximo de $332{,}395$~min; \texttt{FRECUENCIA} es casi constante en $1$ interrupción por día en este subconjunto (mediana y moda $= 1$; media $1{,}02$; máximo $6$), coherente con la regla de conteo del paso~\ref{int:paso7} (un evento se contabiliza en el día de \texttt{FECHA\_DESCONEXION}).
+En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media $22{,}3$; P75 $= 11$; máximo $2{,}469$), y la de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios (media $290{,}8$; P75 $= 117$; máximo $34{,}622$), evidenciando colas pesadas hacia eventos de gran impacto. En continuidad, \texttt{DURACION} presenta mediana de $417$~min ($\approx 7$~h), media de $1{,}527{,}6$~min ($\approx 25{,}5$~h), P25 de $170$~min y P75 de $1{,}293$~min, con máximo de $332{,}395$~min; \texttt{FRECUENCIA} es casi constante en $1$ interrupción por día en este subconjunto (mediana y moda $= 1$; media $1{,}02$; máximo $6$), coherente con la regla de conteo del paso~\ref{int:paso7} (un evento se contabiliza en el día de \texttt{FECHA\_DESCONEXION}).
 
 \begin{table}[H]
 \centering
@@ -905,7 +905,7 @@ En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media
 \midrule
 \texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 22,29 & 70,18 & 1 & 2 & 11 & 2{,}469 & 314,8 \\
 \texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 290,82 & 1{,}154,2 & 7 & 23 & 117 & 34{,}622 & 396,9 \\
-\texttt{DURACION\_min}       & 48{,}364 & 1{,}527,6 & 5{,}445,6 & 170 & 417 & 1{,}293 & 332{,}395 & 356,5 \\
+\texttt{DURACION}       & 48{,}364 & 1{,}527,6 & 5{,}445,6 & 170 & 417 & 1{,}293 & 332{,}395 & 356,5 \\
 \texttt{FRECUENCIA}          & 48{,}364 & 1,02 & 0,16 & 1 & 1 & 1 & 6 & 15,3 \\
 \bottomrule
 \end{tabular}

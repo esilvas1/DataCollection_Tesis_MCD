@@ -17,11 +17,10 @@ if (UBICACION_DATA == "") {
 data_consolidada <- read_csv(file.path(UBICACION_DATA, "data_consolidada.csv"))
 dim(data_consolidada)
 
-# identificar el min valor de la columna DURACION_min
+# columna DURACION_min del CSV (variable DURACION en documentacion; unidades: minutos)
 min_duracion <- min(data_consolidada$DURACION_min)
 print(min_duracion)
 
-# identificar el max valor de la columna DURACION_min
 max_duracion <- max(data_consolidada$DURACION_min)
 print(max_duracion)
 
