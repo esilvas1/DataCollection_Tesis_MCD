@@ -68,5 +68,23 @@ cells:
 
       \         \r
 
-      \r\n"
+      SELECT codigo_operativo\r
+
+      , coor_gps_lat\r
+
+      , coor_gps_lon\r
+
+      , coor_z\r
+
+      , 'Aisladero' AS tipo\r
+
+      , ubicacion \r
+
+      FROM eaislade_at@gtech ai    \r
+
+      JOIN ccomun@gtech c USING (g3e_fid)    \r
+
+      JOIN cconectividad_e@gtech USING (g3e_fid) \r
+
+      WHERE c.estado = 'OPERACION';\r\n"
     languageId: oracle-sql
