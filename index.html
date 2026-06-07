@@ -176,7 +176,9 @@
 
     <section id="etapa-2">
       <h2>Etapa 2 — Integración y depuración</h2>
-      <p class="section-desc">Construcción del panel consolidado <code>data_consolidada.csv</code>.</p>
+      <p class="section-desc">
+        Construcción del panel consolidado <code>data_consolidada.csv</code> y agregación por cuadrante y semana.
+      </p>
       <ul class="reports">
         <li class="report-card">
           <a href="Scripts/Edwin/Consolidada.html">
@@ -187,6 +189,18 @@
               DURACION y FRECUENCIA sobre el grano activo × día.
             </span>
             <span class="tag">Consolidada.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Cindy/data_agrupacion.html">
+            <span class="report-title">Construcción de tabla agregada por cuadrante y semana</span>
+            <span class="report-meta">Scripts/Cindy/data_agrupacion.html</span>
+            <span class="report-desc">
+              Agregación del panel consolidado a grano cuadrante × semana: variables climáticas,
+              usuarios y elementos afectados, frecuencia y duración. Exporta
+              <code>data_agrupada_por_cuadrante_semana.csv</code>.
+            </span>
+            <span class="tag">data_agrupacion.Rmd</span>
           </a>
         </li>
       </ul>
