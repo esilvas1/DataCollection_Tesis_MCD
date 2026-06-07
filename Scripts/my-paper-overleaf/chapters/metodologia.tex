@@ -673,9 +673,30 @@ Este bloque concentra las variables objetivo del análisis, construidas en el pa
 
 \textbf{Objetivo específico asociado: OE1}
 
-Una vez construido el panel consolidado (pasos de integración~5.2.1.4--5.2.1.8), la Etapa~2 cierra con la evidencia institucional de calidad de las fuentes. El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
+Una vez construido el panel consolidado (pasos de integración~5.2.1.4--5.2.1.8), se deriva la tabla agregada por cuadrante y semana (Sección~\ref{sec:agrupacion_cuadrante_semana}). La Etapa~2 cierra con la evidencia institucional de calidad de las fuentes (Sección~\ref{sec:evidencia_calidad_fuentes}). El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
+
+\subsection{Agrupación de data consolidada por semana y cuadrante}
+\label{sec:agrupacion_cuadrante_semana}
+
+Con el panel consolidado \texttt{data\_consolidada.csv} (grano \textbf{activo eléctrico $\times$ día}, $N = 87{,}007{,}074$ observaciones), se construyó una tabla de análisis a mayor escala espacial y temporal, con unidad muestral \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en \href{\urlagrupacion}{data\_agrupacion.html}.
+
+El insumo principal es el panel del paso~5.2.1.8. Para asignar cada activo a su zona de análisis espacial, se utiliza el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, del cual se extrae la relación \texttt{ELEMENTO} $\rightarrow$ \texttt{id\_cuadrante} (campo \texttt{CUADRANTE\_1}). La asignación se integra al panel mediante cruce izquierdo por \texttt{ELEMENTO}, conservando todas las filas del panel y anexando el identificador de cuadrante cuando existe emparejamiento. Complementariamente, el archivo \texttt{CUADRANTE\_CORD\_800} aporta la referencia de centroides por cuadrante.
+
+Sobre el panel enriquecido, cada observación diaria se asigna a una semana calendario mediante \texttt{floor\_date(FECHA\_DIA, unit = ``week'', week\_start = 1)}, de modo que la semana inicia en lunes. La duración diaria en horas se obtiene como \texttt{DURACION\_min / 60}, coherente con la unidad en minutos definida en el paso~5.2.1.7.
+
+La agregación se ejecuta con \texttt{group\_by(id\_cuadrante, semana)} y las siguientes reglas de resumen:
+
+\begin{itemize}
+    \item \textbf{Coordenadas del cuadrante} (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}): primer valor registrado en el grupo (\texttt{first}), tomado del inventario georreferenciado del panel.
+    \item \textbf{Impacto operativo:} \texttt{usuarios\_afectados} $=$ \texttt{sum(CANTIDAD\_USUARIOS)} y \texttt{elementos\_afectados} $=$ \texttt{sum(CANTIDAD\_ELEMENTOS)} en la semana, acumulando los conteos diarios de los activos del cuadrante.
+    \item \textbf{Variables climáticas semanales:} \texttt{temp\_media\_semana} y \texttt{humedad\_media\_semana} como promedio; \texttt{temp\_max\_semana} y \texttt{viento\_max\_semana} como máximo; \texttt{temp\_min\_semana} como mínimo; \texttt{viento\_medio\_semana} como promedio; \texttt{precip\_total\_semana} como suma de la precipitación diaria.
+    \item \textbf{Continuidad del servicio:} \texttt{n\_eventos} $=$ \texttt{sum(FRECUENCIA)} (total de desconexiones iniciadas en la semana) y \texttt{duracion\_total} $=$ \texttt{sum(duracion\_horas)} (suma de horas de interrupción prorrateadas por día en el cuadrante).
+\end{itemize}
+
+El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}. Esta tabla constituye un insumo agregado para análisis espacio-temporales posteriores (mapas por cuadrante, series semanales de continuidad y clima), sin sustituir el panel diario \texttt{data\_consolidada.csv}, que permanece como base de referencia del proyecto.
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
+\label{sec:evidencia_calidad_fuentes}
 
 La validación de los datos recopilados por Centrales Eléctricas de Norte de Santander S.A. E.S.P. (CENS) se fundamenta en su arquitectura institucional de gestión, enmarcada en la Política de Gestión de Tecnología de la Información (Sesión de la Junta Directiva No.~800 del 20 de febrero de 2018)~\cite{ref38} y en la Política del Sistema de Gestión Integrado (Sesión de la Junta Directiva No.~831 del 22 de abril de 2020)~\cite{ref2}, orientadas a garantizar una gestión sistemática de calidad continua, sostenibilidad ambiental y cumplimiento legal mediante la evaluación permanente de la calidad de los datos, priorizando consistencia, disponibilidad y accesibilidad de la información~\cite{ref39}.
 
