@@ -678,7 +678,26 @@ Una vez construido el panel consolidado (pasos de integración~5.2.1.4--5.2.1.8)
 \subsection{Agrupación de data consolidada por semana y cuadrante}
 \label{sec:agrupacion_cuadrante_semana}
 
-Con el panel consolidado \texttt{data\_consolidada.csv} (grano \textbf{activo eléctrico $\times$ día}, $N = 87{,}007{,}074$ observaciones), se construyó una tabla de análisis a mayor escala espacial y temporal, con unidad muestral \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en \href{\urlagrupacion}{data\_agrupacion.html}.
+\subsubsection{Definición del grano analítico (cuadrante $\times$ semana)}
+
+El panel consolidado con grano \textbf{activo eléctrico $\times$ día} ($N = 87{,}007{,}074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~5.2.1. No obstante, el objetivo del estudio ---pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión--- exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
+
+Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textbf{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{,}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/cuadrantes_800.png}
+    \caption{Malla de 800 cuadrantes sobre el territorio de concesión (celdas de aprox.\ $5 \times 2{,}5$\,km).}
+    \label{fig:cuadrantes_800}
+\end{figure}
+
+Desde el punto de vista temporal, la granularidad diaria del panel es necesaria para la integración de eventos, clima y severidad, pero resulta excesivamente ruidosa para el análisis exploratorio espacial y para la modelación orientada a dinámicas semanales de continuidad y clima. Por ello, se define la \textbf{semana calendario} (con inicio en lunes) como periodo de agregación temporal, lo que permite suavizar fluctuaciones diarias, estabilizar las series de interrupción y alinear las covariables meteorológicas en un horizonte compatible con la gestión operativa y con visualizaciones espacio-temporales (mapas por cuadrante y series semanales).
+
+Bajo esta definición, la unidad muestral del dataset agregado es el par \textbf{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
+
+\subsubsection{Procedimiento de agregación}
+
+Con el panel consolidado \texttt{data\_consolidada.csv}, se construyó la tabla de análisis a grano \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en \href{\urlagrupacion}{data\_agrupacion.html}.
 
 El insumo principal es el panel del paso~5.2.1.8. Para asignar cada activo a su zona de análisis espacial, se utiliza el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, del cual se extrae la relación \texttt{ELEMENTO} $\rightarrow$ \texttt{id\_cuadrante} (campo \texttt{CUADRANTE\_1}). La asignación se integra al panel mediante cruce izquierdo por \texttt{ELEMENTO}, conservando todas las filas del panel y anexando el identificador de cuadrante cuando existe emparejamiento. Complementariamente, el archivo \texttt{CUADRANTE\_CORD\_800} aporta la referencia de centroides por cuadrante.
 
@@ -693,7 +712,159 @@ La agregación se ejecuta con \texttt{group\_by(id\_cuadrante, semana)} y las si
     \item \textbf{Continuidad del servicio:} \texttt{n\_eventos} $=$ \texttt{sum(FRECUENCIA)} (total de desconexiones iniciadas en la semana) y \texttt{duracion\_total} $=$ \texttt{sum(duracion\_horas)} (suma de horas de interrupción prorrateadas por día en el cuadrante).
 \end{itemize}
 
-El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}. Esta tabla constituye un insumo agregado para análisis espacio-temporales posteriores (mapas por cuadrante, series semanales de continuidad y clima), sin sustituir el panel diario \texttt{data\_consolidada.csv}, que permanece como base de referencia del proyecto.
+El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}.
+
+\subsection{Descripción de la tabla base semanal cuadrante}
+
+La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textbf{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} presentan una muestra ilustrativa; por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación espacio-temporal e impacto operativo (Tabla~\ref{tab:muestra_semanal_cuadrante_1}), temperatura (Tabla~\ref{tab:muestra_semanal_cuadrante_2}), clima complementario (Tabla~\ref{tab:muestra_semanal_cuadrante_3}) y continuidad del servicio (Tabla~\ref{tab:muestra_semanal_cuadrante_4}).
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Estructura de la tabla base semanal cuadrante (\texttt{data\_agrupada.csv}).}
+\label{tab:base_semanal_cuadrante}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}p{2.6cm}@{}}
+\toprule
+\textbf{Bloque} & \textbf{Variables} & \textbf{Regla de agregación} \\
+\midrule
+Identificación &
+\begin{minipage}[t]{\linewidth}
+\texttt{id\_cuadrante}\\[0.1em]
+\texttt{semana}
+\end{minipage} &
+Llave del grupo \\
+Georreferencia &
+\begin{minipage}[t]{\linewidth}
+\texttt{latitud}\\[0.1em]
+\texttt{longitud}\\[0.1em]
+\texttt{altitud}
+\end{minipage} &
+\texttt{first} \\
+Impacto &
+\begin{minipage}[t]{\linewidth}
+\texttt{usuarios\_afectados}\\[0.1em]
+\texttt{elementos\_afectados}
+\end{minipage} &
+\texttt{sum} \\
+Clima &
+\begin{minipage}[t]{\linewidth}
+\texttt{temp\_media\_semana}\\[0.1em]
+\texttt{temp\_max\_semana}\\[0.1em]
+\texttt{temp\_min\_semana}\\[0.1em]
+\texttt{humedad\_media\_semana}\\[0.1em]
+\texttt{viento\_medio\_semana}\\[0.1em]
+\texttt{viento\_max\_semana}\\[0.1em]
+\texttt{precip\_total\_semana}
+\end{minipage} &
+\begin{minipage}[t]{\linewidth}
+\texttt{mean}\\[0.1em]
+\texttt{max}\\[0.1em]
+\texttt{min}\\[0.1em]
+\texttt{mean}\\[0.1em]
+\texttt{mean}\\[0.1em]
+\texttt{max}\\[0.1em]
+\texttt{sum}
+\end{minipage} \\
+Continuidad &
+\begin{minipage}[t]{\linewidth}
+\texttt{n\_eventos}\\[0.1em]
+\texttt{duracion\_total}
+\end{minipage} &
+\texttt{sum} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 1: cuadrante, semana, coordenadas e impacto operativo}
+\label{tab:muestra_semanal_cuadrante_1}
+\begin{tabular}{r l r r r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{LAT.} & \textbf{LON.} & \textbf{ALT.} & \textbf{USU. AFECT.} & \textbf{ELEM. AFECT.} \\
+\midrule
+  1 & 28/12/2020 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+  1 & 04/01/2021 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+  3 & 04/01/2021 & 7.1548 & -72.7196 & 2850 &    0 &   0 \\
+ 12 & 11/01/2021 & 7.4521 & -72.8903 & 1240 &  842 &  18 \\
+ 45 & 18/01/2021 & 7.7539 & -73.1204 &  890 &    0 &   0 \\
+117 & 25/01/2021 & 7.9215 & -72.5021 &  286 & 1254 &  24 \\
+203 & 01/02/2021 & 8.0812 & -72.4108 &  312 &    0 &   0 \\
+ 45 & 08/02/2021 & 7.7539 & -73.1204 &  890 &  315 &   6 \\
+117 & 15/02/2021 & 7.9215 & -72.5021 &  286 &  680 &  11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 2: temperatura (continuación)}
+\label{tab:muestra_semanal_cuadrante_2}
+\begin{tabular}{r l r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{TEMP. MED.} & \textbf{TEMP. MAX.} & \textbf{TEMP. MIN.} \\
+\midrule
+  1 & 28/12/2020 & 13.6 & 19.8 &  6.2 \\
+  1 & 04/01/2021 & 12.8 & 18.5 &  5.8 \\
+  3 & 04/01/2021 & 13.1 & 19.2 &  6.0 \\
+ 12 & 11/01/2021 & 22.4 & 28.6 & 16.8 \\
+ 45 & 18/01/2021 & 23.8 & 30.1 & 18.2 \\
+117 & 25/01/2021 & 24.1 & 30.4 & 18.9 \\
+203 & 01/02/2021 & 24.5 & 30.8 & 19.1 \\
+ 45 & 08/02/2021 & 23.5 & 29.7 & 17.8 \\
+117 & 15/02/2021 & 24.3 & 30.2 & 18.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 3: clima complementario (continuación)}
+\label{tab:muestra_semanal_cuadrante_3}
+\begin{tabular}{r l r r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{HUM. MED.} & \textbf{VEL. MED.} & \textbf{VEL. MAX.} & \textbf{PRECIP.} \\
+\midrule
+  1 & 28/12/2020 & 82.4 & 1.15 & 2.31 & 18.5 \\
+  1 & 04/01/2021 & 80.1 & 1.08 & 2.18 & 12.3 \\
+  3 & 04/01/2021 & 81.6 & 1.12 & 2.25 & 15.7 \\
+ 12 & 11/01/2021 & 76.3 & 0.98 & 1.95 &  8.4 \\
+ 45 & 18/01/2021 & 74.8 & 1.05 & 2.10 &  6.2 \\
+117 & 25/01/2021 & 73.5 & 1.18 & 2.42 &  9.8 \\
+203 & 01/02/2021 & 72.9 & 1.22 & 2.55 &  4.1 \\
+ 45 & 08/02/2021 & 75.2 & 1.09 & 2.08 & 11.6 \\
+117 & 15/02/2021 & 74.1 & 1.14 & 2.35 &  7.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 4: continuidad del servicio (continuación)}
+\label{tab:muestra_semanal_cuadrante_4}
+\begin{tabular}{r r}
+\toprule
+\textbf{N EVENTOS} & \textbf{DURACION TOTAL (h)} \\
+\midrule
+ 0 &   0.0 \\
+ 0 &   0.0 \\
+ 0 &   0.0 \\
+ 5 &  28.4 \\
+ 0 &   0.0 \\
+ 8 &  41.7 \\
+ 0 &   0.0 \\
+ 2 &  12.6 \\
+ 4 &  22.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} corresponden al mismo conjunto de observaciones en el mismo orden. \texttt{duracion\_total} se expresa en horas (suma semanal de \texttt{DURACION\_min}/60 prorrateada por día). Las semanas sin interrupciones registran \texttt{n\_eventos = 0} y \texttt{duracion\_total = 0}. Las unidades de temperatura, humedad, viento y precipitación coinciden con las del panel diario (°C, \%, m/s y mm, respectivamente).
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 \label{sec:evidencia_calidad_fuentes}
