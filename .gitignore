@@ -39,11 +39,9 @@ salida.txt
 logs/*.txt
 
 
-*.txt
 *.doc
 *.docx
 *.csv
-*.pdf
 *.xlsx
 
 # LaTeX/Overleaf temporary files
