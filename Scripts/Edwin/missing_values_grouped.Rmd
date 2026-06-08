@@ -1,0 +1,629 @@
+---
+
+title: "Identificacion de datos faltantes en data agrupada"
+
+author: "Edwin Silva"
+
+date: "`r Sys.Date()`"
+
+output:
+
+  html_document:
+
+    toc: true
+
+    toc_depth: 2
+
+---
+
+
+
+# Etapa 3 — Identificación de datos faltantes en data agrupada cuadrante × semana
+
+
+
+Tabla agregada **cuadrante × semana** (`data_agrupada.csv` en `UBICACION_DATA`).
+
+
+
+```{r setup}
+
+library(tidyverse)
+
+```
+
+
+
+```{r entorno}
+
+env_path <- file.path("..", "..", ".env")
+
+if (file.exists(".env")) {
+
+  readRenviron(".env")
+
+} else if (file.exists(env_path)) {
+
+  readRenviron(env_path)
+
+}
+
+
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+
+if (UBICACION_DATA == "") {
+
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+
+}
+
+
+
+path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+
+if (!file.exists(path_agrupada)) {
+
+  stop("No se encontro: ", path_agrupada)
+
+}
+
+
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+
+```
+
+
+
+```{r lectura}
+
+message("Leyendo tabla agregada cuadrante x semana...")
+
+tabla_base_agrupada <- read_csv(path_agrupada, show_col_types = FALSE)
+
+
+
+if ("semana" %in% names(tabla_base_agrupada) &&
+
+    !inherits(tabla_base_agrupada$semana, "Date")) {
+
+  tabla_base_agrupada <- tabla_base_agrupada %>%
+
+    mutate(semana = as.Date(semana))
+
+}
+
+
+
+dim(tabla_base_agrupada)
+
+head(tabla_base_agrupada)
+
+```
+
+
+
+## Faltantes por columna
+
+
+
+```{r faltantes-por-columna}
+
+filas_totales <- nrow(tabla_base_agrupada)
+
+
+
+datos_faltantes_por_columna <- tabla_base_agrupada %>%
+
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+
+  pivot_longer(everything(), names_to = "columna", values_to = "n_na") %>%
+
+  mutate(
+
+    filas_totales = filas_totales,
+
+    pct_na = round(100 * n_na / filas_totales, 2)
+
+  ) %>%
+
+  arrange(desc(pct_na), desc(n_na))
+
+
+
+datos_faltantes_por_columna
+
+```
+
+
+
+## Gráfico: porcentaje de faltantes por variable
+
+
+
+```{r grafico-pct-faltantes, fig.width=12, fig.height=6}
+
+colores_pastel <- c(
+
+  "#B39DDB", "#CFD8DC", "#F8BBD0", "#C5E1A5", "#FFCC80",
+
+  "#90CAF9", "#FFE082", "#A5D6A7", "#CE93D8", "#80DEEA",
+
+  "#FFAB91", "#BCAAA4", "#E6EE9C", "#9FA8DA", "#80CBC4",
+
+  "#EF9A9A"
+
+)
+
+n_vars <- nrow(datos_faltantes_por_columna)
+
+
+
+grafico_faltantes_pct <- datos_faltantes_por_columna %>%
+
+  mutate(
+
+    columna = fct_reorder(columna, pct_na, .desc = TRUE),
+
+    etiqueta = paste0(format(pct_na, nsmall = 2), "%")
+
+  ) %>%
+
+  ggplot(aes(x = columna, y = pct_na, fill = columna)) +
+
+  geom_col(width = 0.7, show.legend = FALSE) +
+
+  geom_text(
+
+    aes(label = etiqueta),
+
+    vjust = -0.4,
+
+    fontface = "bold",
+
+    size = 3.2
+
+  ) +
+
+  scale_fill_manual(values = rep(colores_pastel, length.out = n_vars)) +
+
+  scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+
+  labs(
+
+    title = "Porcentaje de valores faltantes por variable",
+
+    subtitle = "Data agrupada cuadrante x semana | Ordenado de mayor a menor",
+
+    x = "Variable",
+
+    y = "Porcentaje de valores faltantes (%)"
+
+  ) +
+
+  theme_minimal(base_size = 12) +
+
+  theme(
+
+    plot.title = element_text(face = "bold", size = 14),
+
+    plot.subtitle = element_text(color = "gray30"),
+
+    axis.text.x = element_text(angle = 45, hjust = 1),
+
+    panel.grid.major.x = element_blank(),
+
+    panel.grid.minor = element_blank()
+
+  )
+
+
+
+grafico_faltantes_pct
+
+
+
+archivo_pct <- "grafico_datos_faltantes_agrupada_por_variable.png"
+
+ggsave(
+
+  file.path(UBICACION_DATA, archivo_pct),
+
+  plot = grafico_faltantes_pct,
+
+  width = 12,
+
+  height = 6,
+
+  dpi = 300,
+
+  bg = "white"
+
+)
+
+
+
+if (dir.exists(path_img_tesis)) {
+
+  file.copy(
+
+    file.path(UBICACION_DATA, archivo_pct),
+
+    file.path(path_img_tesis, archivo_pct),
+
+    overwrite = TRUE
+
+  )
+
+}
+
+```
+
+
+
+## Gráfico: conteo absoluto de faltantes por variable
+
+
+
+```{r grafico-conteo-faltantes, fig.width=12, fig.height=6}
+
+n_vars_con_na <- sum(datos_faltantes_por_columna$n_na > 0)
+
+grafico_faltantes_n <- datos_faltantes_por_columna %>%
+
+  filter(n_na > 0) %>%
+
+  mutate(
+
+    columna = fct_reorder(columna, n_na, .desc = TRUE),
+
+    etiqueta = format(n_na, big.mark = ",")
+
+  ) %>%
+
+  ggplot(aes(x = columna, y = n_na, fill = columna)) +
+
+  geom_col(width = 0.7, show.legend = FALSE) +
+
+  geom_text(
+
+    aes(label = etiqueta),
+
+    vjust = -0.4,
+
+    fontface = "bold",
+
+    size = 3.2
+
+  ) +
+
+  scale_fill_manual(values = rep(colores_pastel, length.out = n_vars_con_na)) +
+
+  scale_y_continuous(
+
+    labels = scales::comma,
+
+    expand = expansion(mult = c(0, 0.12))
+
+  ) +
+
+  labs(
+
+    title = "Conteo de valores faltantes por variable",
+
+    subtitle = paste0("N = ", format(filas_totales, big.mark = ","), " filas"),
+
+    x = "Variable",
+
+    y = "Número de NA"
+
+  ) +
+
+  theme_minimal(base_size = 12) +
+
+  theme(
+
+    plot.title = element_text(face = "bold", size = 14),
+
+    axis.text.x = element_text(angle = 45, hjust = 1),
+
+    panel.grid.major.x = element_blank()
+
+  )
+
+
+
+grafico_faltantes_n
+
+
+
+archivo_n <- "grafico_conteo_datos_faltantes_agrupada.png"
+
+ggsave(
+
+  file.path(UBICACION_DATA, archivo_n),
+
+  plot = grafico_faltantes_n,
+
+  width = 12,
+
+  height = 6,
+
+  dpi = 300,
+
+  bg = "white"
+
+)
+
+
+
+if (dir.exists(path_img_tesis)) {
+
+  file.copy(
+
+    file.path(UBICACION_DATA, archivo_n),
+
+    file.path(path_img_tesis, archivo_n),
+
+    overwrite = TRUE
+
+  )
+
+}
+
+```
+
+
+
+## Mapa de presencia de faltantes (muestra)
+
+
+
+```{r heatmap-faltantes, fig.width=10, fig.height=7}
+
+n_muestra_heatmap <- min(50L, nrow(tabla_base_agrupada))
+
+
+
+heatmap_faltantes <- tabla_base_agrupada %>%
+
+  mutate(fila = row_number()) %>%
+
+  filter(fila <= n_muestra_heatmap) %>%
+
+  mutate(across(-fila, ~ as.integer(is.na(.)))) %>%
+
+  pivot_longer(-fila, names_to = "columna", values_to = "es_na") %>%
+
+  mutate(
+
+    fila = factor(fila, levels = rev(sort(unique(fila)))),
+
+    columna = factor(columna, levels = names(tabla_base_agrupada))
+
+  ) %>%
+
+  ggplot(aes(x = columna, y = fila, fill = factor(es_na))) +
+
+  geom_tile(color = "white", linewidth = 0.2) +
+
+  scale_fill_manual(
+
+    values = c("0" = "#E8F5E9", "1" = "#E53935"),
+
+    labels = c("Completo", "Faltante"),
+
+    name = NULL
+
+  ) +
+
+  labs(
+
+    title = "Mapa de faltantes por fila y variable",
+
+    subtitle = paste0(
+
+      "Primeras ", n_muestra_heatmap,
+
+      " observaciones de la tabla agrupada"
+
+    ),
+
+    x = "Variable",
+
+    y = "Fila (muestra)"
+
+  ) +
+
+  theme_minimal(base_size = 11) +
+
+  theme(
+
+    plot.title = element_text(face = "bold"),
+
+    axis.text.x = element_text(angle = 45, hjust = 1),
+
+    panel.grid = element_blank()
+
+  )
+
+
+
+heatmap_faltantes
+
+
+
+archivo_heatmap <- "heatmap_datos_faltantes_agrupada.png"
+
+ggsave(
+
+  file.path(UBICACION_DATA, archivo_heatmap),
+
+  plot = heatmap_faltantes,
+
+  width = 10,
+
+  height = 7,
+
+  dpi = 300,
+
+  bg = "white"
+
+)
+
+
+
+if (dir.exists(path_img_tesis)) {
+
+  file.copy(
+
+    file.path(UBICACION_DATA, archivo_heatmap),
+
+    file.path(path_img_tesis, archivo_heatmap),
+
+    overwrite = TRUE
+
+  )
+
+}
+
+```
+
+
+
+## Faltantes por fila (resumen)
+
+
+
+```{r faltantes-por-fila}
+
+na_por_fila <- rowSums(is.na(tabla_base_agrupada))
+
+
+
+datos_faltantes_por_fila <- tibble(
+
+  filas_totales = length(na_por_fila),
+
+  filas_sin_na = sum(na_por_fila == 0),
+
+  filas_con_al_menos_un_na = sum(na_por_fila > 0),
+
+  pct_filas_con_faltantes = round(
+
+    100 * sum(na_por_fila > 0) / length(na_por_fila),
+
+    4
+
+  ),
+
+  max_na_en_una_fila = max(na_por_fila)
+
+)
+
+
+
+datos_faltantes_por_fila
+
+```
+
+
+
+## Gráfico: distribución de faltantes por fila
+
+
+
+```{r grafico-faltantes-por-fila, fig.width=9, fig.height=5}
+
+distribucion_na_fila <- tibble(n_na = na_por_fila) %>%
+
+  count(n_na, name = "n_filas") %>%
+
+  mutate(
+
+    pct_filas = round(100 * n_filas / sum(n_filas), 2),
+
+    etiqueta = paste0(format(n_filas, big.mark = ","), "\n(", pct_filas, "%)")
+
+  )
+
+
+
+grafico_na_fila <- ggplot(distribucion_na_fila, aes(x = factor(n_na), y = n_filas)) +
+
+  geom_col(fill = "#4A90D9", alpha = 0.85, width = 0.7) +
+
+  geom_text(aes(label = etiqueta), vjust = -0.3, size = 3.2, fontface = "bold") +
+
+  scale_y_continuous(
+
+    labels = scales::comma,
+
+    expand = expansion(mult = c(0, 0.12))
+
+  ) +
+
+  labs(
+
+    title = "Distribución de filas según cantidad de variables faltantes",
+
+    subtitle = "Data agrupada cuadrante x semana",
+
+    x = "Número de variables con NA en la fila",
+
+    y = "Cantidad de filas"
+
+  ) +
+
+  theme_minimal(base_size = 12) +
+
+  theme(plot.title = element_text(face = "bold"))
+
+
+
+grafico_na_fila
+
+
+
+archivo_fila <- "grafico_faltantes_por_fila_agrupada.png"
+
+ggsave(
+
+  file.path(UBICACION_DATA, archivo_fila),
+
+  plot = grafico_na_fila,
+
+  width = 9,
+
+  height = 5,
+
+  dpi = 300,
+
+  bg = "white"
+
+)
+
+
+
+if (dir.exists(path_img_tesis)) {
+
+  file.copy(
+
+    file.path(UBICACION_DATA, archivo_fila),
+
+    file.path(path_img_tesis, archivo_fila),
+
+    overwrite = TRUE
+
+  )
+
+}
+
+
+
+message("Graficos guardados en: ", UBICACION_DATA)
+
+```
+
+

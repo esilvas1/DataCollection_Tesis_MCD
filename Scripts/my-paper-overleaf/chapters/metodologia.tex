@@ -936,6 +936,21 @@ A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas;
 
 \noindent En síntesis, la calidad estructural del panel es alta en variables operativas de interrupción (sin \texttt{NA}), y la incompletitud relevante para el modelado se limita al bloque climático y, en menor medida, a \texttt{ALTITUD}. Las reglas de imputación o exclusión se definen con base en este diagnóstico y se aplican en la Etapa~4.
 
+\paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre la tabla de análisis \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones y $16$ variables, se replicó el mismo esquema de diagnóstico: conteo de \texttt{NA} por variable y por fila. El procedimiento se documenta en \href{\urlfaltantesagrupada}{missing\_values\_grouped.html}.
+
+En el análisis por columna, las $16$ variables del grano agregado---identificación y calendario (\texttt{id\_cuadrante}, \texttt{semana}), georreferenciación (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}), severidad (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}), clima semanal (\texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}) y continuidad (\texttt{n\_eventos}, \texttt{duracion\_total})---registran $0$ valores faltantes ($0$~\% sobre $N_{\mathrm{agr}}$). A nivel de fila, las $90{,}128$ observaciones están completas: ninguna fila presenta al menos un \texttt{NA} y el máximo de variables incompletas por fila es $0$.
+
+Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:agrupacion_cuadrante_semana}: las sumas y promedios semanales emplean \texttt{na.rm = TRUE}, de modo que los \texttt{NA} del panel diario no se propagan como campos vacíos en el grano agregado; las métricas operativas sin evento se consolidan en $0$, y cada fila exportada conserva llaves estructurales definidas (\texttt{id\_cuadrante}, \texttt{semana}). La Figura~\ref{fig:heatmap_faltantes_agrupada} ilustra la ausencia de faltantes en una muestra de las primeras $50$ filas: todas las celdas se clasifican como completas.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/heatmap_datos_faltantes_agrupada.png}
+    \caption{Mapa de faltantes por fila y variable en la tabla agrupada cuadrante $\times$ semana ($N_{\mathrm{agr}} = 90{,}128$; muestra de $50$ filas).}
+    \label{fig:heatmap_faltantes_agrupada}
+\end{figure}
+
+\noindent En consecuencia, la tabla agrupada no requiere reglas de imputación por valores faltantes en la Etapa~4; el tratamiento de incompletitud documentado en los párrafos anteriores aplica al panel consolidado activo~$\times$~día, grano en el que se originan los \texttt{NA} climáticos y de \texttt{ALTITUD}.
+
 \subsection{Identificación de valores extremos en variables cuantitativas}
 
 \label{sec:identificacion_valores_extremos}

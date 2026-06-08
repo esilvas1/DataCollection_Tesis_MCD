@@ -9,3 +9,10 @@ ACTUACIONES SOBRE EL AVANCE DEL PROYECTO DE GRADO
 - Como distribuir por etapas la modelacion de los 3 modelos, distribuidos o por repeticion de capitulos
 - cuantas hojas maximo puede llevar el documento de la tesis
  
+
+```bash
+git status --short
+git reset --hard HEAD
+git clean -fd
+git status
+```
