@@ -955,79 +955,82 @@ Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:
 
 \label{sec:identificacion_valores_extremos}
 
-Sobre el mismo panel consolidado se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y mediante diagramas de caja e histogramas. El análisis se orienta a distinguir observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos.
+Se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y diagramas de caja e histogramas. El análisis distingue observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos. Para cada variable se aplicaron tres reglas: (i)~rango intercuartílico de Tukey, $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango ampliado con factor $3{,}0$; y (iii)~percentiles P1--P99.
 
-Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}) describen la ubicación del activo y no son objeto de tratamiento de extremos, por lo que se excluyen. Se evaluaron las variables de severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}), las seis variables climáticas y las de continuidad (\texttt{DURACION}, \texttt{FRECUENCIA}). Para cada variable se aplicaron tres reglas univariadas: (i)~rango intercuartílico de Tukey, que marca como extremo todo valor fuera de $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango intercuartílico ampliado, con factor $3{,}0$ para extremos severos; y (iii)~regla de percentiles, que marca los valores por debajo de P1 o por encima de P99.
+\paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87{,}007{,}074$) se replicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en \href{\urldetectionoutliers}{detection\_outliers.html}. En ese grano, el $99{,}94$~\% de las filas registra cero en severidad y continuidad, por lo que el diagnóstico relevante se concentra en días con evento ($\approx 48{,}400$ registros), donde las distribuciones presentan cola pesada (máximo de \texttt{DURACION} de $\approx 231$~días, sugerente de posibles inconsistencias de registro). En clima, la \texttt{precipitacion\_total\_mm} diaria marca el $10{,}38$~\% de extremos bajo Tukey por su asimetría y exceso de ceros. Este análisis funda la calidad del insumo de integración; las conclusiones para el modelado territorial se formulan sobre la tabla agregada.
 
-\paragraph{Variables climáticas.} El diagnóstico se realizó sobre el panel completo. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{,}000$ observaciones.
+\paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones, se replicó el mismo esquema excluyendo \texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud} y \texttt{altitud}. El procedimiento se documenta en \href{\urloutliersagrupada}{outliers\_gruped.html}.
+
+\subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura, humedad y viento presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo Tukey (entre $0$~\% y $0{,}03$~\%); con el factor $3{,}0$ no se identifican extremos severos. La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal fuertemente asimétrico, la regla de Tukey marca el $8{,}98$~\% de las observaciones y la ampliada el $4{,}51$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%; estos valores corresponden a semanas de lluvia intensa operativamente plausibles. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90{,}128$ observaciones.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Valores extremos en variables climáticas (panel completo)}
-\label{tab:extremos_clima}
+\caption{Valores extremos en variables climáticas semanales (tabla agrupada)}
+\label{tab:extremos_clima_agrupada}
 \begin{tabular}{l r r r r}
 \toprule
 \textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
 \midrule
-\texttt{velocidad\_viento\_ms}   & 1,20  & 0,03  & 0,00 & 1,60 \\
-\texttt{temperatura\_media\_c}   & 25,47 & 0,02  & 0,00 & 1,99 \\
-\texttt{humedad\_relativa\_pct}  & 69,08 & 0,00  & 0,00 & 1,98 \\
-\texttt{temperatura\_minima\_c}  & 20,91 & 0,20  & 0,00 & 1,99 \\
-\texttt{temperatura\_maxima\_c}  & 31,32 & 0,05  & 0,00 & 1,99 \\
-\texttt{precipitacion\_total\_mm} & 0,50 & 10,38 & 5,30 & 1,00 \\
+\texttt{temp\_media\_semana}    & 24,84 & 0,00 & 0,00 & 1,95 \\
+\texttt{temp\_max\_semana}      & 32,76 & 0,00 & 0,00 & 1,99 \\
+\texttt{temp\_min\_semana}      & 18,95 & 0,03 & 0,00 & 1,96 \\
+\texttt{humedad\_media\_semana} & 72,28 & 0,00 & 0,00 & 1,97 \\
+\texttt{viento\_medio\_semana}  & 0,91  & 0,00 & 0,00 & 1,99 \\
+\texttt{viento\_max\_semana}    & 1,29  & 0,00 & 0,00 & 1,69 \\
+\texttt{precip\_total\_semana}  & 618,8 & 8,98 & 4,51 & 1,00 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima.png}
-    \caption{Diagramas de caja de las variables climáticas (muestra de $200{,}000$ observaciones).}
-    \label{fig:boxplot_clima}
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima_agrupada.png}
+    \caption{Diagramas de caja de las variables climáticas semanales en la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:boxplot_clima_agrupada}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima.png}
-    \caption{Histogramas de las variables climáticas (muestra de $200{,}000$ observaciones).}
-    \label{fig:histograma_clima}
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima_agrupada.png}
+    \caption{Histogramas de las variables climáticas semanales en la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:histograma_clima_agrupada}
 \end{figure}
 
-\paragraph{Variables de severidad y continuidad.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días). La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+\subparagraph{Variables de severidad y continuidad.} En la tabla completa persisten semanas sin interrupción registrada ($Q_1 = Q_3 = 0$ en \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{n\_eventos}), por lo que la regla de Tukey sobre el total es poco informativa para esas variables. El análisis relevante se realiza sobre semanas con evento ($\text{valor} > 0$), con $22{,}660$--$24{,}800$ registros según la variable. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{usuarios\_afectados} es $52$ usuarios pero su máximo alcanza $69{,}928$; \texttt{duracion\_total} tiene mediana de $19{,}7$~horas y un máximo de $2{,}227$~horas ($\approx 93$~días acumulados en la semana). La regla de Tukey marca entre el $11{,}6$~\% y el $15{,}2$~\% de las semanas con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_evento_agrupada} y~\ref{fig:histograma_evento_agrupada} presentan los diagramas de caja e histogramas.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Valores extremos en variables de severidad y continuidad (días con evento, $\text{valor} > 0$)}
-\label{tab:extremos_evento}
+\caption{Valores extremos en severidad y continuidad (semanas con evento, $\text{valor} > 0$)}
+\label{tab:extremos_evento_agrupada}
 \begin{tabular}{l r r r r r}
 \toprule
 \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
 \midrule
-\texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 2   & 2{,}469   & 14,91 & 11,78 \\
-\texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 23  & 34{,}622  & 14,50 & 10,83 \\
-\texttt{DURACION}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
-\texttt{FRECUENCIA}          & 48{,}364 & 1   & 6         & 1,96  & 1,96  \\
+\texttt{usuarios\_afectados}  & 22{,}660 & 52    & 69{,}928 & 15,16 & 11,21 \\
+\texttt{elementos\_afectados} & 22{,}660 & 7     & 3{,}626  & 15,00 & 10,70 \\
+\texttt{duracion\_total}      & 24{,}800 & 19,7  & 2{,}227  & 11,56 & 4,25  \\
+\texttt{n\_eventos}            & 22{,}659 & 1     & 58       & 14,53 & 5,73  \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento.png}
-    \caption{Diagramas de caja de las variables de severidad y continuidad en días con evento.}
-    \label{fig:boxplot_evento}
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento_agrupada.png}
+    \caption{Diagramas de caja de severidad y continuidad en semanas con evento (tabla agrupada).}
+    \label{fig:boxplot_evento_agrupada}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento.png}
-    \caption{Histogramas de las variables de severidad y continuidad en días con evento.}
-    \label{fig:histograma_evento}
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento_agrupada.png}
+    \caption{Histogramas de severidad y continuidad en semanas con evento (tabla agrupada).}
+    \label{fig:histograma_evento_agrupada}
 \end{figure}
 
-\noindent En síntesis, en las variables climáticas los valores extremos son escasos y operativamente plausibles (con la precipitación marcada por su asimetría natural), mientras que en las variables de severidad y continuidad la cola pesada es propia del fenómeno de interrupciones. Casos puntuales como duraciones cercanas a los $231$~días sugieren posibles inconsistencias de registro y se marcan para revisión. No se aplican transformaciones ni exclusiones en esta etapa; las decisiones de tratamiento (winsorización, transformación logarítmica o exclusión justificada) se documentan y ejecutan en la Etapa~4 a partir de este diagnóstico.
+\noindent En síntesis, en el grano cuadrante~$\times$~semana los extremos climáticos son escasos y operativamente plausibles (con la precipitación acumulada marcada por asimetría natural), mientras que en severidad y continuidad la cola pesada refleja semanas de alta afectación o múltiples eventos en un mismo cuadrante. No se aplican transformaciones ni exclusiones en esta etapa; las decisiones de tratamiento se documentan y ejecutan en la Etapa~4 a partir de este diagnóstico sobre la tabla de análisis.
 
 \subsection{Cálculo de estadísticos descriptivos}
 
