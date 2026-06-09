@@ -678,7 +678,26 @@ Una vez construido el panel consolidado (pasos de integración~5.2.1.4--5.2.1.8)
 \subsection{Agrupación de data consolidada por semana y cuadrante}
 \label{sec:agrupacion_cuadrante_semana}
 
-Con el panel consolidado \texttt{data\_consolidada.csv} (grano \textbf{activo eléctrico $\times$ día}, $N = 87{,}007{,}074$ observaciones), se construyó una tabla de análisis a mayor escala espacial y temporal, con unidad muestral \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en \href{\urlagrupacion}{data\_agrupacion.html}.
+\subsubsection{Definición del grano analítico (cuadrante $\times$ semana)}
+
+El panel consolidado con grano \textbf{activo eléctrico $\times$ día} ($N = 87{,}007{,}074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~5.2.1. No obstante, el objetivo del estudio ---pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión--- exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
+
+Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textbf{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{,}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/cuadrantes_800.png}
+    \caption{Malla de 800 cuadrantes sobre el territorio de concesión (celdas de aprox.\ $5 \times 2{,}5$\,km).}
+    \label{fig:cuadrantes_800}
+\end{figure}
+
+Desde el punto de vista temporal, la granularidad diaria del panel es necesaria para la integración de eventos, clima y severidad, pero resulta excesivamente ruidosa para el análisis exploratorio espacial y para la modelación orientada a dinámicas semanales de continuidad y clima. Por ello, se define la \textbf{semana calendario} (con inicio en lunes) como periodo de agregación temporal, lo que permite suavizar fluctuaciones diarias, estabilizar las series de interrupción y alinear las covariables meteorológicas en un horizonte compatible con la gestión operativa y con visualizaciones espacio-temporales (mapas por cuadrante y series semanales).
+
+Bajo esta definición, la unidad muestral del dataset agregado es el par \textbf{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
+
+\subsubsection{Procedimiento de agregación}
+
+Con el panel consolidado \texttt{data\_consolidada.csv}, se construyó la tabla de análisis a grano \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en \href{\urlagrupacion}{data\_agrupacion.html}.
 
 El insumo principal es el panel del paso~5.2.1.8. Para asignar cada activo a su zona de análisis espacial, se utiliza el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, del cual se extrae la relación \texttt{ELEMENTO} $\rightarrow$ \texttt{id\_cuadrante} (campo \texttt{CUADRANTE\_1}). La asignación se integra al panel mediante cruce izquierdo por \texttt{ELEMENTO}, conservando todas las filas del panel y anexando el identificador de cuadrante cuando existe emparejamiento. Complementariamente, el archivo \texttt{CUADRANTE\_CORD\_800} aporta la referencia de centroides por cuadrante.
 
@@ -693,7 +712,159 @@ La agregación se ejecuta con \texttt{group\_by(id\_cuadrante, semana)} y las si
     \item \textbf{Continuidad del servicio:} \texttt{n\_eventos} $=$ \texttt{sum(FRECUENCIA)} (total de desconexiones iniciadas en la semana) y \texttt{duracion\_total} $=$ \texttt{sum(duracion\_horas)} (suma de horas de interrupción prorrateadas por día en el cuadrante).
 \end{itemize}
 
-El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}. Esta tabla constituye un insumo agregado para análisis espacio-temporales posteriores (mapas por cuadrante, series semanales de continuidad y clima), sin sustituir el panel diario \texttt{data\_consolidada.csv}, que permanece como base de referencia del proyecto.
+El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}.
+
+\subsection{Descripción de la tabla base semanal cuadrante}
+
+La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textbf{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} presentan una muestra ilustrativa; por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación espacio-temporal e impacto operativo (Tabla~\ref{tab:muestra_semanal_cuadrante_1}), temperatura (Tabla~\ref{tab:muestra_semanal_cuadrante_2}), clima complementario (Tabla~\ref{tab:muestra_semanal_cuadrante_3}) y continuidad del servicio (Tabla~\ref{tab:muestra_semanal_cuadrante_4}).
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Estructura de la tabla base semanal cuadrante (\texttt{data\_agrupada.csv}).}
+\label{tab:base_semanal_cuadrante}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}p{2.6cm}@{}}
+\toprule
+\textbf{Bloque} & \textbf{Variables} & \textbf{Regla de agregación} \\
+\midrule
+Identificación &
+\begin{minipage}[t]{\linewidth}
+\texttt{id\_cuadrante}\\[0.1em]
+\texttt{semana}
+\end{minipage} &
+Llave del grupo \\
+Georreferencia &
+\begin{minipage}[t]{\linewidth}
+\texttt{latitud}\\[0.1em]
+\texttt{longitud}\\[0.1em]
+\texttt{altitud}
+\end{minipage} &
+\texttt{first} \\
+Impacto &
+\begin{minipage}[t]{\linewidth}
+\texttt{usuarios\_afectados}\\[0.1em]
+\texttt{elementos\_afectados}
+\end{minipage} &
+\texttt{sum} \\
+Clima &
+\begin{minipage}[t]{\linewidth}
+\texttt{temp\_media\_semana}\\[0.1em]
+\texttt{temp\_max\_semana}\\[0.1em]
+\texttt{temp\_min\_semana}\\[0.1em]
+\texttt{humedad\_media\_semana}\\[0.1em]
+\texttt{viento\_medio\_semana}\\[0.1em]
+\texttt{viento\_max\_semana}\\[0.1em]
+\texttt{precip\_total\_semana}
+\end{minipage} &
+\begin{minipage}[t]{\linewidth}
+\texttt{mean}\\[0.1em]
+\texttt{max}\\[0.1em]
+\texttt{min}\\[0.1em]
+\texttt{mean}\\[0.1em]
+\texttt{mean}\\[0.1em]
+\texttt{max}\\[0.1em]
+\texttt{sum}
+\end{minipage} \\
+Continuidad &
+\begin{minipage}[t]{\linewidth}
+\texttt{n\_eventos}\\[0.1em]
+\texttt{duracion\_total}
+\end{minipage} &
+\texttt{sum} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 1: cuadrante, semana, coordenadas e impacto operativo}
+\label{tab:muestra_semanal_cuadrante_1}
+\begin{tabular}{r l r r r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{LAT.} & \textbf{LON.} & \textbf{ALT.} & \textbf{USU. AFECT.} & \textbf{ELEM. AFECT.} \\
+\midrule
+  1 & 28/12/2020 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+  1 & 04/01/2021 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+  3 & 04/01/2021 & 7.1548 & -72.7196 & 2850 &    0 &   0 \\
+ 12 & 11/01/2021 & 7.4521 & -72.8903 & 1240 &  842 &  18 \\
+ 45 & 18/01/2021 & 7.7539 & -73.1204 &  890 &    0 &   0 \\
+117 & 25/01/2021 & 7.9215 & -72.5021 &  286 & 1254 &  24 \\
+203 & 01/02/2021 & 8.0812 & -72.4108 &  312 &    0 &   0 \\
+ 45 & 08/02/2021 & 7.7539 & -73.1204 &  890 &  315 &   6 \\
+117 & 15/02/2021 & 7.9215 & -72.5021 &  286 &  680 &  11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 2: temperatura (continuación)}
+\label{tab:muestra_semanal_cuadrante_2}
+\begin{tabular}{r l r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{TEMP. MED.} & \textbf{TEMP. MAX.} & \textbf{TEMP. MIN.} \\
+\midrule
+  1 & 28/12/2020 & 13.6 & 19.8 &  6.2 \\
+  1 & 04/01/2021 & 12.8 & 18.5 &  5.8 \\
+  3 & 04/01/2021 & 13.1 & 19.2 &  6.0 \\
+ 12 & 11/01/2021 & 22.4 & 28.6 & 16.8 \\
+ 45 & 18/01/2021 & 23.8 & 30.1 & 18.2 \\
+117 & 25/01/2021 & 24.1 & 30.4 & 18.9 \\
+203 & 01/02/2021 & 24.5 & 30.8 & 19.1 \\
+ 45 & 08/02/2021 & 23.5 & 29.7 & 17.8 \\
+117 & 15/02/2021 & 24.3 & 30.2 & 18.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 3: clima complementario (continuación)}
+\label{tab:muestra_semanal_cuadrante_3}
+\begin{tabular}{r l r r r r}
+\toprule
+\textbf{ID CUAD.} & \textbf{SEMANA} & \textbf{HUM. MED.} & \textbf{VEL. MED.} & \textbf{VEL. MAX.} & \textbf{PRECIP.} \\
+\midrule
+  1 & 28/12/2020 & 82.4 & 1.15 & 2.31 & 18.5 \\
+  1 & 04/01/2021 & 80.1 & 1.08 & 2.18 & 12.3 \\
+  3 & 04/01/2021 & 81.6 & 1.12 & 2.25 & 15.7 \\
+ 12 & 11/01/2021 & 76.3 & 0.98 & 1.95 &  8.4 \\
+ 45 & 18/01/2021 & 74.8 & 1.05 & 2.10 &  6.2 \\
+117 & 25/01/2021 & 73.5 & 1.18 & 2.42 &  9.8 \\
+203 & 01/02/2021 & 72.9 & 1.22 & 2.55 &  4.1 \\
+ 45 & 08/02/2021 & 75.2 & 1.09 & 2.08 & 11.6 \\
+117 & 15/02/2021 & 74.1 & 1.14 & 2.35 &  7.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 4: continuidad del servicio (continuación)}
+\label{tab:muestra_semanal_cuadrante_4}
+\begin{tabular}{r r}
+\toprule
+\textbf{N EVENTOS} & \textbf{DURACION TOTAL (h)} \\
+\midrule
+ 0 &   0.0 \\
+ 0 &   0.0 \\
+ 0 &   0.0 \\
+ 5 &  28.4 \\
+ 0 &   0.0 \\
+ 8 &  41.7 \\
+ 0 &   0.0 \\
+ 2 &  12.6 \\
+ 4 &  22.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} corresponden al mismo conjunto de observaciones en el mismo orden. \texttt{duracion\_total} se expresa en horas (suma semanal de \texttt{DURACION\_min}/60 prorrateada por día). Las semanas sin interrupciones registran \texttt{n\_eventos = 0} y \texttt{duracion\_total = 0}. Las unidades de temperatura, humedad, viento y precipitación coinciden con las del panel diario (°C, \%, m/s y mm, respectivamente).
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 \label{sec:evidencia_calidad_fuentes}
@@ -765,83 +936,101 @@ A nivel de fila, $83{,}576{,}020$ observaciones ($96{,}06$~\%) están completas;
 
 \noindent En síntesis, la calidad estructural del panel es alta en variables operativas de interrupción (sin \texttt{NA}), y la incompletitud relevante para el modelado se limita al bloque climático y, en menor medida, a \texttt{ALTITUD}. Las reglas de imputación o exclusión se definen con base en este diagnóstico y se aplican en la Etapa~4.
 
+\paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre la tabla de análisis \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones y $16$ variables, se replicó el mismo esquema de diagnóstico: conteo de \texttt{NA} por variable y por fila. El procedimiento se documenta en \href{\urlfaltantesagrupada}{missing\_values\_grouped.html}.
+
+En el análisis por columna, las $16$ variables del grano agregado---identificación y calendario (\texttt{id\_cuadrante}, \texttt{semana}), georreferenciación (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}), severidad (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}), clima semanal (\texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}) y continuidad (\texttt{n\_eventos}, \texttt{duracion\_total})---registran $0$ valores faltantes ($0$~\% sobre $N_{\mathrm{agr}}$). A nivel de fila, las $90{,}128$ observaciones están completas: ninguna fila presenta al menos un \texttt{NA} y el máximo de variables incompletas por fila es $0$.
+
+Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:agrupacion_cuadrante_semana}: las sumas y promedios semanales emplean \texttt{na.rm = TRUE}, de modo que los \texttt{NA} del panel diario no se propagan como campos vacíos en el grano agregado; las métricas operativas sin evento se consolidan en $0$, y cada fila exportada conserva llaves estructurales definidas (\texttt{id\_cuadrante}, \texttt{semana}). La Figura~\ref{fig:heatmap_faltantes_agrupada} ilustra la ausencia de faltantes en una muestra de las primeras $50$ filas: todas las celdas se clasifican como completas.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/heatmap_datos_faltantes_agrupada.png}
+    \caption{Mapa de faltantes por fila y variable en la tabla agrupada cuadrante $\times$ semana ($N_{\mathrm{agr}} = 90{,}128$; muestra de $50$ filas).}
+    \label{fig:heatmap_faltantes_agrupada}
+\end{figure}
+
+\noindent En consecuencia, la tabla agrupada no requiere reglas de imputación por valores faltantes en la Etapa~4; el tratamiento de incompletitud documentado en los párrafos anteriores aplica al panel consolidado activo~$\times$~día, grano en el que se originan los \texttt{NA} climáticos y de \texttt{ALTITUD}.
+
 \subsection{Identificación de valores extremos en variables cuantitativas}
 
 \label{sec:identificacion_valores_extremos}
 
-Sobre el mismo panel consolidado se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y mediante diagramas de caja e histogramas. El análisis se orienta a distinguir observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos.
+Se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y diagramas de caja e histogramas. El análisis distingue observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos. Para cada variable se aplicaron tres reglas: (i)~rango intercuartílico de Tukey, $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango ampliado con factor $3{,}0$; y (iii)~percentiles P1--P99.
 
-Las coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}) describen la ubicación del activo y no son objeto de tratamiento de extremos, por lo que se excluyen. Se evaluaron las variables de severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}), las seis variables climáticas y las de continuidad (\texttt{DURACION}, \texttt{FRECUENCIA}). Para cada variable se aplicaron tres reglas univariadas: (i)~rango intercuartílico de Tukey, que marca como extremo todo valor fuera de $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango intercuartílico ampliado, con factor $3{,}0$ para extremos severos; y (iii)~regla de percentiles, que marca los valores por debajo de P1 o por encima de P99.
+\paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87{,}007{,}074$) se replicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en \href{\urldetectionoutliers}{detection\_outliers.html}. En ese grano, el $99{,}94$~\% de las filas registra cero en severidad y continuidad, por lo que el diagnóstico relevante se concentra en días con evento ($\approx 48{,}400$ registros), donde las distribuciones presentan cola pesada (máximo de \texttt{DURACION} de $\approx 231$~días, sugerente de posibles inconsistencias de registro). En clima, la \texttt{precipitacion\_total\_mm} diaria marca el $10{,}38$~\% de extremos bajo Tukey por su asimetría y exceso de ceros. Este análisis funda la calidad del insumo de integración; las conclusiones para el modelado territorial se formulan sobre la tabla agregada.
 
-\paragraph{Variables climáticas.} El diagnóstico se realizó sobre el panel completo. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{,}000$ observaciones.
+\paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones, se replicó el mismo esquema excluyendo \texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud} y \texttt{altitud}. El procedimiento se documenta en \href{\urloutliersagrupada}{outliers\_gruped.html}.
+
+\subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura, humedad y viento presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo Tukey (entre $0$~\% y $0{,}03$~\%); con el factor $3{,}0$ no se identifican extremos severos. La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal fuertemente asimétrico, la regla de Tukey marca el $8{,}98$~\% de las observaciones y la ampliada el $4{,}51$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%; estos valores corresponden a semanas de lluvia intensa operativamente plausibles. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90{,}128$ observaciones.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Valores extremos en variables climáticas (panel completo)}
-\label{tab:extremos_clima}
+\caption{Valores extremos en variables climáticas semanales (tabla agrupada)}
+\label{tab:extremos_clima_agrupada}
 \begin{tabular}{l r r r r}
 \toprule
 \textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
 \midrule
-\texttt{velocidad\_viento\_ms}   & 1,20  & 0,03  & 0,00 & 1,60 \\
-\texttt{temperatura\_media\_c}   & 25,47 & 0,02  & 0,00 & 1,99 \\
-\texttt{humedad\_relativa\_pct}  & 69,08 & 0,00  & 0,00 & 1,98 \\
-\texttt{temperatura\_minima\_c}  & 20,91 & 0,20  & 0,00 & 1,99 \\
-\texttt{temperatura\_maxima\_c}  & 31,32 & 0,05  & 0,00 & 1,99 \\
-\texttt{precipitacion\_total\_mm} & 0,50 & 10,38 & 5,30 & 1,00 \\
+\texttt{temp\_media\_semana}    & 24,84 & 0,00 & 0,00 & 1,95 \\
+\texttt{temp\_max\_semana}      & 32,76 & 0,00 & 0,00 & 1,99 \\
+\texttt{temp\_min\_semana}      & 18,95 & 0,03 & 0,00 & 1,96 \\
+\texttt{humedad\_media\_semana} & 72,28 & 0,00 & 0,00 & 1,97 \\
+\texttt{viento\_medio\_semana}  & 0,91  & 0,00 & 0,00 & 1,99 \\
+\texttt{viento\_max\_semana}    & 1,29  & 0,00 & 0,00 & 1,69 \\
+\texttt{precip\_total\_semana}  & 618,8 & 8,98 & 4,51 & 1,00 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima.png}
-    \caption{Diagramas de caja de las variables climáticas (muestra de $200{,}000$ observaciones).}
-    \label{fig:boxplot_clima}
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima_agrupada.png}
+    \caption{Diagramas de caja de las variables climáticas semanales en la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:boxplot_clima_agrupada}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima.png}
-    \caption{Histogramas de las variables climáticas (muestra de $200{,}000$ observaciones).}
-    \label{fig:histograma_clima}
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima_agrupada.png}
+    \caption{Histogramas de las variables climáticas semanales en la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:histograma_clima_agrupada}
 \end{figure}
 
-\paragraph{Variables de severidad y continuidad.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días). La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+\subparagraph{Variables de severidad y continuidad.} En la tabla completa persisten semanas sin interrupción registrada ($Q_1 = Q_3 = 0$ en \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{n\_eventos}), por lo que la regla de Tukey sobre el total es poco informativa para esas variables. El análisis relevante se realiza sobre semanas con evento ($\text{valor} > 0$), con $22{,}660$--$24{,}800$ registros según la variable. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{usuarios\_afectados} es $52$ usuarios pero su máximo alcanza $69{,}928$; \texttt{duracion\_total} tiene mediana de $19{,}7$~horas y un máximo de $2{,}227$~horas ($\approx 93$~días acumulados en la semana). La regla de Tukey marca entre el $11{,}6$~\% y el $15{,}2$~\% de las semanas con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_evento_agrupada} y~\ref{fig:histograma_evento_agrupada} presentan los diagramas de caja e histogramas.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Valores extremos en variables de severidad y continuidad (días con evento, $\text{valor} > 0$)}
-\label{tab:extremos_evento}
+\caption{Valores extremos en severidad y continuidad (semanas con evento, $\text{valor} > 0$)}
+\label{tab:extremos_evento_agrupada}
 \begin{tabular}{l r r r r r}
 \toprule
 \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
 \midrule
-\texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 2   & 2{,}469   & 14,91 & 11,78 \\
-\texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 23  & 34{,}622  & 14,50 & 10,83 \\
-\texttt{DURACION}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
-\texttt{FRECUENCIA}          & 48{,}364 & 1   & 6         & 1,96  & 1,96  \\
+\texttt{usuarios\_afectados}  & 22{,}660 & 52    & 69{,}928 & 15,16 & 11,21 \\
+\texttt{elementos\_afectados} & 22{,}660 & 7     & 3{,}626  & 15,00 & 10,70 \\
+\texttt{duracion\_total}      & 24{,}800 & 19,7  & 2{,}227  & 11,56 & 4,25  \\
+\texttt{n\_eventos}            & 22{,}659 & 1     & 58       & 14,53 & 5,73  \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento.png}
-    \caption{Diagramas de caja de las variables de severidad y continuidad en días con evento.}
-    \label{fig:boxplot_evento}
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento_agrupada.png}
+    \caption{Diagramas de caja de severidad y continuidad en semanas con evento (tabla agrupada).}
+    \label{fig:boxplot_evento_agrupada}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento.png}
-    \caption{Histogramas de las variables de severidad y continuidad en días con evento.}
-    \label{fig:histograma_evento}
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento_agrupada.png}
+    \caption{Histogramas de severidad y continuidad en semanas con evento (tabla agrupada).}
+    \label{fig:histograma_evento_agrupada}
 \end{figure}
 
-\noindent En síntesis, en las variables climáticas los valores extremos son escasos y operativamente plausibles (con la precipitación marcada por su asimetría natural), mientras que en las variables de severidad y continuidad la cola pesada es propia del fenómeno de interrupciones. Casos puntuales como duraciones cercanas a los $231$~días sugieren posibles inconsistencias de registro y se marcan para revisión. No se aplican transformaciones ni exclusiones en esta etapa; las decisiones de tratamiento (winsorización, transformación logarítmica o exclusión justificada) se documentan y ejecutan en la Etapa~4 a partir de este diagnóstico.
+\noindent En síntesis, en el grano cuadrante~$\times$~semana los extremos climáticos son escasos y operativamente plausibles (con la precipitación acumulada marcada por asimetría natural), mientras que en severidad y continuidad la cola pesada refleja semanas de alta afectación o múltiples eventos en un mismo cuadrante. No se aplican transformaciones ni exclusiones en esta etapa; las decisiones de tratamiento se documentan y ejecutan en la Etapa~4 a partir de este diagnóstico sobre la tabla de análisis.
 
 \subsection{Cálculo de estadísticos descriptivos}
 
