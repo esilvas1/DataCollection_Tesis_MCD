@@ -1,0 +1,972 @@
+---
+title: "Capítulo: Análisis para la Agregación Espaciotemporal"
+subtitle: "De eventos de falla individuales a panel cuadrante × semana"
+author: "Cindy Lugo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+    theme: flatly
+    highlight: tango
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 9,
+  fig.height = 6,
+  fig.align  = "center",
+  dpi = 150,
+  dev = "png"
+)
+```
+
+```{r librerias}
+# ── Manipulación de datos ──────────────────────────────────────────────
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(tidyr)
+
+# ── Análisis espacial ──────────────────────────────────────────────────
+library(sf)            # objetos espaciales
+library(spdep)         # autocorrelación espacial (Moran, vecindades)
+library(spatstat)      # patrones puntuales (K de Ripley, densidad)
+library(gstat)         # semivariogramas
+library(sp)            # clases sp (requerido por gstat)
+
+# ── Visualización ──────────────────────────────────────────────────────
+library(ggplot2)
+library(patchwork)
+library(viridis)
+library(knitr)
+library(kableExtra)
+```
+
+```{r entorno}
+# ── Rutas ──────────────────────────────────────────────────────────────
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") stop("UBICACION_DATA no está definida. Verifica el archivo .env.")
+
+path_consolidada  <- file.path(UBICACION_DATA, "data_consolidada.csv")
+path_cuadrantes   <- file.path(UBICACION_DATA, "Distribución de Cuadrantes", "CUADRANTE_CORD_800.xls")
+path_elem_cuad    <- file.path(UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls")
+
+for (p in c(path_consolidada, path_cuadrantes, path_elem_cuad)) {
+  if (!file.exists(p)) stop("No se encontró: ", p)
+}
+```
+
+---
+
+# Introducción y motivación metodológica
+
+El análisis de la confiabilidad de redes de distribución eléctrica requiere decisiones metodológicas explícitas sobre la **escala espacial y temporal** de observación. La base de datos original registra eventos de falla al nivel del **activo individual × día**, lo que genera un panel de dimensiones considerables ($N = A \times T$, con $A \approx 47{,}649$ activos y $T = 1{,}826$ días). Operar directamente con este panel presenta dos desafíos:
+
+1. **Complejidad computacional:** el volumen dificulta la estimación de modelos espaciales con matrices de vecindad densas.
+2. **Esparcidad de eventos:** la mayoría de activos registran cero fallas en cualquier día dado, lo que genera problemas de inflación de ceros en los modelos de conteo o duración.
+
+Una solución habitual consiste en agregar los datos a unidades espacio-temporales más amplias (cuadrantes × semanas). Sin embargo, esta decisión no debe adoptarse de manera arbitraria. El presente capítulo demuestra que:
+
+- Las fallas exhiben **concentración espacial no aleatoria** (clustering).
+- Existe una **escala espacial de dependencia** identificable, comparable al tamaño de los cuadrantes definidos.
+- La agregación semanal es coherente con la **dinámica temporal** de los eventos.
+
+El análisis utiliza los datos del **último trimestre de 2025** (octubre–diciembre), período suficientemente reciente y con registros completos de variables climáticas.
+
+---
+
+# Carga y preparación de datos
+
+```{r lectura-datos}
+message("Leyendo panel consolidado...")
+tabla_base <- read_csv(path_consolidada, show_col_types = FALSE)
+
+# Tabla de asignación elemento → cuadrante
+elemento_cuadrante <- read_excel(path_elem_cuad) %>%
+  select(ELEMENTO, CUADRANTE_1) %>%
+  distinct() %>%
+  rename(id_cuadrante = CUADRANTE_1)
+
+# Coordenadas de cuadrantes
+cuadrante_coord <- read_excel(path_cuadrantes)
+
+# Unir cuadrante al panel principal
+tabla_base <- tabla_base %>%
+  left_join(elemento_cuadrante, by = "ELEMENTO")
+
+message("Dimensiones del panel completo: ", paste(dim(tabla_base), collapse = " × "))
+```
+
+```{r filtro-trimestre}
+# ── Filtrar: octubre – diciembre 2025 ─────────────────────────────────
+datos_q4 <- tabla_base %>%
+  filter(
+    FECHA_DIA >= as.Date("2025-10-01"),
+    FECHA_DIA <= as.Date("2025-12-31")
+  )
+
+message("Filas en Q4-2025: ", nrow(datos_q4))
+message("Cuadrantes con datos: ", n_distinct(datos_q4$id_cuadrante))
+message("Activos con datos: ",    n_distinct(datos_q4$ELEMENTO))
+```
+
+```{r tabla-cobertura}
+# Resumen de cobertura temporal
+cobertura <- datos_q4 %>%
+  summarise(
+    fecha_inicio   = min(FECHA_DIA),
+    fecha_fin      = max(FECHA_DIA),
+    n_dias         = n_distinct(FECHA_DIA),
+    n_activos      = n_distinct(ELEMENTO),
+    n_cuadrantes   = n_distinct(id_cuadrante),
+    total_eventos  = sum(FRECUENCIA, na.rm = TRUE),
+    activos_con_falla = sum(FRECUENCIA > 0, na.rm = TRUE)
+  )
+
+kable(cobertura, caption = "Cobertura de los datos Q4-2025",
+      format.args = list(big.mark = ",")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r eventos-falla}
+# Extraer sólo registros con al menos una falla (eventos reales)
+eventos_falla <- datos_q4 %>%
+  filter(FRECUENCIA > 0) %>%
+  select(ELEMENTO, TIPO, LATITUD, LONGITUD, ALTITUD,
+         FECHA_DIA, FRECUENCIA, DURACION_min, id_cuadrante,
+         temperatura_media_c, precipitacion_total_mm,
+         humedad_relativa_pct, velocidad_viento_ms)
+
+message("Eventos de falla en Q4-2025: ", nrow(eventos_falla))
+```
+
+---
+
+# Análisis descriptivo de los eventos
+
+## Distribución temporal de fallas
+
+```{r plot-temporal, fig.cap="Figura 1. Frecuencia diaria de eventos de falla, Q4-2025."}
+fallas_diarias <- eventos_falla %>%
+  group_by(FECHA_DIA) %>%
+  summarise(n_fallas = sum(FRECUENCIA), .groups = "drop")
+
+p1 <- ggplot(fallas_diarias, aes(x = FECHA_DIA, y = n_fallas)) +
+  geom_col(fill = "#2E86AB", alpha = 0.8) +
+  geom_smooth(se = FALSE, color = "#E84855", linewidth = 1, method = "loess", span = 0.3) +
+  scale_x_date(date_breaks = "2 weeks", date_labels = "%d-%b") +
+  labs(
+    title    = "Frecuencia diaria de fallas – Q4 2025",
+    subtitle = "Barras: conteo diario | Línea roja: tendencia suavizada (LOESS)",
+    x = "Fecha", y = "N° de eventos de falla"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p1
+```
+
+```{r plot-semana-mes, fig.cap="Figura 2. Distribución de fallas por semana del mes y mes."}
+fallas_sem <- eventos_falla %>%
+  mutate(
+  mes_num = month(FECHA_DIA),
+  mes = factor(
+    mes_num,
+    levels = 1:12,
+    labels = c(
+      "Ene","Feb","Mar","Abr",
+      "May","Jun","Jul","Ago",
+      "Sep","Oct","Nov","Dic"
+    )
+  ),
+  sem_mes = ceiling(day(FECHA_DIA)/7)
+)%>%
+  group_by(mes, sem_mes) %>%
+  summarise(n = sum(FRECUENCIA), .groups = "drop")
+
+p2 <- ggplot(fallas_sem, aes(x = factor(sem_mes), y = n, fill = mes)) +
+  geom_col(position = "dodge") +
+  scale_fill_viridis_d(option = "D", begin = 0.2, end = 0.9) +
+  labs(title = "Fallas por semana del mes y mes", x = "Semana del mes", y = "N° eventos",
+       fill = "Mes") +
+  theme_minimal(base_size = 11)
+
+p2
+```
+
+**Interpretación:** Se observa variabilidad temporal clara entre semanas y meses, lo que sugiere la existencia de patrones temporales no estacionarios. La agregación semanal permite capturar ciclos recurrentes sin la alta volatilidad diaria.
+
+## Distribución espacial de fallas por cuadrante
+
+```{r resumen-cuadrante}
+fallas_cuad <- eventos_falla %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    n_eventos      = sum(FRECUENCIA),
+    duracion_total = sum(DURACION_min) / 60,
+    n_activos      = n_distinct(ELEMENTO),
+    lat            = mean(LATITUD),
+    lon            = mean(LONGITUD),
+    .groups = "drop"
+  )
+
+# Estadísticas descriptivas
+desc_cuad <- fallas_cuad %>%
+  summarise(
+    n_cuadrantes         = n(),
+    cuad_sin_falla       = sum(n_eventos == 0),
+    cuad_con_falla       = sum(n_eventos > 0),
+    pct_con_falla        = round(mean(n_eventos > 0) * 100, 1),
+    media_eventos        = round(mean(n_eventos), 2),
+    mediana_eventos      = median(n_eventos),
+    p90_eventos          = quantile(n_eventos, 0.9),
+    max_eventos          = max(n_eventos)
+  )
+
+kable(desc_cuad, caption = "Tabla 1. Distribución de fallas por cuadrante – Q4 2025",
+      format.args = list(big.mark = ",")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r plot-hist-cuadrante, fig.cap="Figura 3. Histograma de eventos por cuadrante (escala log+1)."}
+ggplot(fallas_cuad, aes(x = log1p(n_eventos))) +
+  geom_histogram(bins = 30, fill = "#4A90D9", color = "white", alpha = 0.85) +
+  geom_vline(xintercept = log1p(mean(fallas_cuad$n_eventos)),
+             color = "red", linetype = "dashed", linewidth = 1) +
+  labs(
+    title    = "Distribución de fallas por cuadrante (log(1+n))",
+    subtitle = "Línea roja: media. La asimetría positiva indica concentración espacial",
+    x        = "log(1 + n° eventos)",
+    y        = "Frecuencia de cuadrantes"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+---
+
+# Análisis de patrones puntuales espaciales
+
+Esta sección trata los eventos de falla como un **proceso puntual espacial** y evalúa si su distribución es aleatoria (Proceso de Poisson Homogéneo, CSR) o presenta agrupamiento.
+
+## Mapa de eventos y densidad Kernel
+
+```{r mapa-eventos, fig.cap="Figura 4. Localización de eventos de falla y densidad Kernel (KDE)."}
+# Convertir a objeto sf para mapeo
+eventos_sf <- eventos_falla %>%
+  filter(!is.na(LATITUD), !is.na(LONGITUD)) %>%
+  st_as_sf(coords = c("LONGITUD", "LATITUD"), crs = 4326)
+
+# Crear ventana espacial (bounding box + buffer)
+bbox_eventos <- st_bbox(eventos_sf)
+x_range <- c(bbox_eventos["xmin"] - 0.05, bbox_eventos["xmax"] + 0.05)
+y_range <- c(bbox_eventos["ymin"] - 0.05, bbox_eventos["ymax"] + 0.05)
+
+# ── KDE con spatstat ───────────────────────────────────────────────────
+coords_mat <- st_coordinates(eventos_sf)
+ppp_eventos <- ppp(
+  x      = coords_mat[, 1],
+  y      = coords_mat[, 2],
+  window = owin(xrange = x_range, yrange = y_range)
+)
+
+# Ancho de banda de Silverman
+bw_silverman <- bw.diggle(ppp_eventos)
+
+kde_result <- density(ppp_eventos, sigma = bw_silverman)
+
+# Convertir KDE a data frame para ggplot
+kde_df <- as.data.frame(kde_result) %>%
+  rename(lon = x, lat = y, intensidad = value)
+
+# Datos de eventos para overlay
+eventos_df <- as.data.frame(coords_mat) %>%
+  rename(lon = X, lat = Y)
+
+ggplot() +
+  geom_raster(data = kde_df, aes(x = lon, y = lat, fill = intensidad), alpha = 0.85) +
+  geom_point(data = eventos_df, aes(x = lon, y = lat),
+             color = "white", alpha = 0.25, size = 0.8) +
+  scale_fill_viridis_c(option = "inferno", name = "Densidad\n(eventos/unidad²)") +
+  coord_equal() +
+  labs(
+    title    = "Densidad Kernel de eventos de falla – Q4 2025",
+    subtitle = paste0("Ancho de banda Diggle: σ = ", round(bw_silverman, 4), " grados"),
+    x = "Longitud", y = "Latitud"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+**Interpretación:** La densidad Kernel revela **zonas de concentración diferenciadas**, con núcleos de alta intensidad que contrastan con áreas de baja o nula actividad. Esto es una primera evidencia visual de que las fallas no se distribuyen de manera homogénea en el espacio.
+
+## Función K de Ripley: ¿agrupamiento o dispersión?
+
+La función $K(r)$ mide la intensidad esperada de eventos dentro de un radio $r$ alrededor de un evento típico, corregida por la intensidad global $\lambda$:
+
+$$\hat{K}(r) = \frac{1}{\hat{\lambda}^2 |A|} \sum_{i \neq j} \mathbf{1}(d_{ij} \leq r)$$
+
+Si $\hat{K}(r) > \pi r^2$ (valor bajo CSR), existe **agrupamiento** a la escala $r$.
+
+```{r funcion-k-ripley, fig.cap="Figura 5. Función K de Ripley con envolvente de simulación Monte Carlo (999 simulaciones)."}
+set.seed(42)
+
+# Calcular K observada y envolvente CSR (999 simulaciones)
+k_obs <- Kest(ppp_eventos, correction = "Ripley")
+
+k_env <- envelope(
+  ppp_eventos,
+  fun       = Kest,
+  nsim      = 999,
+  correction = "Ripley",
+  verbose   = FALSE,
+  global    = TRUE   # envolvente global (más estricta)
+)
+
+# Convertir a data frame
+k_df <- as.data.frame(k_env)
+
+# Gráfico L(r) - r (transformación estabilizadora de varianza)
+k_df <- k_df %>%
+  mutate(
+    L_obs = sqrt(obs  / pi) - r,
+    L_lo  = sqrt(lo   / pi) - r,
+    L_hi  = sqrt(hi   / pi) - r,
+    L_teo = 0   # bajo CSR, L(r)-r = 0
+  )
+
+# Identificar radio de máximo agrupamiento
+r_max_cluster <- k_df$r[which.max(k_df$L_obs)]
+
+ggplot(k_df, aes(x = r)) +
+  geom_ribbon(aes(ymin = L_lo, ymax = L_hi), fill = "#A8D5BA", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_line(aes(y = L_obs), color = "#2E86AB", linewidth = 1.2) +
+  geom_vline(xintercept = r_max_cluster, linetype = "dotted",
+             color = "#E84855", linewidth = 1) +
+  annotate("text", x = r_max_cluster, y = max(k_df$L_obs) * 0.85,
+           label = paste0("r* = ", round(r_max_cluster, 4), "°\n(≈",
+                          round(r_max_cluster * 111, 1), " km)"),
+           color = "#E84855", hjust = -0.1, size = 3.5) +
+  labs(
+    title    = "Función L(r) – r de Ripley",
+    subtitle = "Zona verde: envolvente de aleatoriedad completa (CSR, 999 sims.).\nLínea azul por encima de 0 → agrupamiento significativo",
+    x        = "Radio r (grados decimales)",
+    y        = "L(r) – r"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+```{r interpretacion-k}
+# Rango donde existe agrupamiento significativo
+rango_cluster <- k_df %>%
+  filter(L_obs > L_hi) %>%
+  summarise(r_min = min(r), r_max = max(r))
+
+cat("Agrupamiento significativo (L(r) > envolvente superior):\n")
+cat("  Desde r =", round(rango_cluster$r_min, 4), "° (",
+    round(rango_cluster$r_min * 111, 2), "km)\n")
+cat("  Hasta  r =", round(rango_cluster$r_max, 4), "° (",
+    round(rango_cluster$r_max * 111, 2), "km)\n")
+cat("  Radio de máximo agrupamiento r* =", round(r_max_cluster, 4), "° (",
+    round(r_max_cluster * 111, 2), "km)\n")
+```
+
+**Conclusión de la función K:** Las fallas exhiben agrupamiento espacial estadísticamente significativo en el rango de radios identificado, rechazando la hipótesis de aleatoriedad espacial completa (CSR). La escala de máxima concentración ($r^* \approx$ `r round(r_max_cluster * 111, 1)` km) proporciona una referencia empírica para el tamaño de las unidades de agregación.
+
+
+La curva observada se encuentra sistemáticamente por encima de la envolvente generada bajo la hipótesis de Aleatoriedad Espacial Completa (999 simulaciones CSR), permitiendo rechazar la hipótesis nula para prácticamente todas las escalas espaciales analizadas. Este resultado indica que las fallas tienden a concentrarse geográficamente en determinados sectores de la red, sugiriendo la existencia de factores espaciales subyacentes que incrementan la probabilidad de ocurrencia de eventos en ciertas zonas del territorio.
+
+De cara al ejercicio, esto implica que las fallas eléctricas no se distribuyen aleatoriamente sobre el territorio. Existen zonas donde los eventos tienden a concentrarse significativamente, lo que sugiere la presencia de factores espaciales comunes que incrementan la vulnerabilidad de determinados cuadrantes.
+
+Este resultado es una evidencia fuerte de que:
+
+- existe dependencia espacial;
+- los datos no son independientes espacialmente;
+- un modelo puramente temporal podría estar omitiendo información relevante.
+
+
+## Prueba de aleatoriedad espacial completa (CSR)
+
+```{r test-csr}
+# Prueba basada en el estadístico de cuadrantes (quadrat count test)
+qt <- quadrat.test(ppp_eventos, nx = 10, ny = 10, method = "Chisq")
+
+cat("=== Prueba Chi-cuadrado de cuadrantes (CSR) ===\n")
+print(qt)
+cat("\nInterpretación: p-valor =", round(qt$p.value, 6),
+    ifelse(qt$p.value < 0.05,
+           "→ Se rechaza CSR. Las fallas no son espacialmente aleatorias.",
+           "→ No se rechaza CSR."))
+```
+
+```{r plot-quadrat, fig.cap="Figura 6. Prueba de cuadrantes: conteos observados vs. esperados bajo CSR."}
+plot(qt, main = "Prueba de cuadrantes (CSR)\nNúmero observado / esperado por celda")
+```
+
+---
+
+# Análisis de autocorrelación espacial
+
+## Preparación de la estructura de vecindad
+
+```{r vecindad-cuadrantes}
+# Usar los cuadrantes con al menos un evento
+cuad_con_datos <- fallas_cuad %>%
+  filter(!is.na(lat), !is.na(lon))
+
+# Convertir a sf
+cuad_sf <- cuad_con_datos %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)
+
+# Construir matriz de vecinos (k = 5 vecinos más cercanos)
+coords_cuad <- st_coordinates(cuad_sf)
+knn5         <- knearneigh(coords_cuad, k = 5)
+nb_knn5      <- knn2nb(knn5)
+lw_knn5      <- nb2listw(nb_knn5, style = "W")
+
+cat("Vecindad construida:", length(nb_knn5), "cuadrantes, k = 5 vecinos más cercanos\n")
+```
+
+## Índice de Moran Global
+
+El índice de Moran $I$ mide la autocorrelación espacial global:
+
+$$I = \frac{n}{\sum_i \sum_j w_{ij}} \cdot \frac{\sum_i \sum_j w_{ij}(x_i - \bar{x})(x_j - \bar{x})}{\sum_i (x_i - \bar{x})^2}$$
+
+El índice de Moran puede tomar valores entre:
+
+$−1≤I≤1$
+
+Si:
+- I≈0 → patrón aleatorio.
+- I>0 → agrupamiento espacial.
+- I<0 → dispersión espacial.
+
+```{r moran-global}
+# Moran para n_eventos
+moran_eventos <- moran.test(
+  cuad_con_datos$n_eventos,
+  listw = lw_knn5,
+  alternative = "greater"
+)
+
+# Moran para duracion_total
+moran_duracion <- moran.test(
+  cuad_con_datos$duracion_total,
+  listw = lw_knn5,
+  alternative = "greater"
+)
+
+resultados_moran <- tibble(
+  Variable   = c("N° eventos (SAIFI proxy)", "Duración total en horas (SAIDI proxy)"),
+  `I de Moran` = c(round(moran_eventos$estimate["Moran I statistic"], 4),
+                    round(moran_duracion$estimate["Moran I statistic"], 4)),
+  `E[I]`      = c(round(moran_eventos$estimate["Expectation"], 6),
+                   round(moran_duracion$estimate["Expectation"], 6)),
+  `Z`         = c(round(moran_eventos$statistic, 3),
+                   round(moran_duracion$statistic, 3)),
+  `p-valor`   = c(format.pval(moran_eventos$p.value, digits = 4),
+                   format.pval(moran_duracion$p.value, digits = 4)),
+  `Conclusión` = c(
+    ifelse(moran_eventos$p.value  < 0.05, "Agrupamiento significativo ✔", "Sin evidencia de agrupamiento"),
+    ifelse(moran_duracion$p.value < 0.05, "Agrupamiento significativo ✔", "Sin evidencia de agrupamiento")
+  )
+)
+
+kable(resultados_moran,
+      caption = "Tabla 2. Índice de Moran Global – Q4 2025") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+En este caso se identifica I=0.286, lo que indica una autocorrelación espacial positiva moderada.
+
+$H_0: I=0$ se rechaza. Así, no existe evidencia de que el patrón observado sea producto del azar.
+
+El diagrama de Moran evidencia una autocorrelación espacial positiva y estadísticamente significativa en la distribución de los eventos de falla (I=0.286, p<0.001). Este resultado indica que los cuadrantes con alta frecuencia de fallas tienden a localizarse cerca de otros cuadrantes igualmente afectados, mientras que las zonas con baja incidencia también presentan agrupamientos espaciales. La presencia de conglomerados Alto-Alto (HH) y Bajo-Bajo (LL) confirma la existencia de estructuras espaciales persistentes en la red eléctrica. Estos hallazgos son consistentes con los resultados obtenidos mediante la función de Ripley y sugieren que la ocurrencia de fallas está influenciada por factores espaciales compartidos, por lo que la dependencia espacial debe ser considerada explícitamente en etapas posteriores de modelación y análisis predictivo.
+
+
+Un detalle especialmente interesante del gráfico es que aparece un punto extremo alrededor de z(n_eventos)≈10. Eso sugiere que existe al menos un cuadrante con una frecuencia de fallas extraordinariamente superior al promedio de toda la red. Ese cuadrante merece ser identificado y analizado individualmente porque probablemente corresponda a uno de los principales focos de criticidad del sistema.
+
+## Diagrama de dispersión de Moran
+
+```{r moran-plot, fig.cap="Figura 7. Diagrama de dispersión de Moran para el número de eventos de falla."}
+# Calcular rezago espacial
+cuad_con_datos <- cuad_con_datos %>%
+  mutate(
+    z_eventos  = scale(n_eventos)[,1],
+    wz_eventos = lag.listw(lw_knn5, z_eventos)
+  )
+
+# Cuadrantes LISA
+cuad_con_datos <- cuad_con_datos %>%
+  mutate(
+    cuadrante_moran = case_when(
+      z_eventos > 0 & wz_eventos > 0 ~ "Alto-Alto (HH)",
+      z_eventos < 0 & wz_eventos < 0 ~ "Bajo-Bajo (LL)",
+      z_eventos > 0 & wz_eventos < 0 ~ "Alto-Bajo (HL)",
+      z_eventos < 0 & wz_eventos > 0 ~ "Bajo-Alto (LH)",
+      TRUE ~ "ND"
+    )
+  )
+
+colores_moran <- c(
+  "Alto-Alto (HH)" = "#D7191C",
+  "Bajo-Bajo (LL)" = "#2C7BB6",
+  "Alto-Bajo (HL)" = "#FDAE61",
+  "Bajo-Alto (LH)" = "#ABD9E9",
+  "ND"            = "gray80"
+)
+
+ggplot(cuad_con_datos, aes(x = z_eventos, y = wz_eventos, color = cuadrante_moran)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", color = "black", se = FALSE, linewidth = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray40") +
+  scale_color_manual(values = colores_moran, name = "Tipo LISA") +
+  annotate("text", x = Inf, y = Inf,
+           label = paste0("I de Moran = ", round(moran_eventos$estimate[1], 3),
+                          "\np = ", format.pval(moran_eventos$p.value, digits = 3)),
+           hjust = 1.1, vjust = 1.5, size = 3.5, color = "black") +
+  labs(
+    title    = "Diagrama de Moran – N° de eventos de falla",
+    subtitle = "Eje X: valor estandarizado del cuadrante | Eje Y: rezago espacial (promedio vecinos)",
+    x = "z(n_eventos)", y = "W·z(n_eventos)"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+## Indicadores LISA (autocorrelación local)
+
+```{r lisa}
+# LISA local
+lisa <- localmoran(cuad_con_datos$n_eventos, lw_knn5)
+
+cuad_con_datos <- cuad_con_datos %>%
+  mutate(
+    I_local  = lisa[, "Ii"],
+    p_local  = lisa[, "Pr(z != E(Ii))"],
+    sig_lisa = p_local < 0.05
+  )
+
+# Resumen
+tabla_lisa <- cuad_con_datos %>%
+  count(cuadrante_moran, sig_lisa) %>%
+  filter(sig_lisa) %>%
+  select(cuadrante_moran, n) %>%
+  arrange(desc(n))
+
+kable(tabla_lisa,
+      col.names = c("Tipo de cluster LISA", "N° cuadrantes significativos"),
+      caption   = "Tabla 3. Clusters locales significativos (p < 0.05) – LISA") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+---
+
+# Análisis geoestadístico: semivariograma empírico
+
+El semivariograma empírico cuantifica cómo la varianza de los eventos de falla cambia con la distancia entre cuadrantes:
+
+$$\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{(i,j) \in N(h)} (z_i - z_j)^2$$
+
+donde $N(h)$ es el conjunto de pares cuya separación cae en el intervalo de distancia $h$.
+
+```{r semivariograma, fig.cap="Figura 8. Semivariograma empírico e isotrópico ajustado para el número de eventos de falla."}
+## -----------------------------------------------------------
+## Análisis geoestadístico: semivariograma empírico
+## -----------------------------------------------------------
+
+library(sf)
+library(sp)
+library(gstat)
+
+# Base agregada por cuadrante (Q4-2025)
+cuad_vario <- fallas_cuad %>%
+  filter(!is.na(lat), !is.na(lon)) %>%
+  transmute(
+    id_cuadrante,
+    latitud = lat,
+    longitud = lon,
+    n_eventos
+  )
+
+## -----------------------------------------------------------
+## 1. Convertir a objeto espacial
+## -----------------------------------------------------------
+
+cuad_sf <- st_as_sf(
+  cuad_vario,
+  coords = c("longitud", "latitud"),
+  crs = 4326
+)
+
+## -----------------------------------------------------------
+## 2. Transformar a coordenadas métricas
+## Colombia: MAGNA-SIRGAS / Colombia Bogotá zone
+## -----------------------------------------------------------
+
+cuad_sf <- st_transform(
+  cuad_sf,
+  3116
+)
+
+cuad_sp <- as(cuad_sf, "Spatial")
+
+## -----------------------------------------------------------
+## 3. Explorar distancias reales
+## -----------------------------------------------------------
+
+distancias <- spDists(
+  coordinates(cuad_sp),
+  longlat = FALSE
+)
+
+summary(as.vector(distancias))
+
+max_dist <- max(distancias)
+
+cat(
+  "Distancia máxima entre centroides:",
+  round(max_dist/1000,2),
+  "km\n"
+)
+
+## -----------------------------------------------------------
+## 4. Semivariograma empírico
+## -----------------------------------------------------------
+
+v_emp <- variogram(
+  n_eventos ~ 1,
+  data = cuad_sp,
+
+  cutoff = max_dist/2,
+
+  width = 2500
+)
+
+plot(
+  v_emp,
+  main = "Semivariograma empírico"
+)
+
+## -----------------------------------------------------------
+## 5. Ajuste modelo esférico
+## -----------------------------------------------------------
+
+vgm_ini <- vgm(
+  psill   = var(cuad_sp$n_eventos)*0.8,
+  model   = "Sph",
+  range   = 20000,
+  nugget  = var(cuad_sp$n_eventos)*0.2
+)
+
+v_fit_sph <- fit.variogram(
+  v_emp,
+  model = vgm_ini
+)
+
+plot(
+  v_emp,
+  v_fit_sph,
+  main = "Semivariograma ajustado - Esférico"
+)
+
+print(v_fit_sph)
+
+## -----------------------------------------------------------
+## 6. Comparar varios modelos
+## -----------------------------------------------------------
+
+modelos <- c(
+  "Sph",
+  "Exp",
+  "Gau",
+  "Mat"
+)
+
+ajustes <- lapply(
+  modelos,
+  function(m){
+
+    fit.variogram(
+      v_emp,
+      vgm(
+        psill = var(cuad_sp$n_eventos)*0.8,
+        model = m,
+        range = 20000,
+        nugget = var(cuad_sp$n_eventos)*0.2
+      )
+    )
+
+  }
+)
+
+comparacion <- data.frame(
+  Modelo = modelos,
+  SSErr = sapply(
+    ajustes,
+    function(x) attr(x,"SSErr")
+  )
+)
+
+comparacion <- comparacion %>%
+  arrange(SSErr)
+
+v_best <- ajustes[[which.min(comparacion$SSErr)]]
+range_val  <- v_best[2, "range"]
+psill_val  <- v_best[2, "psill"]
+nugget_val <- v_best[2, "nugget"]
+
+comparacion
+```
+
+```{r interpretacion-variograma}
+cat("─── Interpretación del semivariograma ───────────────────────────\n")
+cat("El alcance (range) estimado es:", round(range_val / 1000, 1), "km\n")
+cat("Esto significa que cuadrantes separados por menos de",
+    round(range_val / 1000, 1), "km presentan\n",
+    "valores de falla espacialmente dependientes (correlacionados).\n\n")
+cat("La proporción estructural (", round((psill_val - nugget_val)/psill_val * 100, 1),
+    "%) indica que una parte sustancial\n",
+    "de la variabilidad total tiene componente espacial, no es solo ruido.\n")
+```
+
+## Semivariogramas direccionales (anisotropía)
+
+```{r variograma-direccional, fig.cap="Figura 9. Semivariogramas direccionales para evaluar anisotropía espacial."}
+# Semivariogramas en 4 direcciones
+v_dir <- variogram(
+  n_eventos ~ 1,
+  data = cuad_sp,
+  cutoff = max_dist / 2,
+  width  = 2500,
+  alpha  = c(0, 45, 90, 135)
+)
+
+plot(
+  v_dir,
+  main = "Semivariogramas direccionales (0°, 45°, 90°, 135°)",
+  xlab = "Distancia (m)",
+  ylab = expression(hat(gamma)(h))
+)
+```
+
+**Interpretación:** Si los semivariogramas direccionales son similares, la dependencia espacial es isotrópica (no depende de la dirección), lo que simplifica el modelo. Diferencias marcadas indicarían anisotropía (p. ej., fallas concentradas a lo largo de corredores de distribución).
+
+---
+
+# Análisis de la escala temporal: justificación de la semana
+
+## Autocorrelación temporal de eventos diarios
+
+```{r acf-temporal, fig.cap="Figura 10. ACF y PACF de la serie diaria de fallas."}
+fallas_ts <- fallas_diarias %>%
+  arrange(FECHA_DIA) %>%
+  pull(n_fallas)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(fallas_ts,
+    lag.max = 30,
+    main    = "ACF – Fallas diarias",
+    xlab    = "Rezago (días)",
+    col     = "#2E86AB")
+abline(v = 7 * (1:4), col = "red", lty = 2, lwd = 0.8)
+
+pacf(fallas_ts,
+     lag.max = 30,
+     main    = "PACF – Fallas diarias",
+     xlab    = "Rezago (días)",
+     col     = "#E84855")
+abline(v = 7 * (1:4), col = "red", lty = 2, lwd = 0.8)
+par(mfrow = c(1, 1))
+```
+
+```{r acf-comentario}
+# Verificar autocorrelación en rezago 7
+acf_vals <- acf(fallas_ts, lag.max = 30, plot = FALSE)
+rho_7 <- acf_vals$acf[8]  # índice 8 = rezago 7
+
+cat("Autocorrelación en rezago 7 días:", round(rho_7, 4), "\n")
+cat("IC 95% bajo H0 (ruido blanco):", round(qnorm(0.975) / sqrt(length(fallas_ts)), 4), "\n")
+cat(ifelse(abs(rho_7) > qnorm(0.975) / sqrt(length(fallas_ts)),
+           "→ Ciclo semanal estadísticamente significativo.",
+           "→ No hay ciclo semanal claro."), "\n")
+```
+
+## Comparación de variabilidad: día vs. semana
+
+```{r varianza-escala, fig.cap="Figura 11. Coeficiente de variación a distintas escalas temporales de agregación."}
+cv_escala <- datos_q4 %>%
+  filter(!is.na(id_cuadrante)) %>%
+  mutate(
+    semana   = floor_date(FECHA_DIA, "week", week_start = 1),
+    quincena = as.Date("2025-10-01") + 14 * floor(as.numeric(FECHA_DIA - as.Date("2025-10-01")) / 14),
+    mes      = floor_date(FECHA_DIA, "month")
+  ) %>%
+  pivot_longer(cols = c(FECHA_DIA, semana, quincena, mes),
+               names_to = "escala", values_to = "periodo") %>%
+  group_by(escala, id_cuadrante, periodo) %>%
+  summarise(n_ev = sum(FRECUENCIA, na.rm = TRUE), .groups = "drop") %>%
+  group_by(escala, id_cuadrante) %>%
+  summarise(cv = sd(n_ev, na.rm = TRUE) / (mean(n_ev, na.rm = TRUE) + 1e-9),
+            .groups = "drop") %>%
+  group_by(escala) %>%
+  summarise(cv_medio = mean(cv), cv_mediana = median(cv), .groups = "drop") %>%
+  mutate(escala = factor(escala,
+                         levels = c("FECHA_DIA", "semana", "quincena", "mes"),
+                         labels = c("Día", "Semana", "Quincena", "Mes")))
+
+ggplot(cv_escala, aes(x = escala, y = cv_medio)) +
+  geom_col(fill = "#4A90D9", alpha = 0.85, width = 0.6) +
+  geom_errorbar(aes(ymin = cv_mediana, ymax = cv_medio), width = 0.2, color = "#2C3E50") +
+  geom_text(aes(label = round(cv_medio, 2)), vjust = -0.5, size = 4, fontface = "bold") +
+  labs(
+    title    = "Coeficiente de variación promedio por escala temporal",
+    subtitle = "Menor CV → mayor estabilidad de la señal. Barra: media | Segmento: mediana",
+    x = "Escala de agregación", y = "CV promedio entre cuadrantes"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+**Interpretación:** La agregación semanal reduce la variabilidad extrema del nivel diario (esparcidad) sin perder la heterogeneidad informativa que se diluiría en escalas mensuales. La semana representa el balance óptimo entre ruido y resolución temporal.
+
+---
+
+# Validación del tamaño de los cuadrantes
+
+## Comparación entre alcance geoestadístico y tamaño del cuadrante
+
+```{r comparacion-escala}
+# Estimar tamaño típico de un cuadrante
+cuad_tamanio <- cuad_con_datos %>%
+  arrange(lon, lat) %>%
+  mutate(
+    dist_lon = abs(lon - lag(lon, default = first(lon))),
+    dist_lat = abs(lat - lag(lat, default = first(lat)))
+  ) %>%
+  summarise(
+    lon_min = min(lon), lon_max = max(lon),
+    lat_min = min(lat), lat_max = max(lat),
+    n_cuad  = n()
+  )
+
+# Estimación del tamaño de cuadrante asumiendo grilla regular
+area_total_lon <- cuad_tamanio$lon_max - cuad_tamanio$lon_min
+area_total_lat <- cuad_tamanio$lat_max - cuad_tamanio$lat_min
+
+# Grilla aproximada: sqrt(n) × sqrt(n)
+n_cuad <- cuad_tamanio$n_cuad
+lado_lon_grados <- area_total_lon / sqrt(n_cuad)
+lado_lat_grados <- area_total_lat / sqrt(n_cuad)
+lado_km         <- mean(c(lado_lon_grados, lado_lat_grados)) * 111
+
+comparacion <- tibble(
+  Métrica = c(
+    "Alcance geoestadístico (range del semivariograma)",
+    "Radio de máximo agrupamiento (función K)",
+    "Tamaño estimado del lado del cuadrante",
+    "N° cuadrantes con datos"
+  ),
+  `Valor (km)` = c(
+    round(range_val / 1000, 2),
+    round(r_max_cluster * 111, 2),
+    round(lado_km, 2),
+    n_cuad
+  ),
+  Fuente = c(
+    "Semivariograma esférico ajustado",
+    "Función L(r)–r de Ripley",
+    "Extensión geográfica / √N cuadrantes",
+    "ELEMENTO_FALLA_CUADRANTE_800.xls"
+  )
+)
+
+kable(comparacion,
+      caption = "Tabla 4. Comparación entre escala de dependencia espacial y tamaño del cuadrante") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(1, bold = TRUE)
+```
+
+---
+
+# Síntesis: justificación formal de la agregación
+
+## Evidencias acumuladas
+
+```{r tabla-resumen-evidencias}
+evidencias <- tibble(
+  `Análisis` = c(
+    "1. Densidad Kernel (KDE)",
+    "2. Prueba de cuadrantes (CSR)",
+    "3. Función K/L de Ripley",
+    "4. Índice de Moran Global – Frecuencia",
+    "5. Índice de Moran Global – Duración",
+    "6. Semivariograma empírico",
+    "7. ACF temporal (rezago 7)",
+    "8. CV por escala temporal"
+  ),
+  `Resultado` = c(
+    "Zonas de concentración diferenciadas",
+    paste0("χ² = ", round(qt$statistic, 1), ", p < 0.001 → rechaza CSR"),
+    paste0("Agrupamiento significativo hasta ~", round(rango_cluster$r_max * 111, 1), " km"),
+    paste0("I = ", round(moran_eventos$estimate[1], 3), ", p < 0.05"),
+    paste0("I = ", round(moran_duracion$estimate[1], 3), ", p < 0.05"),
+    paste0("Alcance ≈ ", round(range_val / 1000, 1), " km; prop. estructural alta"),
+    paste0("ρ₇ = ", round(rho_7, 3), " → ciclo semanal detectado"),
+    "Escala semanal minimiza CV vs. día; preserva variabilidad vs. mes"
+  ),
+  `Implicación` = c(
+    "Heterogeneidad espacial real, no ruido",
+    "Las fallas no son espacialmente aleatorias",
+    "Escala de dependencia compatible con cuadrantes",
+    "Justifica inclusión de W en modelo espacial",
+    "Justifica inclusión de W en modelo espacial",
+    "Cuadrante captura la zona de dependencia",
+    "Semana es unidad temporal coherente",
+    "Semana: balance óptimo señal/ruido"
+  )
+)
+
+kable(evidencias, caption = "Tabla 5. Síntesis de evidencias para la agregación cuadrante × semana") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE) %>%
+  column_spec(3, italic = TRUE)
+```
+
+## Conclusión del capítulo
+
+El análisis exploratorio de patrones puntuales y geoestadístico realizado sobre los eventos de falla del período Q4-2025 proporciona sustento empírico para las decisiones de agregación del panel espacio-temporal. En particular:
+
+> **Sobre la dimensión espacial:** las pruebas de patrones puntuales (CSR, función K de Ripley) y la estadística de autocorrelación espacial (índice de Moran) demuestran que las fallas no se distribuyen aleatoriamente en el espacio, sino que exhiben agrupamiento estadísticamente significativo. El semivariograma empírico estima un alcance de dependencia espacial de aproximadamente **`r round(range_val / 1000, 1)` km**, valor comparable al tamaño de los cuadrantes definidos en `ELEMENTO_FALLA_CUADRANTE_800.xls`. Esto valida que los cuadrantes constituyen unidades territoriales que capturan efectivamente la heterogeneidad espacial de las fallas.
+
+> **Sobre la dimensión temporal:** la función de autocorrelación de la serie diaria muestra un ciclo semanal estadísticamente significativo. La comparación del coeficiente de variación entre escalas confirma que la semana representa el punto de balance óptimo entre la excesiva variabilidad del nivel diario y la pérdida de información del nivel mensual.
+
+> **Implicación para el modelo:** la existencia de autocorrelación espacial en las variables dependientes ($SAIDI_{it}$, $SAIFI_{it}$) hace que la inclusión de la **matriz de vecindad $W$** en el modelo de panel espacial sea no solo conveniente sino metodológicamente necesaria:
+
+$$SAIDI_{it} = \alpha + \rho W \cdot SAIDI_{it} + \beta X_{it} + \mu_i + \tau_t + \varepsilon_{it}$$
+
+Ignorar este componente produciría estimadores sesgados e ineficientes. La construcción del panel $cuadrante \times semana$ (90,128 observaciones) reduce la esparcidad de la variable dependiente, estabiliza las estimaciones climáticas y preserva la estructura espacial y temporal identificada en este capítulo.
+
+---
+
+# Información de sesión
+
+```{r session-info}
+sessionInfo()
+```

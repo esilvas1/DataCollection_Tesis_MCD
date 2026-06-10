@@ -12,6 +12,9 @@ ACTUACIONES SOBRE EL AVANCE DEL PROYECTO DE GRADO
 - Cuantas hojas maximo puede llevar el documento de la tesis
 - Reparticion de items correspondiente a la etapa 3, yo tomo 4 de los cuales ya llevo 2
 - Finalizar la tesis antes de iniciar semestre
+
+
+- Documeto que sustente el uso de la fuente de las variables climatologicas
  
 
 
