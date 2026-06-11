@@ -957,7 +957,75 @@ Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:
 
 Se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y diagramas de caja e histogramas. El análisis distingue observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos. Para cada variable se aplicaron tres reglas: (i)~rango intercuartílico de Tukey, $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango ampliado con factor $3{,}0$; y (iii)~percentiles P1--P99.
 
-\paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87{,}007{,}074$) se replicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en \href{\urldetectionoutliers}{detection\_outliers.html}. En ese grano, el $99{,}94$~\% de las filas registra cero en severidad y continuidad, por lo que el diagnóstico relevante se concentra en días con evento ($\approx 48{,}400$ registros), donde las distribuciones presentan cola pesada (máximo de \texttt{DURACION} de $\approx 231$~días, sugerente de posibles inconsistencias de registro). En clima, la \texttt{precipitacion\_total\_mm} diaria marca el $10{,}38$~\% de extremos bajo Tukey por su asimetría y exceso de ceros. Este análisis funda la calidad del insumo de integración; las conclusiones para el modelado territorial se formulan sobre la tabla agregada.
+\paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87{,}007{,}074$) se aplicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en \href{\urldetectionoutliers}{detection\_outliers.html}.
+
+\subparagraph{Variables climáticas diarias.} Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{,}000$ observaciones.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Valores extremos en variables climáticas (panel completo)}
+\label{tab:extremos_clima}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
+\midrule
+\texttt{velocidad\_viento\_ms}   & 1,20  & 0,03  & 0,00 & 1,60 \\
+\texttt{temperatura\_media\_c}   & 25,47 & 0,02  & 0,00 & 1,99 \\
+\texttt{humedad\_relativa\_pct}  & 69,08 & 0,00  & 0,00 & 1,98 \\
+\texttt{temperatura\_minima\_c}  & 20,91 & 0,20  & 0,00 & 1,99 \\
+\texttt{temperatura\_maxima\_c}  & 31,32 & 0,05  & 0,00 & 1,99 \\
+\texttt{precipitacion\_total\_mm} & 0,50 & 10,38 & 5,30 & 1,00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima.png}
+    \caption{Diagramas de caja de las variables climáticas (muestra de $200{,}000$ observaciones).}
+    \label{fig:boxplot_clima}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_clima.png}
+    \caption{Histogramas de las variables climáticas (muestra de $200{,}000$ observaciones).}
+    \label{fig:histograma_clima}
+\end{figure}
+
+\subparagraph{Variables de severidad y continuidad diarias.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{,}375$ registros de afectación y $48{,}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{,}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{,}395$ minutos ($\approx 231$~días), sugerente de posibles inconsistencias de registro que se marcan para revisión. La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Valores extremos en variables de severidad y continuidad (días con evento, $\text{valor} > 0$)}
+\label{tab:extremos_evento}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
+\midrule
+\texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 2   & 2{,}469   & 14,91 & 11,78 \\
+\texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 23  & 34{,}622  & 14,50 & 10,83 \\
+\texttt{DURACION}       & 48{,}364 & 417 & 332{,}395 & 8,94  & 5,36  \\
+\texttt{FRECUENCIA}          & 48{,}364 & 1   & 6         & 1,96  & 1,96  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento.png}
+    \caption{Diagramas de caja de las variables de severidad y continuidad en días con evento.}
+    \label{fig:boxplot_evento}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/histograma_valores_extremos_evento.png}
+    \caption{Histogramas de las variables de severidad y continuidad en días con evento.}
+    \label{fig:histograma_evento}
+\end{figure}
 
 \paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones, se replicó el mismo esquema excluyendo \texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud} y \texttt{altitud}. El procedimiento se documenta en \href{\urloutliersagrupada}{outliers\_gruped.html}.
 
@@ -1038,7 +1106,21 @@ Se evaluó la presencia de valores extremos en las variables cuantitativas media
 
 Tras el diagnóstico de completitud (Sección~\ref{sec:identificacion_datos_faltantes}) y el análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}), se calculó un conjunto sistemático de estadísticos descriptivos sobre la tabla de análisis \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones cuadrante~$\times$~semana. Se excluyeron las llaves y coordenadas (\texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud}, \texttt{altitud}) y se evaluaron las $11$ variables numéricas de severidad, clima semanal y continuidad. El procedimiento reproducible se documenta en \href{\urlestadisticosdescriptivos}{calculo\_estadistico\_descriptivo.html}.
 
-Para cada variable se reportaron: (i)~medidas de tendencia central (media, mediana y moda); (ii)~medidas de dispersión (rango, varianza, desviación estándar y coeficiente de variación); (iii)~medidas de posición (cuartiles, deciles y percentiles P1, P5, P95 y P99); (iv)~medidas de forma (asimetría y curtosis con exceso); y (v)~distribución de frecuencias de la categoría derivada \emph{actividad semanal del cuadrante}, construida a partir de \texttt{n\_eventos} (sin eventos; $1$ evento; $2$--$5$ eventos; más de $5$ eventos).
+Para cada variable se reportaron: (i)~medidas de tendencia central (media, mediana y moda); (ii)~medidas de dispersión (rango, varianza, desviación estándar y coeficiente de variación); (iii)~medidas de posición (cuartiles, deciles y percentiles P1, P5, P95 y P99); (iv)~medidas de forma (asimetría y curtosis con exceso); y (v)~distribución de frecuencias de la categoría derivada \emph{actividad semanal del cuadrante}, construida a partir de \texttt{n\_eventos} (sin eventos; $1$ evento; $2$--$5$ eventos; más de $5$ eventos). Las Figuras~\ref{fig:histograma_descriptivo_agrupada} y~\ref{fig:boxplot_descriptivo_agrupada} presentan la vista panorámica de las $11$ variables mediante histogramas y diagramas de caja.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/histograma_descriptivo_agrupada.png}
+    \caption{Histogramas de las variables numéricas de la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:histograma_descriptivo_agrupada}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_descriptivo_agrupada.png}
+    \caption{Diagramas de caja de las variables numéricas de la tabla agrupada ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:boxplot_descriptivo_agrupada}
+\end{figure}
 
 \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{,}16$ (\texttt{temp\_max\_semana}) y $0{,}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{,}8$~\textdegree C (media $23{,}8$~\textdegree C; $Q_1$--$Q_3$: $20{,}4$--$27{,}2$~\textdegree C) y asimetría cercana a cero ($-0{,}37$). La humedad relativa media semanal concentra la mediana en $72{,}3$~\% (CV $= 0{,}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $618{,}8$~mm, media de $1{,}942$~mm, CV $= 3{,}47$ y fuerte asimetría positiva ($30{,}6$), coherente con semanas de lluvia intensa puntuales (P99 $= 18{,}217$~mm). La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
 
@@ -1114,6 +1196,13 @@ Más de $5$ eventos    &  1{,}298 &  1,44 & 100,00 \\
 
 \begin{figure}[H]
     \centering
+    \includegraphics[width=0.70\textwidth]{img/grafico_pastel_actividad_agrupada.png}
+    \caption{Distribución porcentual de semanas-cuadrante por actividad de eventos.}
+    \label{fig:pastel_actividad_agrupada}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
     \includegraphics[width=0.95\textwidth]{img/curvas_densidad_evento_agrupada.png}
     \caption{Curvas de densidad de severidad y continuidad en escala $\log(1+x)$ (semanas con evento).}
     \label{fig:densidad_evento_agrupada}
@@ -1122,6 +1211,30 @@ Más de $5$ eventos    &  1{,}298 &  1,44 & 100,00 \\
 \noindent En síntesis, el clima semanal exhibe comportamiento estable y casi simétrico, mientras que las variables operativas reflejan fuerte cero-inflación y colas pesadas propias del fenómeno de interrupciones. Estos perfiles ---especialmente la asimetría de \texttt{precip\_total\_semana} y la concentración de semanas sin evento--- orientan las transformaciones (p.\,ej.\ $\log(1+x)$) y la selección de modelos en la Etapa~4.
 
 \subsection{Análisis de la distribución de variables}
+
+\label{sec:distribucion_variables}
+
+Con el propósito de comprender el comportamiento estadístico de las variables incluidas en el estudio, se realizó un análisis de distribución sobre las variables climáticas, de severidad y de continuidad contenidas en la tabla agregada cuadrante~$\times$~semana ($N_{\mathrm{agr}} = 90{,}128$; Sección~\ref{sec:agrupacion_cuadrante_semana}). Para las variables cuantitativas se emplearon diagramas de densidad, complementados con indicadores de forma (asimetría, curtosis y proporción de ceros), lo que permitió evaluar simetría, dispersión, unimodalidad y presencia de valores extremos. El procedimiento reproducible se documenta en \href{\urldistribucionvariables}{distribucion\_variables.html}.
+
+\paragraph{Variables climáticas.} Los resultados evidencian que las variables meteorológicas presentan distribuciones heterogéneas. Las temperaturas (media, máxima y mínima) y la humedad relativa muestran comportamientos estables, aproximadamente unimodales y con asimetría cercana a cero (entre $-0{,}49$ y $-0{,}36$), coherentes con las curvas de densidad presentadas en la Figura~\ref{fig:densidad_clima_agrupada}. En contraste, la precipitación acumulada semanal presenta una marcada asimetría positiva (coeficiente de $30{,}6$ y curtosis de $1{,}623$), caracterizada por una alta frecuencia de semanas con valores bajos de lluvia (el $9{,}1$~\% registra $0$~mm) y un número reducido de observaciones con precipitaciones intensas. La Figura~\ref{fig:densidad_precipitacion_agrupada} contrasta la distribución en escala original y en escala $\log(1+x)$: la transformación logarítmica aproxima la distribución a una forma simétrica, lo que anticipa su utilidad en la Etapa~4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/distribucion_densidad_precipitacion_agrupada.png}
+    \caption{Distribución de la precipitación acumulada semanal en escala original y $\log(1+x)$ ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:densidad_precipitacion_agrupada}
+\end{figure}
+
+\paragraph{Variables de severidad y continuidad.} Las variables asociadas a interrupciones del servicio (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total} y \texttt{n\_eventos}) muestran distribuciones altamente sesgadas hacia cero: la proporción de filas con valor $0$ se ubica entre el $72{,}5$~\% (\texttt{duracion\_total}) y el $74{,}9$~\% (resto de variables), como ilustra la Figura~\ref{fig:pct_ceros_evento_agrupada}. Este comportamiento es esperado, dado que la mayor parte de las semanas-cuadrante no registra fallas. Sin embargo, condicionando a la ocurrencia de eventos ($\text{valor} > 0$), las distribuciones presentan colas derechas largas ---con asimetrías entre $8{,}2$ y $20{,}6$ y curtosis entre $139$ y $643$--- que reflejan la existencia de incidentes de alta severidad con impacto significativo sobre la continuidad del servicio, según se aprecia en las densidades en escala $\log(1+x)$ de la Figura~\ref{fig:densidad_evento_agrupada}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{img/distribucion_pct_ceros_evento_agrupada.png}
+    \caption{Proporción de ceros en las variables de severidad y continuidad de la tabla agrupada.}
+    \label{fig:pct_ceros_evento_agrupada}
+\end{figure}
+
+\noindent En síntesis, el análisis de distribución confirma dos regímenes claramente diferenciados: un bloque climático estable y casi simétrico (con la precipitación como excepción asimétrica) y un bloque operativo cero-inflado con colas pesadas. Estos hallazgos fundamentan las transformaciones (p.\,ej.\ $\log(1+x)$) y la consideración de modelos aptos para datos cero-inflados en la Etapa~4.
 
 \subsection{Análisis temporal de eventos}
 
