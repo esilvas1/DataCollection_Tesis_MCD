@@ -1036,155 +1036,90 @@ Se evaluó la presencia de valores extremos en las variables cuantitativas media
 
 \label{sec:estadisticos_descriptivos}
 
-Tras el diagnóstico de completitud (Sección~\ref{sec:identificacion_datos_faltantes}) y el análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}), se calculó un conjunto sistemático de estadísticos descriptivos sobre el panel consolidado ($N = 87{,}007{,}074$ observaciones activo~$\times$~día).
+Tras el diagnóstico de completitud (Sección~\ref{sec:identificacion_datos_faltantes}) y el análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}), se calculó un conjunto sistemático de estadísticos descriptivos sobre la tabla de análisis \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{,}128$ observaciones cuadrante~$\times$~semana. Se excluyeron las llaves y coordenadas (\texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud}, \texttt{altitud}) y se evaluaron las $11$ variables numéricas de severidad, clima semanal y continuidad. El procedimiento reproducible se documenta en \href{\urlestadisticosdescriptivos}{calculo\_estadistico\_descriptivo.html}.
 
-Para cada variable cuantitativa se estimaron: (i)~conteo de observaciones válidas ($n$) y porcentaje de \texttt{NA} respecto a $N$; (ii)~para variables de interrupción, el porcentaje de ceros sobre el panel completo; (iii)~medidas de tendencia central (media y mediana); (iv)~medidas de dispersión (desviación estándar y coeficiente de variación en porcentaje); y (v)~cuantiles de orden 25, 50 y 75~\%, junto con los valores mínimo y máximo. En variables categóricas se reportaron frecuencias absolutas y relativas. Dado que las variables de severidad y continuidad están dominadas por ceros (días sin falla), el análisis cuantitativo se presenta en dos ámbitos complementarios: \emph{panel completo} e \emph{días con evento} ($\text{valor} > 0$), coherente con la estrategia de la Sección~\ref{sec:identificacion_valores_extremos}.
+Para cada variable se reportaron: (i)~medidas de tendencia central (media, mediana y moda); (ii)~medidas de dispersión (rango, varianza, desviación estándar y coeficiente de variación); (iii)~medidas de posición (cuartiles, deciles y percentiles P1, P5, P95 y P99); (iv)~medidas de forma (asimetría y curtosis con exceso); y (v)~distribución de frecuencias de la categoría derivada \emph{actividad semanal del cuadrante}, construida a partir de \texttt{n\_eventos} (sin eventos; $1$ evento; $2$--$5$ eventos; más de $5$ eventos).
 
-\paragraph{Variables climáticas.} El cálculo se realizó sobre observaciones sin \texttt{NA} ($n = 83{,}605{,}236$; $3{,}91$~\% de incompletitud, coherente con la Sección~\ref{sec:identificacion_datos_faltantes}). La Tabla~\ref{tab:desc_clima} resume los resultados y la Figura~\ref{fig:desc_medias_clima} contrasta las medias con barras de error de $\pm 1$ desviación estándar.
-
-Las variables térmicas y de humedad presentan dispersión moderada: la \texttt{temperatura\_media\_c} tiene media de $24{,}42$~\textdegree C, mediana de $25{,}47$~\textdegree C y desviación estándar de $4{,}27$~\textdegree C (coeficiente de variación CV $= 17{,}5$~\%); la \texttt{temperatura\_minima\_c} y la \texttt{temperatura\_maxima\_c} delimitan un rango diario típico entre P25--P75 de aproximadamente $16{,}6$--$22{,}5$~\textdegree C y $27{,}0$--$34{,}2$~\textdegree C, respectivamente. La \texttt{humedad\_relativa\_pct} se concentra en valores altos (mediana $69{,}1$~\%, media $68{,}8$~\%). La \texttt{velocidad\_viento\_ms} es baja en términos absolutos (mediana $1{,}20$~m/s, máximo $4{,}34$~m/s), con CV elevado ($68{,}9$~\%) por la proximidad frecuente al cero.
-
-La \texttt{precipitacion\_total\_mm} exhibe el comportamiento más heterogéneo: media $2{,}09$~mm, mediana $0{,}50$~mm, P75 $2{,}22$~mm y máximo $82{,}82$~mm, con CV $= 211{,}8$~\%. La mediana inferior a la media y el percentil 25 en cero reflejan abundantes días sin lluvia registrada, en línea con el diagnóstico de extremos de la Sección~\ref{sec:identificacion_valores_extremos}. Estos patrones son compatibles con el clima de la zona de estudio y no sugieren, por sí solos, errores sistemáticos de captura.
+\paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{,}16$ (\texttt{temp\_max\_semana}) y $0{,}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{,}8$~\textdegree C (media $23{,}8$~\textdegree C; $Q_1$--$Q_3$: $20{,}4$--$27{,}2$~\textdegree C) y asimetría cercana a cero ($-0{,}37$). La humedad relativa media semanal concentra la mediana en $72{,}3$~\% (CV $= 0{,}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $618{,}8$~mm, media de $1{,}942$~mm, CV $= 3{,}47$ y fuerte asimetría positiva ($30{,}6$), coherente con semanas de lluvia intensa puntuales (P99 $= 18{,}217$~mm). La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Estadísticos descriptivos de variables climáticas (observaciones sin \texttt{NA}, $n = 83{,}605{,}236$)}
-\label{tab:desc_clima}
-\begin{tabular}{l r r r r r r r r}
+\caption{Estadísticos descriptivos de variables climáticas semanales (tabla agrupada)}
+\label{tab:desc_clima_agrupada}
+\begin{tabular}{l r r r r r}
 \toprule
-\textbf{Variable} & \textbf{Media} & \textbf{DE} & \textbf{Mín.} & \textbf{P25} & \textbf{Med.} & \textbf{P75} & \textbf{Máx.} & \textbf{CV (\%)} \\
+\textbf{Variable} & \textbf{Media} & \textbf{Mediana} & \textbf{Desv. est.} & \textbf{CV} & \textbf{Asimetría} \\
 \midrule
-\texttt{velocidad\_viento\_ms}    & 1,16  & 0,80 & 0     & 0,36 & 1,20 & 1,75 & 4,34  & 68,9  \\
-\texttt{temperatura\_media\_c}    & 24,42 & 4,27 & 9,84  & 21,07 & 25,47 & 27,49 & 36,80 & 17,5  \\
-\texttt{humedad\_relativa\_pct}   & 68,82 & 12,71 & 31,57 & 58,84 & 69,08 & 79,36 & 97,40 & 18,5  \\
-\texttt{temperatura\_minima\_c}    & 19,78 & 3,86 & 4,15  & 16,64 & 20,91 & 22,48 & 31,48 & 19,5  \\
-\texttt{temperatura\_maxima\_c}    & 30,47 & 4,94 & 13,87 & 27,00 & 31,32 & 34,24 & 43,87 & 16,2  \\
-\texttt{precipitacion\_total\_mm} & 2,09  & 4,43 & 0     & 0    & 0,50 & 2,22 & 82,82 & 211,8 \\
+\texttt{temp\_media\_semana}    & 23,8  & 24,8 & 4,63  & 0,19 & $-0{,}37$ \\
+\texttt{temp\_max\_semana}      & 31,9  & 32,8 & 5,30  & 0,17 & $-0{,}44$ \\
+\texttt{temp\_min\_semana}      & 17,9  & 19,0 & 4,49  & 0,25 & $-0{,}49$ \\
+\texttt{humedad\_media\_semana} & 70,9  & 72,3 & 11,5  & 0,16 & $-0{,}36$ \\
+\texttt{viento\_medio\_semana}  & 0,99  & 0,91 & 0,80  & 0,81 & 0,44 \\
+\texttt{viento\_max\_semana}    & 1,31  & 1,29 & 1,01  & 0,77 & 0,35 \\
+\texttt{precip\_total\_semana}  & 1{,}942 & 618,8 & 6{,}728 & 3,47 & 30,6 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/grafico_medias_clima.png}
-    \caption{Medias y desviación estándar ($\pm 1$ DE) de las variables climáticas en el panel consolidado ($n = 83{,}605{,}236$ observaciones sin \texttt{NA}).}
-    \label{fig:desc_medias_clima}
+    \includegraphics[width=0.95\textwidth]{img/curvas_densidad_clima_agrupada.png}
+    \caption{Curvas de densidad de las variables climáticas semanales ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:densidad_clima_agrupada}
 \end{figure}
 
-\paragraph{Altitud.} Sobre $n = 86{,}974{,}206$ observaciones con \texttt{ALTITUD} no faltante ($0{,}04$~\% de \texttt{NA}), la cota presenta media de $840$~m, mediana de $513$~m, P25 de $259$~m, P75 de $1{,}356$~m y máximo de $3{,}767$~m, con desviación estándar de $738$~m (CV $= 87{,}9$~\%). La diferencia entre media y mediana indica asimetría positiva: la mayor parte de los activos se ubica en cotas moderadas, con una cola hacia zonas de mayor elevación en el territorio de operación.
-
-\paragraph{Variables de severidad y continuidad en el panel completo.} La Tabla~\ref{tab:desc_evento_panel} y la Figura~\ref{fig:desc_pct_cero_evento} documentan la estructura cero-inflada del panel. El $99{,}94$~\% de las filas registra cero en \texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}, \texttt{DURACION} y \texttt{FRECUENCIA}, de modo que las medias globales son cercanas a cero (por ejemplo, media de \texttt{CANTIDAD\_USUARIOS} $= 0{,}16$ usuarios y media de \texttt{DURACION} $= 0{,}85$ minutos) y no representan el comportamiento típico \emph{cuando ocurre} una interrupción. Los máximos globales (\texttt{CANTIDAD\_ELEMENTOS} $= 2{,}469$; \texttt{CANTIDAD\_USUARIOS} $= 34{,}622$; \texttt{DURACION} $= 332{,}395$; \texttt{FRECUENCIA} $= 6$) coinciden con los hallazgos de la Sección~\ref{sec:identificacion_valores_extremos} y confirman la necesidad de analizar el subconjunto de días con evento por separado.
+\paragraph{Variables de severidad y continuidad.} Las cuatro variables operativas están dominadas por ceros: la mediana de \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{n\_eventos} y \texttt{duracion\_total} es $0$ en el $74{,}9$~\% de las semanas-cuadrante sin eventos registrados (Tabla~\ref{tab:frecuencias_actividad_agrupada}). Cuando ocurre al menos un evento, las distribuciones son fuertemente leptocúrticas y con cola derecha pesada: \texttt{usuarios\_afectados} alcanza un máximo de $69{,}928$ usuarios (media $156{,}1$; CV $= 7{,}81$); \texttt{duracion\_total} un máximo de $2{,}227$~horas acumuladas en la semana (media $13{,}7$~h; CV $= 3{,}67$). La Tabla~\ref{tab:desc_evento_agrupada} resume las medidas principales; la Figura~\ref{fig:densidad_evento_agrupada} presenta las densidades en escala $\log(1+x)$ para semanas con evento.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Estadísticos descriptivos de severidad y continuidad — panel completo ($N = 87{,}007{,}074$)}
-\label{tab:desc_evento_panel}
+\caption{Estadísticos descriptivos de severidad y continuidad (tabla agrupada)}
+\label{tab:desc_evento_agrupada}
 \begin{tabular}{l r r r r r r}
 \toprule
-\textbf{Variable} & \textbf{\% cero} & \textbf{Media} & \textbf{DE} & \textbf{Med.} & \textbf{Máx.} & \textbf{CV (\%)} \\
+\textbf{Variable} & \textbf{Media} & \textbf{Mediana} & \textbf{Máx.} & \textbf{CV} & \textbf{Asimetría} & \textbf{$Q_3$} \\
 \midrule
-\texttt{CANTIDAD\_ELEMENTOS} & 99,94 & 0,01 & 1,74 & 0 & 2{,}469 & --- \\
-\texttt{CANTIDAD\_USUARIOS}  & 99,94 & 0,16 & 28,06 & 0 & 34{,}622 & --- \\
-\texttt{DURACION}       & 99,94 & 0,85 & 133,34 & 0 & 332{,}395 & --- \\
-\texttt{FRECUENCIA}          & 99,94 & 0,00 & 0,02 & 0 & 6 & --- \\
+\texttt{usuarios\_afectados}  & 156,1 & 0 & 69{,}928 & 7,81 & 20,6 & 1 \\
+\texttt{elementos\_afectados} & 12,0  & 0 & 3{,}626  & 5,74 & 14,1 & 1 \\
+\texttt{n\_eventos}            & 0,55  & 0 & 58       & 2,76 & 8,18 & 1 \\
+\texttt{duracion\_total}      & 13,7  & 0 & 2{,}227  & 3,67 & 10,2 & 2,5 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\textwidth]{img/grafico_pct_cero_evento.png}
-    \caption{Proporción de observaciones en cero en variables de severidad y continuidad (panel completo).}
-    \label{fig:desc_pct_cero_evento}
-\end{figure}
-
-\paragraph{Variables de severidad y continuidad en días con evento.} El subconjunto con $\text{valor} > 0$ comprende $48{,}375$ registros para \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS}, y $48{,}364$ para \texttt{DURACION} y \texttt{FRECUENCIA} (diferencia mínima asociada a casos con afectación sin duración registrada o viceversa). La Tabla~\ref{tab:desc_evento_positivo} y la Figura~\ref{fig:desc_mediana_evento} resumen la distribución condicional.
-
-En severidad, la mediana de \texttt{CANTIDAD\_ELEMENTOS} es $2$ elementos (media $22{,}3$; P75 $= 11$; máximo $2{,}469$), y la de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios (media $290{,}8$; P75 $= 117$; máximo $34{,}622$), evidenciando colas pesadas hacia eventos de gran impacto. En continuidad, \texttt{DURACION} presenta mediana de $417$~min ($\approx 7$~h), media de $1{,}527{,}6$~min ($\approx 25{,}5$~h), P25 de $170$~min y P75 de $1{,}293$~min, con máximo de $332{,}395$~min; \texttt{FRECUENCIA} es casi constante en $1$ interrupción por día en este subconjunto (mediana y moda $= 1$; media $1{,}02$; máximo $6$), coherente con la regla de conteo del paso~5.2.1.7 (un evento se contabiliza en el día de \texttt{FECHA\_DESCONEXION}).
 
 \begin{table}[H]
 \centering
 \small
-\caption{Estadísticos descriptivos de severidad y continuidad en días con evento ($\text{valor} > 0$)}
-\label{tab:desc_evento_positivo}
-\begin{tabular}{l r r r r r r r r}
+\caption{Distribución de frecuencias por actividad semanal del cuadrante}
+\label{tab:frecuencias_actividad_agrupada}
+\begin{tabular}{l r r r}
 \toprule
-\textbf{Variable} & \textbf{$n$} & \textbf{Media} & \textbf{DE} & \textbf{P25} & \textbf{Med.} & \textbf{P75} & \textbf{Máx.} & \textbf{CV (\%)} \\
+\textbf{Categoría (\texttt{n\_eventos})} & \textbf{Frec. absoluta} & \textbf{Frec. relativa (\%)} & \textbf{Frec. acumulada (\%)} \\
 \midrule
-\texttt{CANTIDAD\_ELEMENTOS} & 48{,}375 & 22,29 & 70,18 & 1 & 2 & 11 & 2{,}469 & 314,8 \\
-\texttt{CANTIDAD\_USUARIOS}  & 48{,}375 & 290,82 & 1{,}154,2 & 7 & 23 & 117 & 34{,}622 & 396,9 \\
-\texttt{DURACION}       & 48{,}364 & 1{,}527,6 & 5{,}445,6 & 170 & 417 & 1{,}293 & 332{,}395 & 356,5 \\
-\texttt{FRECUENCIA}          & 48{,}364 & 1,02 & 0,16 & 1 & 1 & 1 & 6 & 15,3 \\
+Sin eventos           & 67{,}469 & 74,86 & 74,86 \\
+$1$ evento            & 12{,}115 & 13,44 & 88,30 \\
+$2$ a $5$ eventos     &  9{,}246 & 10,26 & 98,56 \\
+Más de $5$ eventos    &  1{,}298 &  1,44 & 100,00 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\textwidth]{img/grafico_mediana_evento.png}
-    \caption{Mediana de variables de severidad y continuidad en días con evento ($\text{valor} > 0$).}
-    \label{fig:desc_mediana_evento}
+    \includegraphics[width=0.85\textwidth]{img/grafico_barras_actividad_agrupada.png}
+    \caption{Frecuencia de semanas-cuadrante según actividad de eventos ($N_{\mathrm{agr}} = 90{,}128$).}
+    \label{fig:barras_actividad_agrupada}
 \end{figure}
-
-\paragraph{Variable categórica \texttt{TIPO}.} Se calcularon frecuencias sobre el total de filas del panel y sobre activos distintos (\texttt{ELEMENTO}), obteniendo la misma composición porcentual en ambos conteos dado que cada activo conserva un único \texttt{TIPO} en el inventario. La Tabla~\ref{tab:desc_frecuencias_tipo} y la Figura~\ref{fig:desc_frecuencias_tipo} muestran que los \emph{Transformadores} concentran el $53{,}32$~\% de las observaciones ($46{,}389{,}530$ filas; $25{,}405$ activos), seguidos por \emph{Aisladores} con $40{,}04$~\% ($34{,}834{,}602$ filas; $19{,}077$ activos). Las categorías \emph{Cuchilla} ($5{,}30$~\%), \emph{Reconectador} ($0{,}77$~\%) e \emph{Interruptor} ($0{,}57$~\%) participan con menor peso en el panel, lo que debe considerarse al estratificar análisis o modelos por tipo de activo.
-
-\begin{table}[H]
-\centering
-\small
-\caption{Distribución de la variable \texttt{TIPO} en el panel consolidado}
-\label{tab:desc_frecuencias_tipo}
-\begin{tabular}{l r r r r}
-\toprule
-\textbf{TIPO} & \textbf{Filas ($n$)} & \textbf{\% filas} & \textbf{Activos} & \textbf{\% activos} \\
-\midrule
-Transformador  & 46{,}389{,}530 & 53,32 & 25{,}405 & 53,32 \\
-Aisladero      & 34{,}834{,}602 & 40,04 & 19{,}077 & 40,04 \\
-Cuchilla       & 4{,}614{,}302  & 5,30  & 2{,}527  & 5,30  \\
-Reconectador   & 670{,}142      & 0,77  & 367      & 0,77  \\
-Interruptor    & 498{,}498      & 0,57  & 273      & 0,57  \\
-\midrule
-\textbf{Total} & 87{,}007{,}074 & 100,00 & 47{,}649 & 100,00 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/grafico_frecuencias_tipo.png}
-    \caption{Distribución de filas del panel por \texttt{TIPO} de activo ($N = 87{,}007{,}074$).}
-    \label{fig:desc_frecuencias_tipo}
+    \includegraphics[width=0.95\textwidth]{img/curvas_densidad_evento_agrupada.png}
+    \caption{Curvas de densidad de severidad y continuidad en escala $\log(1+x)$ (semanas con evento).}
+    \label{fig:densidad_evento_agrupada}
 \end{figure}
 
-\paragraph{Patrón temporal de días con interrupción.} A partir de \texttt{FECHA\_DIA} y de la condición \texttt{FRECUENCIA}~$> 0$, se contabilizaron por año calendario las filas activo~$\times$~día con al menos una interrupción iniciada en ese día. La Tabla~\ref{tab:desc_eventos_anio} y la Figura~\ref{fig:desc_eventos_anio} muestran un volumen relativamente estable entre 2021 y 2023 (entre $4{,}759$ y $5{,}621$ días con evento; $0{,}027$--$0{,}032$~\% del panel anual), un incremento en 2024 ($14{,}862$ días; $0{,}085$~\%) y un máximo en 2025 ($18{,}143$ días; $0{,}104$~\%). Este comportamiento es consistente con una mayor captura o depuración de eventos en los años recientes del periodo de estudio, y se examina con mayor detalle en la subsección de análisis temporal (Sección~5.3.5).
-
-\begin{table}[H]
-\centering
-\small
-\caption{Días activo~$\times$~día con \texttt{FRECUENCIA}~$> 0$ por año calendario}
-\label{tab:desc_eventos_anio}
-\begin{tabular}{r r r r}
-\toprule
-\textbf{Año} & \textbf{Filas del año} & \textbf{Días con evento} & \textbf{\% sobre filas del año} \\
-\midrule
-2021 & 17{,}391{,}885 & 4{,}979  & 0,0286 \\
-2022 & 17{,}391{,}885 & 4{,}759  & 0,0274 \\
-2023 & 17{,}391{,}885 & 5{,}621  & 0,0323 \\
-2024 & 17{,}439{,}534 & 14{,}862 & 0,0852 \\
-2025 & 17{,}391{,}885 & 18{,}143 & 0,1043 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\textwidth]{img/grafico_eventos_por_anio.png}
-    \caption{Número de filas activo~$\times$~día con al menos una interrupción (\texttt{FRECUENCIA}~$> 0$) por año.}
-    \label{fig:desc_eventos_anio}
-\end{figure}
-
-\noindent En síntesis, los estadísticos descriptivos confirman un panel operativamente completo en variables de interrupción (sin \texttt{NA}), con incompletitud acotada al bloque climático y a \texttt{ALTITUD}; variables meteorológicas acordes con la zona de estudio; severidad y continuidad fuertemente cero-infladas en el grano diario, con distribuciones de cola pesada en días con evento; composición del inventario dominada por transformadores y aisladores; y un aumento reciente en el conteo de días con interrupción registrada. Estos resultados fundamentan las subsecciones siguientes (forma de las distribuciones, patrones temporales y correlaciones) y las decisiones de transformación e imputación de la Etapa~4.
+\noindent En síntesis, el clima semanal exhibe comportamiento estable y casi simétrico, mientras que las variables operativas reflejan fuerte cero-inflación y colas pesadas propias del fenómeno de interrupciones. Estos perfiles ---especialmente la asimetría de \texttt{precip\_total\_semana} y la concentración de semanas sin evento--- orientan las transformaciones (p.\,ej.\ $\log(1+x)$) y la selección de modelos en la Etapa~4.
 
 \subsection{Análisis de la distribución de variables}
 
