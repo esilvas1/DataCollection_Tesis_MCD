@@ -458,7 +458,7 @@ Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integraci
         \item \texttt{DURACION} (minutos): duración del evento prorrateada por día. Cuando un evento abarca varios días, su duración se reparte entre cada \texttt{FECHA\_DIA} según los minutos que el evento ocupa dentro de ese día (intersección del intervalo \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con cada día calendario). Así, el día de inicio recibe los minutos desde \texttt{FECHA\_DESCONEXION} hasta la medianoche, los días intermedios reciben $1{,}440$~min cada uno, y el día de cierre recibe los minutos desde la medianoche hasta \texttt{FECHA\_CONEXION}.
         \item \texttt{FRECUENCIA}: número de desconexiones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA} (no se prorratea; se cuenta en el día de inicio).
     \end{itemize}
-    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}.
+    \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}. El cruce exige que \texttt{COMPONENTE\_FALLADO} coincida con \texttt{ELEMENTO} del inventario \texttt{tipo\_elemento.csv} (Tabla~5.5), el cual emplea el \textbf{código de sitio} georreferenciado. Cuando OMS registra el \textbf{código del activo} reemplazado en lugar del código de sitio, el emparejamiento falla y el evento no se propaga al panel espacial (Sección~\ref{sec:delimitacion_temporal_modelado}).
 
     \item \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
     Sobre la tabla base consolidada definida en el paso~5.2.1.4, y una vez anexados los valores de los pasos~5.2.1.5 a~5.2.1.7, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos $\times$ $T = 1{,}826$ días). En días sin falla se registra \texttt{DURACION = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
@@ -1242,7 +1242,7 @@ Con el propósito de comprender el comportamiento estadístico de las variables 
 
 Para caracterizar la dinámica temporal de las interrupciones se construyó, a partir de la tabla agregada \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), la serie territorial semanal que consolida el total de \texttt{n\_eventos} de todos los cuadrantes en cada semana calendario. La serie cubre $262$ semanas del horizonte 2021--2025, con una mediana de $124{,}5$ eventos por semana (media $188{,}5$; máximo $648$). El procedimiento reproducible se documenta en \href{\urlanalisistemporal}{analisis\_temporal\_eventos.html}.
 
-\paragraph{Evolución de la serie semanal.} La Figura~\ref{fig:serie_semanal_eventos} presenta la serie semanal con su tendencia suavizada (LOESS). Se distinguen dos regímenes: entre 2021 y 2023 la actividad se mantiene relativamente estable, mientras que a partir de 2024 se observa un incremento sostenido del nivel de la serie. La agregación anual (Figura~\ref{fig:eventos_por_anio}) cuantifica este cambio: de $5{,}167$ eventos en 2021 y $4{,}934$ en 2022, se pasa a $15{,}211$ en 2024 y $18{,}199$ en 2025; en términos de intensidad, el promedio asciende de $\approx 99$ a $\approx 350$ eventos por semana entre 2021 y 2025. Este cambio de nivel ---atribuible a la dinámica operativa de la red, a condiciones exógenas o a cambios en la captura de los sistemas fuente--- debe considerarse en la Etapa~4 al definir las particiones temporales de entrenamiento y prueba, pues condiciona la estacionariedad de la serie.
+\paragraph{Evolución de la serie semanal.} La Figura~\ref{fig:serie_semanal_eventos} presenta la serie semanal con su tendencia suavizada (LOESS) sobre el horizonte exploratorio 2021--2025 ($D_{\mathrm{EDA}}$). Se distinguen dos regímenes visuales: entre 2021 y 2023 la actividad se mantiene en un nivel bajo y relativamente estable, mientras que a partir de 2024 se observa un incremento sostenido del nivel de la serie. La agregación anual (Figura~\ref{fig:eventos_por_anio}) cuantifica este cambio: de $5{,}167$ eventos en 2021 y $4{,}934$ en 2022, se pasa a $15{,}211$ en 2024 y $18{,}199$ en 2025; en términos de intensidad, el promedio asciende de $\approx 99$ a $\approx 350$ eventos por semana entre 2021 y 2025. La reinterpretación de este salto a la luz de la cobertura de integración se desarrolla en el párrafo siguiente (Sección~\ref{sec:delimitacion_temporal_modelado}).
 
 \begin{figure}[H]
     \centering
@@ -1256,6 +1256,45 @@ Para caracterizar la dinámica temporal de las interrupciones se construyó, a p
     \includegraphics[width=0.80\textwidth]{img/eventos_por_anio_agrupada.png}
     \caption{Total anual de eventos de interrupción sobre la tabla agrupada.}
     \label{fig:eventos_por_anio}
+\end{figure}
+
+\paragraph{Diagnóstico de cobertura del emparejamiento evento--elemento.}
+\label{sec:delimitacion_temporal_modelado}
+
+Al contrastar el conteo anual de eventos en \texttt{tabla\_eventos\_ajustado.csv} (BRAE) con la suma territorial de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}, se identificó un \textbf{subregistro sistemático} en el grano espacial durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). La causa no es la ausencia del campo \texttt{COMPONENTE\_FALLADO} ---completo en el $100$~\% de los registros BRAE---, sino la \textbf{incompatibilidad entre esquemas de codificación} al cruzar eventos con el inventario georreferenciado \texttt{tipo\_elemento.csv} (Tabla~5.5).
+
+En la operación de la red coexisten dos identificadores para un mismo punto de conexión: (i)~el \textbf{código de sitio} (ubicación), estable en el tiempo y empleado por el inventario GIS como \texttt{ELEMENTO}; y (ii)~el \textbf{código de activo}, asociado al equipo instalado y \textbf{sujeto a cambio} cuando el activo se repone por mantenimiento o renovación, mientras el código de sitio permanece invariante. El panel consolidado y la agregación cuadrante~$\times$~semana se construyen sobre el código de sitio. No obstante, en el sistema histórico OMS-SPARD (Sección~5.1.4) el elemento fallado (\texttt{BREAKER} $\rightarrow$ \texttt{COMPONENTE\_FALLADO}) se registraba con frecuencia mediante el \textbf{código del activo} y no el del sitio. Ello impide el seguimiento histórico del punto de desconexión ---unidad espacial central para el pronóstico territorial de $SAIDI$ y $SAIFI$ en esta tesis---, pues el cruce \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} no encuentra coincidencia en el inventario y el evento no genera \texttt{FRECUENCIA} en el panel activo~$\times$~día.
+
+El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{,}5$~\% (2021), $30{,}9$~\% (2022) y $31{,}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{,}1$~\%, $28{,}1$~\% y $29{,}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~5.1.5), la coincidencia asciende al $79{,}8$~\% (2024) y al $95{,}0$~\% (2025), acompañada por coberturas del panel del $77{,}7$~\% y $92{,}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textbf{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
+
+El procedimiento reproducible se documenta en \href{\urlemparejamientoeventos}{emparejamiento\_eventos.html}. Con base en este hallazgo ---emergido en el presente análisis temporal--- se define el \textbf{dataset de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36{,}120$ filas cuadrante~$\times$~semana, $105$ semanas y $33{,}410$ eventos georreferenciados en total ($15{,}211$ en 2024 y $18{,}199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~5.3.1--5.3.5, pero \textbf{no} se empleará para estimar el modelo predictivo de la Etapa~4.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Cobertura anual de la trazabilidad al inventario GIS y al panel espacial.}
+\label{tab:cobertura_emparejamiento_oms}
+\begin{tabular}{@{}l r r r r@{}}
+\toprule
+\textbf{Año} & \textbf{Eventos BRAE} & \textbf{En inventario (\%)} & \textbf{Panel espacial} & \textbf{Cobertura (\%)} \\
+\midrule
+2021 & 18{,}398 & 30,5 & 5{,}167  & 28,1 \\
+2022 & 17{,}542 & 30,9 & 4{,}934  & 28,1 \\
+2023 & 20{,}068 & 31,7 & 5{,}845  & 29,1 \\
+2024 & 19{,}583 & 79,8 & 15{,}211 & 77,7 \\
+2025 & 19{,}689 & 95,0 & 18{,}199 & 92,4 \\
+\bottomrule
+\end{tabular}
+
+\noindent\textit{Nota:} ``En inventario (\%)'' es la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con \texttt{ELEMENTO} en \texttt{tipo\_elemento.csv} (código de sitio). ``Panel espacial'' es la suma anual de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}. La brecha entre ambas columnas en 2021--2023 se atribuye al registro del código de activo ---y no del código de sitio--- en OMS-SPARD, lo que impide el seguimiento histórico del punto de desconexión. Los años 2024--2025 delimitan $D_{\mathrm{mod}}$.
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/cobertura_emparejamiento_por_anio.png}
+    \caption{Comparación anual entre eventos BRAE y eventos reflejados en el panel espacial. Las etiquetas indican el porcentaje de cobertura respecto a BRAE; la brecha histórica se explica por la incompatibilidad entre el código de activo registrado en OMS-SPARD y el código de sitio del inventario GIS.}
+    \label{fig:cobertura_emparejamiento}
 \end{figure}
 
 \paragraph{Estacionalidad intra-anual.} La Figura~\ref{fig:estacionalidad_mensual} muestra la distribución de los totales semanales según el mes calendario. Se aprecia heterogeneidad estacional, con mayor actividad y dispersión en los meses asociados a temporadas de lluvia en la región, lo que es coherente con la influencia de la precipitación identificada en las Secciones~\ref{sec:identificacion_valores_extremos} y~\ref{sec:distribucion_variables}.
@@ -1292,7 +1331,7 @@ Para caracterizar la dinámica temporal de las interrupciones se construyó, a p
     \label{fig:cuadrantes_activos_semana}
 \end{figure}
 
-\noindent En síntesis, el análisis temporal revela: (i)~un cambio de nivel de la serie a partir de 2024, relevante para la definición de ventanas de entrenamiento; (ii)~estacionalidad intra-anual asociada al régimen de lluvias; y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
+\noindent En síntesis, el análisis temporal sobre $D_{\mathrm{EDA}}$ revela: (i)~un cambio de nivel de la serie a partir de 2024, reinterpretado como mayor homogeneización de la codificación activo/sitio bajo OMS-SP7 ---y no como incremento operativo aislado---, lo que motiva la restricción del dataset de modelado a $D_{\mathrm{mod}}$ (2024--2025; Sección~\ref{sec:delimitacion_temporal_modelado}); (ii)~estacionalidad intra-anual asociada al régimen de lluvias; y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores en $D_{\mathrm{mod}}$. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
 
 \subsection{Identificación de patrones y tendencias}
 
@@ -1337,6 +1376,8 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \subsection{Generación de ventanas temporales}
 
 \subsection{Partición de datos en entrenamiento y prueba}
+
+Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante~$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{,}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{,}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio.
 
 \subsection{Construcción de matrices de diseño}
 
