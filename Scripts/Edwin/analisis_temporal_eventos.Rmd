@@ -1,0 +1,338 @@
+---
+title: "Analisis temporal de eventos en data agrupada"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Análisis temporal de eventos (Sección 5.3.5)
+
+Tabla agregada **cuadrante × semana** (`data_agrupada.csv`).
+
+Caracteriza la dinámica temporal de las interrupciones en el horizonte 2021--2025:
+evolución de la serie semanal, agregaciones por año y mes, autocorrelación temporal
+y evolución de la severidad. Los gráficos se guardan como PNG en `UBICACION_DATA`.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+if (!file.exists(path_agrupada)) {
+  stop("No se encontro: ", path_agrupada)
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r lectura}
+message("Leyendo tabla agrupada cuadrante x semana...")
+tabla_base_agrupada <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(tabla_base_agrupada) &&
+    !inherits(tabla_base_agrupada$semana, "Date")) {
+  tabla_base_agrupada <- tabla_base_agrupada %>%
+    mutate(semana = as.Date(semana))
+}
+
+N_panel <- nrow(tabla_base_agrupada)
+dim(tabla_base_agrupada)
+head(tabla_base_agrupada)
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+## Serie temporal semanal de eventos
+
+Se consolida la serie territorial sumando `n_eventos` de todos los cuadrantes
+en cada semana del horizonte de análisis.
+
+```{r serie-semanal}
+serie_semanal <- tabla_base_agrupada %>%
+  group_by(semana) %>%
+  summarise(
+    n_eventos_total    = sum(n_eventos, na.rm = TRUE),
+    usuarios_total     = sum(usuarios_afectados, na.rm = TRUE),
+    duracion_total_h   = sum(duracion_total, na.rm = TRUE),
+    cuadrantes_activos = sum(n_eventos > 0, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(semana)
+
+summary(serie_semanal$n_eventos_total)
+nrow(serie_semanal)
+range(serie_semanal$semana)
+```
+
+```{r grafico-serie-semanal, fig.width=12, fig.height=5}
+grafico_serie_semanal <- ggplot(serie_semanal, aes(x = semana, y = n_eventos_total)) +
+  geom_line(color = "#2E86AB", linewidth = 0.5, alpha = 0.8) +
+  geom_smooth(method = "loess", span = 0.2, se = FALSE,
+              color = "#E84855", linewidth = 1) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b-%Y") +
+  labs(
+    title = "Serie semanal de eventos de interrupcion (todos los cuadrantes)",
+    subtitle = "Linea azul: total semanal | Linea roja: tendencia suavizada (LOESS)",
+    x = "Semana", y = "Numero de eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+grafico_serie_semanal
+
+guardar_plot(grafico_serie_semanal, "serie_semanal_eventos_agrupada.png", 12, 5)
+```
+
+## Eventos por año
+
+```{r eventos-anio, fig.width=9, fig.height=5}
+eventos_anio <- serie_semanal %>%
+  mutate(anio = year(semana)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_eventos = sum(n_eventos_total),
+    n_semanas = n(),
+    eventos_por_semana = round(n_eventos / n_semanas, 1),
+    .groups = "drop"
+  )
+
+eventos_anio
+
+grafico_eventos_anio <- ggplot(eventos_anio, aes(x = factor(anio), y = n_eventos)) +
+  geom_col(fill = "#4A90D9", alpha = 0.85, width = 0.65) +
+  geom_text(
+    aes(label = format(n_eventos, big.mark = ",")),
+    vjust = -0.4, fontface = "bold", size = 3.8
+  ) +
+  scale_y_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title = "Eventos de interrupcion por año",
+    subtitle = "Total anual sobre la tabla agrupada cuadrante x semana",
+    x = "Año", y = "Numero de eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+grafico_eventos_anio
+
+guardar_plot(grafico_eventos_anio, "eventos_por_anio_agrupada.png", 9, 5)
+```
+
+## Estacionalidad mensual
+
+Distribución de los totales semanales según el mes calendario, para evaluar
+patrones estacionales intra-anuales.
+
+```{r estacionalidad-mes, fig.width=11, fig.height=5.5}
+serie_mes <- serie_semanal %>%
+  mutate(
+    mes = factor(
+      month(semana),
+      levels = 1:12,
+      labels = c("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                 "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+    )
+  )
+
+grafico_estacionalidad <- ggplot(serie_mes, aes(x = mes, y = n_eventos_total, fill = mes)) +
+  geom_boxplot(show.legend = FALSE, outlier.alpha = 0.35, outlier.size = 0.8) +
+  scale_fill_viridis_d(option = "D", begin = 0.25, end = 0.9) +
+  labs(
+    title = "Estacionalidad mensual de los eventos semanales",
+    subtitle = "Distribucion del total semanal de eventos segun mes calendario (2021-2025)",
+    x = "Mes", y = "Eventos por semana"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+grafico_estacionalidad
+
+guardar_plot(grafico_estacionalidad, "estacionalidad_mensual_eventos_agrupada.png", 11, 5.5)
+```
+
+## Autocorrelación temporal de la serie semanal
+
+ACF y PACF de la serie semanal total, para identificar persistencia y posibles
+ciclos en escala de semanas.
+
+```{r acf-semanal, fig.width=11, fig.height=5}
+serie_ts <- serie_semanal$n_eventos_total
+
+png(
+  file.path(UBICACION_DATA, "acf_serie_semanal_agrupada.png"),
+  width = 11, height = 5, units = "in", res = 300, bg = "white"
+)
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(serie_ts, lag.max = 60,
+    main = "ACF - Serie semanal de eventos", xlab = "Rezago (semanas)")
+pacf(serie_ts, lag.max = 60,
+     main = "PACF - Serie semanal de eventos", xlab = "Rezago (semanas)")
+par(mfrow = c(1, 1))
+dev.off()
+
+if (dir.exists(path_img_tesis)) {
+  file.copy(
+    file.path(UBICACION_DATA, "acf_serie_semanal_agrupada.png"),
+    file.path(path_img_tesis, "acf_serie_semanal_agrupada.png"),
+    overwrite = TRUE
+  )
+}
+
+# Mostrar tambien en el HTML
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(serie_ts, lag.max = 60,
+    main = "ACF - Serie semanal de eventos", xlab = "Rezago (semanas)")
+pacf(serie_ts, lag.max = 60,
+     main = "PACF - Serie semanal de eventos", xlab = "Rezago (semanas)")
+par(mfrow = c(1, 1))
+```
+
+```{r acf-resumen}
+acf_vals <- acf(serie_ts, lag.max = 60, plot = FALSE)
+ic95 <- qnorm(0.975) / sqrt(length(serie_ts))
+
+resumen_acf <- tibble(
+  rezago = c(1, 2, 4, 12, 26, 52),
+  rho    = round(acf_vals$acf[c(1, 2, 4, 12, 26, 52) + 1], 4)
+) %>%
+  mutate(significativo = abs(rho) > ic95)
+
+resumen_acf
+cat("IC 95% bajo H0 (ruido blanco): +/-", round(ic95, 4), "\n")
+```
+
+## Evolución temporal de la severidad
+
+Series semanales de usuarios afectados y duración acumulada, para evaluar si la
+severidad acompaña la frecuencia de eventos.
+
+```{r serie-severidad, fig.width=12, fig.height=7}
+serie_severidad <- serie_semanal %>%
+  select(semana, usuarios_total, duracion_total_h) %>%
+  pivot_longer(-semana, names_to = "variable", values_to = "valor") %>%
+  mutate(
+    variable = recode(
+      variable,
+      usuarios_total   = "Usuarios afectados (total semanal)",
+      duracion_total_h = "Duracion acumulada (horas por semana)"
+    )
+  )
+
+grafico_severidad <- ggplot(serie_severidad, aes(x = semana, y = valor)) +
+  geom_line(color = "#6A5ACD", linewidth = 0.5, alpha = 0.8) +
+  geom_smooth(method = "loess", span = 0.2, se = FALSE,
+              color = "#E84855", linewidth = 0.9) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 1) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b-%Y") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Evolucion semanal de la severidad de interrupciones",
+    subtitle = "Linea roja: tendencia suavizada (LOESS)",
+    x = "Semana", y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+grafico_severidad
+
+guardar_plot(grafico_severidad, "serie_severidad_semanal_agrupada.png", 12, 7)
+```
+
+## Cuadrantes activos por semana
+
+Número de cuadrantes con al menos un evento en cada semana: dimensión espacial
+de la actividad temporal.
+
+```{r cuadrantes-activos, fig.width=12, fig.height=4.5}
+grafico_cuadrantes_activos <- ggplot(serie_semanal, aes(x = semana, y = cuadrantes_activos)) +
+  geom_line(color = "#2C7BB6", linewidth = 0.5, alpha = 0.8) +
+  geom_smooth(method = "loess", span = 0.2, se = FALSE,
+              color = "#E84855", linewidth = 0.9) +
+  scale_x_date(date_breaks = "6 months", date_labels = "%b-%Y") +
+  labs(
+    title = "Cuadrantes con al menos un evento por semana",
+    subtitle = "Extension territorial de la actividad de interrupciones",
+    x = "Semana", y = "Numero de cuadrantes activos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+grafico_cuadrantes_activos
+
+guardar_plot(grafico_cuadrantes_activos, "cuadrantes_activos_semana_agrupada.png", 12, 4.5)
+```
+
+## Exportar resultados
+
+```{r exportar}
+write_csv(
+  serie_semanal,
+  file.path(UBICACION_DATA, "serie_semanal_eventos_agrupada.csv")
+)
+write_csv(
+  eventos_anio,
+  file.path(UBICACION_DATA, "eventos_por_anio_agrupada.csv")
+)
+
+archivos <- c(
+  "serie_semanal_eventos_agrupada.csv",
+  "eventos_por_anio_agrupada.csv",
+  "serie_semanal_eventos_agrupada.png",
+  "eventos_por_anio_agrupada.png",
+  "estacionalidad_mensual_eventos_agrupada.png",
+  "acf_serie_semanal_agrupada.png",
+  "serie_severidad_semanal_agrupada.png",
+  "cuadrantes_activos_semana_agrupada.png"
+)
+
+tibble(
+  archivo = archivos,
+  existe  = file.exists(file.path(UBICACION_DATA, archivos))
+)
+
+message("Analisis temporal guardado en: ", UBICACION_DATA)
+```

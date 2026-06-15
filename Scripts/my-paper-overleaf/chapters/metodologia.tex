@@ -1238,6 +1238,62 @@ Con el propósito de comprender el comportamiento estadístico de las variables 
 
 \subsection{Análisis temporal de eventos}
 
+\label{sec:analisis_temporal_eventos}
+
+Para caracterizar la dinámica temporal de las interrupciones se construyó, a partir de la tabla agregada \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), la serie territorial semanal que consolida el total de \texttt{n\_eventos} de todos los cuadrantes en cada semana calendario. La serie cubre $262$ semanas del horizonte 2021--2025, con una mediana de $124{,}5$ eventos por semana (media $188{,}5$; máximo $648$). El procedimiento reproducible se documenta en \href{\urlanalisistemporal}{analisis\_temporal\_eventos.html}.
+
+\paragraph{Evolución de la serie semanal.} La Figura~\ref{fig:serie_semanal_eventos} presenta la serie semanal con su tendencia suavizada (LOESS). Se distinguen dos regímenes: entre 2021 y 2023 la actividad se mantiene relativamente estable, mientras que a partir de 2024 se observa un incremento sostenido del nivel de la serie. La agregación anual (Figura~\ref{fig:eventos_por_anio}) cuantifica este cambio: de $5{,}167$ eventos en 2021 y $4{,}934$ en 2022, se pasa a $15{,}211$ en 2024 y $18{,}199$ en 2025; en términos de intensidad, el promedio asciende de $\approx 99$ a $\approx 350$ eventos por semana entre 2021 y 2025. Este cambio de nivel ---atribuible a la dinámica operativa de la red, a condiciones exógenas o a cambios en la captura de los sistemas fuente--- debe considerarse en la Etapa~4 al definir las particiones temporales de entrenamiento y prueba, pues condiciona la estacionariedad de la serie.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/serie_semanal_eventos_agrupada.png}
+    \caption{Serie semanal de eventos de interrupción (suma sobre los cuadrantes) con tendencia LOESS, 2021--2025.}
+    \label{fig:serie_semanal_eventos}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.80\textwidth]{img/eventos_por_anio_agrupada.png}
+    \caption{Total anual de eventos de interrupción sobre la tabla agrupada.}
+    \label{fig:eventos_por_anio}
+\end{figure}
+
+\paragraph{Estacionalidad intra-anual.} La Figura~\ref{fig:estacionalidad_mensual} muestra la distribución de los totales semanales según el mes calendario. Se aprecia heterogeneidad estacional, con mayor actividad y dispersión en los meses asociados a temporadas de lluvia en la región, lo que es coherente con la influencia de la precipitación identificada en las Secciones~\ref{sec:identificacion_valores_extremos} y~\ref{sec:distribucion_variables}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/estacionalidad_mensual_eventos_agrupada.png}
+    \caption{Distribución del total semanal de eventos según mes calendario (2021--2025).}
+    \label{fig:estacionalidad_mensual}
+\end{figure}
+
+\paragraph{Autocorrelación temporal.} Las funciones de autocorrelación simple y parcial de la serie semanal (Figura~\ref{fig:acf_serie_semanal}) evidencian fuerte persistencia: la autocorrelación es $0{,}92$ en el rezago de una semana y decae lentamente ($0{,}60$ a $12$ semanas; $0{,}38$ a $26$), manteniéndose significativa frente al intervalo de confianza del $95$~\% bajo ruido blanco ($\pm 0{,}12$). Adicionalmente, el rezago de $52$ semanas conserva una autocorrelación de $0{,}43$, indicativa de un componente estacional anual. Esta estructura justifica la incorporación de rezagos y términos estacionales como variables predictoras en la Etapa~4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/acf_serie_semanal_agrupada.png}
+    \caption{ACF y PACF de la serie semanal de eventos (rezagos en semanas).}
+    \label{fig:acf_serie_semanal}
+\end{figure}
+
+\paragraph{Evolución de la severidad y extensión territorial.} La Figura~\ref{fig:serie_severidad_semanal} presenta las series semanales de usuarios afectados y duración acumulada: ambas acompañan el incremento de nivel observado en la frecuencia de eventos a partir de 2024, lo que indica que el cambio de régimen no es solo de conteo sino también de impacto sobre la continuidad del servicio. Complementariamente, la Figura~\ref{fig:cuadrantes_activos_semana} muestra el número de cuadrantes con al menos un evento por semana, que crece en paralelo: la mayor actividad reciente se distribuye sobre una porción más amplia del territorio y no se explica por unos pocos cuadrantes puntuales.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/serie_severidad_semanal_agrupada.png}
+    \caption{Evolución semanal de usuarios afectados y duración acumulada, con tendencia LOESS.}
+    \label{fig:serie_severidad_semanal}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/cuadrantes_activos_semana_agrupada.png}
+    \caption{Número de cuadrantes con al menos un evento por semana (extensión territorial de la actividad).}
+    \label{fig:cuadrantes_activos_semana}
+\end{figure}
+
+\noindent En síntesis, el análisis temporal revela: (i)~un cambio de nivel de la serie a partir de 2024, relevante para la definición de ventanas de entrenamiento; (ii)~estacionalidad intra-anual asociada al régimen de lluvias; y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
+
 \subsection{Identificación de patrones y tendencias}
 
 \subsection{Visualización exploratoria}
