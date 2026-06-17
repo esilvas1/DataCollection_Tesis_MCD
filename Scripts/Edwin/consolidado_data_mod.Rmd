@@ -1,0 +1,123 @@
+---
+title: "Construccion del dataset de modelado D_mod (2024-2025)"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Construccion de $D_{\mathrm{mod}}$ — cuadrante × semana (2024–2025)
+
+Dataset analitico para modelado (Seccion 5.3.5 y Etapa 4), definido como subconjunto de
+`data_agrupada.csv` con `year(semana) \in \{2024, 2025\}`.
+
+La tabla completa 2021–2025 (`data_agrupada.csv`) se conserva como $D_{\mathrm{EDA}}$.
+No se sobrescribe: el resultado se exporta como **`data_agrupada_mod.csv`**.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+path_salida <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+
+if (!file.exists(path_agrupada)) {
+  stop("No se encontro: ", path_agrupada)
+}
+```
+
+## Lectura y filtro temporal
+
+```{r lectura-filtro}
+message("Leyendo tabla agrupada completa...")
+tabla_agrupada <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(tabla_agrupada) &&
+    !inherits(tabla_agrupada$semana, "Date")) {
+  tabla_agrupada <- tabla_agrupada %>%
+    mutate(semana = as.Date(semana))
+}
+
+dim(tabla_agrupada)
+
+d_mod <- tabla_agrupada %>%
+  mutate(anio = year(semana)) %>%
+  filter(anio %in% 2024:2025) %>%
+  select(-anio)
+
+dim(d_mod)
+range(d_mod$semana)
+```
+
+## Resumen de $D_{\mathrm{mod}}$
+
+```{r resumen}
+resumen_d_mod <- tibble(
+  metrica = c(
+    "Filas (cuadrante x semana)",
+    "Semanas distintas",
+    "Cuadrantes distintos",
+    "Total n_eventos",
+    "Total usuarios_afectados",
+    "Total duracion_total (horas)",
+    "Semana inicio",
+    "Semana fin"
+  ),
+  valor = c(
+    as.character(nrow(d_mod)),
+    as.character(n_distinct(d_mod$semana)),
+    as.character(n_distinct(d_mod$id_cuadrante)),
+    format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ","),
+    format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = ","),
+    format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = ","),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana))
+  )
+)
+
+kable(resumen_d_mod, col.names = c("Metrica", "Valor"))
+
+resumen_anio <- d_mod %>%
+  mutate(anio = year(semana)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_filas = n(),
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    n_semanas = n_distinct(semana),
+    eventos_por_semana = round(n_eventos / n_semanas, 1),
+    .groups = "drop"
+  )
+
+resumen_anio
+```
+
+## Exportacion
+
+```{r exportar}
+write_csv(d_mod, path_salida)
+message("Exportado: ", path_salida)
+
+head(d_mod)
+```
+
+**Uso:** `data_agrupada_mod.csv` es el insumo para las secciones 5.3.6 en adelante y la Etapa 4
+(entrenamiento 2024 / prueba 2025). La agregacion original desde `data_consolidada.csv` sigue
+documentada en `data_agrupacion.html`; filtrar la agrupada es equivalente a agregar solo el
+panel 2024–2025.

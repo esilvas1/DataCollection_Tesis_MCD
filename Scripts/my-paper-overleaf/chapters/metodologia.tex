@@ -1261,7 +1261,7 @@ Para caracterizar la dinámica temporal de las interrupciones se construyó, a p
 \paragraph{Diagnóstico de cobertura del emparejamiento evento--elemento.}
 \label{sec:delimitacion_temporal_modelado}
 
-Al contrastar el conteo anual de eventos en \texttt{tabla\_eventos\_ajustado.csv} (BRAE) con la suma territorial de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}, se identificó un \textbf{subregistro sistemático} en el grano espacial durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). La causa no es la ausencia del campo \texttt{COMPONENTE\_FALLADO} ---completo en el $100$~\% de los registros BRAE---, sino la \textbf{incompatibilidad entre esquemas de codificación} al cruzar eventos con el inventario georreferenciado \texttt{tipo\_elemento.csv} (Tabla~5.5).
+Al contrastar el conteo anual de eventos en \texttt{tabla\_eventos\_ajustado.csv} (BRAE) con la suma territorial de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}, se identificó un \textbf{sesgo sistemático} en el grano espacial durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). La causa no es la ausencia del campo \texttt{COMPONENTE\_FALLADO} ---completo en el $100$~\% de los registros BRAE---, sino la \textbf{incompatibilidad entre esquemas de codificación} al cruzar eventos con el inventario georreferenciado \texttt{tipo\_elemento.csv} (Tabla~5.5).
 
 En la operación de la red coexisten dos identificadores para un mismo punto de conexión: (i)~el \textbf{código de sitio} (ubicación), estable en el tiempo y empleado por el inventario GIS como \texttt{ELEMENTO}; y (ii)~el \textbf{código de activo}, asociado al equipo instalado y \textbf{sujeto a cambio} cuando el activo se repone por mantenimiento o renovación, mientras el código de sitio permanece invariante. El panel consolidado y la agregación cuadrante~$\times$~semana se construyen sobre el código de sitio. No obstante, en el sistema histórico OMS-SPARD (Sección~5.1.4) el elemento fallado (\texttt{BREAKER} $\rightarrow$ \texttt{COMPONENTE\_FALLADO}) se registraba con frecuencia mediante el \textbf{código del activo} y no el del sitio. Ello impide el seguimiento histórico del punto de desconexión ---unidad espacial central para el pronóstico territorial de $SAIDI$ y $SAIFI$ en esta tesis---, pues el cruce \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} no encuentra coincidencia en el inventario y el evento no genera \texttt{FRECUENCIA} en el panel activo~$\times$~día.
 
@@ -1333,7 +1333,69 @@ El procedimiento reproducible se documenta en \href{\urlemparejamientoeventos}{e
 
 \noindent En síntesis, el análisis temporal sobre $D_{\mathrm{EDA}}$ revela: (i)~un cambio de nivel de la serie a partir de 2024, reinterpretado como mayor homogeneización de la codificación activo/sitio bajo OMS-SP7 ---y no como incremento operativo aislado---, lo que motiva la restricción del dataset de modelado a $D_{\mathrm{mod}}$ (2024--2025; Sección~\ref{sec:delimitacion_temporal_modelado}); (ii)~estacionalidad intra-anual asociada al régimen de lluvias; y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores en $D_{\mathrm{mod}}$. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
 
+\paragraph{Materialización de $D_{\mathrm{mod}}$.} Para operacionalizar la delimitación temporal sin alterar el insumo exploratorio, se construyó el archivo \texttt{data\_agrupada\_mod.csv} como subconjunto de \texttt{data\_agrupada.csv} con filtro \texttt{year(semana)} $\in \{2024,\,2025\}$, conservando el grano cuadrante~$\times$~semana y el conjunto completo de variables climáticas y operativas. La tabla original 2021--2025 permanece intacta como $D_{\mathrm{EDA}}$; el resultado filtrado ($36{,}120$ filas; $344$ cuadrantes; $105$ semanas; $33{,}410$ eventos) constituye el insumo analítico para las Secciones~5.3.6 en adelante y la Etapa~4, con partición natural entrenamiento 2024 / prueba 2025. El procedimiento reproducible ---lectura, filtro, resumen por año y exportación--- se documenta en \href{\urlconsolidadodatamod}{consolidado\_data\_mod.html}.
+
 \subsection{Identificación de patrones y tendencias}
+\label{sec:identificacion_patrones_tendencias}
+
+Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{,}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{,}410$ eventos en 2024--2025). El procedimiento reproducible se documenta en \href{\urlidentificacionpatrones}{identificacion\_patrones.html}.
+
+\paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma mayor actividad y dispersión en los meses asociados al régimen de lluvias, coherente con el análisis de §5.3.5 sobre $D_{\mathrm{EDA}}$. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{,}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/serie_semanal_patrones_mod.png}
+    \caption{Serie semanal de eventos sobre $D_{\mathrm{mod}}$ (2024--2025) con tendencia LOESS.}
+    \label{fig:serie_semanal_patrones_mod}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/estacionalidad_mensual_patrones_mod.png}
+    \caption{Estacionalidad mensual del total semanal de eventos en $D_{\mathrm{mod}}$.}
+    \label{fig:estacionalidad_patrones_mod}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/acf_serie_patrones_mod.png}
+    \caption{ACF y PACF de la serie semanal de eventos en $D_{\mathrm{mod}}$.}
+    \label{fig:acf_patrones_mod}
+\end{figure}
+
+\paragraph{Patrones espaciales.} El ranking de cuadrantes por total de \texttt{n\_eventos} (Figura~\ref{fig:ranking_cuadrantes_mod}) y el mapa de intensidad territorial (Figura~\ref{fig:mapa_intensidad_mod}) evidencian heterogeneidad espacial: los diez cuadrantes más activos concentran el $20{,}5$~\% de los eventos del periodo, mientras el $14{,}2$~\% de los cuadrantes ($49$ de $344$) se clasifica en nivel de actividad \emph{alta} (Figura~\ref{fig:segmentacion_mod}). La actividad no se distribuye de forma uniforme sobre la malla de $800$ cuadrantes, sino que se agrupa en zonas de mayor exposición operativa.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{img/ranking_cuadrantes_patrones_mod.png}
+    \caption{Quince cuadrantes con mayor número acumulado de eventos en $D_{\mathrm{mod}}$.}
+    \label{fig:ranking_cuadrantes_mod}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]{img/mapa_intensidad_cuadrantes_patrones_mod.png}
+    \caption{Mapa de intensidad de eventos por cuadrante (2024--2025).}
+    \label{fig:mapa_intensidad_mod}
+\end{figure}
+
+\paragraph{Patrones clima--evento.} Mediante correlación de Spearman a nivel cuadrante~$\times$~semana, la precipitación acumulada semanal (\texttt{precip\_total\_semana}) exhibe la asociación positiva más fuerte con \texttt{n\_eventos} ($\rho = 0{,}41$; $p < 0{,}001$), seguida de variables de viento ($\rho \approx 0{,}14$). La Figura~\ref{fig:dispersion_precip_mod} ilustra la relación no lineal entre precipitación y frecuencia de eventos. Las temperaturas presentan asociaciones débiles y negativas ($|\rho| < 0{,}05$).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{img/dispersion_precip_eventos_patrones_mod.png}
+    \caption{Dispersión entre precipitación semanal y \texttt{n\_eventos} por cuadrante en $D_{\mathrm{mod}}$.}
+    \label{fig:dispersion_precip_mod}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/segmentacion_cuadrantes_patrones_mod.png}
+    \caption{Segmentación de cuadrantes por nivel de actividad acumulada en $D_{\mathrm{mod}}$.}
+    \label{fig:segmentacion_mod}
+\end{figure}
+
+\noindent En síntesis, el análisis de patrones sobre $D_{\mathrm{mod}}$ confirma: (i)~persistencia y estacionalidad temporal; (ii)~concentración espacial en un subconjunto de cuadrantes; y (iii)~asociación positiva entre precipitación y frecuencia de interrupciones. Estos hallazgos orientan la selección de variables predictoras y la estratificación territorial de la Etapa~4.
 
 \subsection{Visualización exploratoria}
 

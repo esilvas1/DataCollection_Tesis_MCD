@@ -1,0 +1,406 @@
+---
+title: "Identificacion de patrones y tendencias (D_mod 2024-2025)"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Identificacion de patrones y tendencias (Seccion 5.3.6)
+
+Dataset **$D_{\mathrm{mod}}$**: tabla agregada cuadrante × semana (`data_agrupada_mod.csv`, 2024–2025).
+Restringido tras el diagnostico de cobertura OMS (Seccion 5.3.5).
+
+Metodologias aplicadas:
+
+1. **Patrones temporales:** serie semanal territorial, estacionalidad mensual, comparacion 2024 vs 2025 y ACF/PACF.
+2. **Patrones espaciales:** ranking de cuadrantes, mapa de intensidad y concentracion territorial.
+3. **Patrones clima–evento:** correlacion de Spearman entre variables meteorologicas semanales y `n_eventos`.
+4. **Segmentacion por actividad:** clasificacion de cuadrantes segun frecuencia e impacto acumulado.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+path_full <- file.path(UBICACION_DATA, "data_agrupada.csv")
+
+if (file.exists(path_mod)) {
+  path_agrupada <- path_mod
+  aplicar_filtro_anio <- FALSE
+} else if (file.exists(path_full)) {
+  path_agrupada <- path_full
+  aplicar_filtro_anio <- TRUE
+  warning("No se encontro data_agrupada_mod.csv; filtrando data_agrupada.csv a 2024-2025.")
+} else {
+  stop("No se encontro data_agrupada_mod.csv ni data_agrupada.csv.")
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+```{r lectura}
+message("Leyendo D_mod (cuadrante x semana, 2024-2025)...")
+d_mod <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(d_mod) && !inherits(d_mod$semana, "Date")) {
+  d_mod <- d_mod %>% mutate(semana = as.Date(semana))
+}
+
+d_mod <- if (aplicar_filtro_anio) {
+  d_mod %>% filter(year(semana) %in% 2024:2025)
+} else {
+  d_mod
+}
+
+resumen_panel <- tibble(
+  metrica = c("Filas", "Cuadrantes", "Semanas", "Total eventos", "Semana min", "Semana max"),
+  valor = c(
+    nrow(d_mod),
+    n_distinct(d_mod$id_cuadrante),
+    n_distinct(d_mod$semana),
+    sum(d_mod$n_eventos, na.rm = TRUE),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana))
+  )
+)
+
+kable(resumen_panel, col.names = c("Metrica", "Valor"))
+```
+
+## 1. Patrones temporales
+
+### 1.1 Serie semanal territorial
+
+```{r serie-semanal-mod}
+serie_semanal_mod <- d_mod %>%
+  group_by(semana) %>%
+  summarise(
+    n_eventos_total = sum(n_eventos, na.rm = TRUE),
+    usuarios_total = sum(usuarios_afectados, na.rm = TRUE),
+    cuadrantes_activos = sum(n_eventos > 0, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(semana)
+
+summary(serie_semanal_mod$n_eventos_total)
+```
+
+```{r grafico-serie-mod, fig.width=12, fig.height=5}
+p_serie_mod <- ggplot(serie_semanal_mod, aes(x = semana, y = n_eventos_total)) +
+  geom_line(color = "#2E86AB", linewidth = 0.55, alpha = 0.85) +
+  geom_smooth(method = "loess", span = 0.35, se = FALSE, color = "#E84855", linewidth = 1) +
+  scale_x_date(date_breaks = "3 months", date_labels = "%b-%Y") +
+  labs(
+    title = "Serie semanal de eventos en D_mod (2024-2025)",
+    subtitle = "Suma territorial de n_eventos por semana",
+    x = "Semana", y = "Numero de eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"), axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_serie_mod
+guardar_plot(p_serie_mod, "serie_semanal_patrones_mod.png", 12, 5)
+```
+
+### 1.2 Estacionalidad mensual y comparacion anual
+
+```{r estacionalidad-mod}
+serie_mes_mod <- serie_semanal_mod %>%
+  mutate(
+    anio = year(semana),
+    mes = factor(
+      month(semana),
+      levels = 1:12,
+      labels = c("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                 "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+    )
+  )
+
+eventos_anio_mod <- d_mod %>%
+  mutate(anio = year(semana)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    n_semanas = n_distinct(semana),
+    media_semanal = round(n_eventos / n_semanas, 1),
+    .groups = "drop"
+  )
+
+kable(eventos_anio_mod, col.names = c("Anio", "Eventos", "Semanas", "Media semanal"))
+```
+
+```{r grafico-estacionalidad-mod, fig.width=11, fig.height=5.5}
+p_estacionalidad_mod <- ggplot(serie_mes_mod, aes(x = mes, y = n_eventos_total, fill = mes)) +
+  geom_boxplot(show.legend = FALSE, outlier.alpha = 0.35) +
+  scale_fill_viridis_d(option = "D", begin = 0.25, end = 0.9) +
+  labs(
+    title = "Estacionalidad mensual de eventos semanales (D_mod)",
+    subtitle = "Distribucion del total semanal segun mes calendario, 2024-2025",
+    x = "Mes", y = "Eventos por semana"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_estacionalidad_mod
+guardar_plot(p_estacionalidad_mod, "estacionalidad_mensual_patrones_mod.png", 11, 5.5)
+```
+
+### 1.3 Autocorrelacion temporal (ACF / PACF)
+
+```{r acf-mod, fig.width=11, fig.height=5}
+serie_ts_mod <- serie_semanal_mod$n_eventos_total
+max_lag <- min(40, length(serie_ts_mod) - 1)
+
+png(
+  file.path(UBICACION_DATA, "acf_serie_patrones_mod.png"),
+  width = 11, height = 5, units = "in", res = 300
+)
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(serie_ts_mod, lag.max = max_lag, main = "ACF — D_mod (semanas)")
+pacf(serie_ts_mod, lag.max = max_lag, main = "PACF — D_mod (semanas)")
+dev.off()
+
+if (dir.exists(path_img_tesis)) {
+  file.copy(
+    file.path(UBICACION_DATA, "acf_serie_patrones_mod.png"),
+    file.path(path_img_tesis, "acf_serie_patrones_mod.png"),
+    overwrite = TRUE
+  )
+}
+
+acf_val <- as.numeric(acf(serie_ts_mod, lag.max = min(12, max_lag), plot = FALSE)$acf)
+tibble(
+  rezago = 0:min(12, max_lag),
+  acf = round(acf_val, 3)
+) %>%
+  kable(col.names = c("Rezago (semanas)", "ACF"))
+```
+
+## 2. Patrones espaciales
+
+### 2.1 Ranking de cuadrantes por actividad
+
+```{r ranking-cuadrantes}
+ranking_cuadrantes <- d_mod %>%
+  group_by(id_cuadrante, latitud, longitud) %>%
+  summarise(
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    usuarios = sum(usuarios_afectados, na.rm = TRUE),
+    duracion_h = sum(duracion_total, na.rm = TRUE),
+    semanas_activas = sum(n_eventos > 0),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(n_eventos))
+
+top_cuadrantes <- ranking_cuadrantes %>% slice_head(n = 15)
+kable(top_cuadrantes, digits = 1)
+
+total_eventos <- sum(ranking_cuadrantes$n_eventos)
+concentracion_top10 <- ranking_cuadrantes %>%
+  slice_head(n = 10) %>%
+  summarise(pct = round(100 * sum(n_eventos) / total_eventos, 1))
+
+cat("Eventos en top 10 cuadrantes (%):", concentracion_top10$pct, "\n")
+```
+
+```{r grafico-ranking-mod, fig.width=10, fig.height=6}
+top_plot <- top_cuadrantes %>%
+  mutate(id_cuadrante = factor(id_cuadrante, levels = rev(id_cuadrante)))
+
+p_ranking <- ggplot(top_plot, aes(x = n_eventos, y = id_cuadrante)) +
+  geom_col(fill = "#4A90D9", alpha = 0.9) +
+  scale_x_continuous(labels = comma) +
+  labs(
+    title = "Top 15 cuadrantes por numero de eventos (D_mod)",
+    x = "Total n_eventos", y = "id_cuadrante"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_ranking
+guardar_plot(p_ranking, "ranking_cuadrantes_patrones_mod.png", 10, 6)
+```
+
+### 2.2 Mapa de intensidad territorial
+
+```{r mapa-intensidad, fig.width=10, fig.height=7}
+p_mapa <- ggplot(ranking_cuadrantes, aes(x = longitud, y = latitud)) +
+  geom_point(aes(size = n_eventos, color = n_eventos), alpha = 0.75) +
+  scale_size_continuous(range = c(1.5, 9), labels = comma) +
+  scale_color_viridis_c(option = "C", labels = comma) +
+  labs(
+    title = "Intensidad de eventos por cuadrante (D_mod)",
+    subtitle = "Tamano y color proporcionales al total de n_eventos 2024-2025",
+    x = "Longitud", y = "Latitud",
+    size = "Eventos", color = "Eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_mapa
+guardar_plot(p_mapa, "mapa_intensidad_cuadrantes_patrones_mod.png", 10, 7)
+```
+
+## 3. Patrones clima–evento
+
+Correlacion de Spearman entre variables climaticas semanales y `n_eventos` a nivel
+cuadrante × semana (filas con al menos un evento y filas con precipitacion > 0 para lluvia).
+
+```{r correlacion-clima}
+vars_clima <- c(
+  "temp_media_semana", "temp_max_semana", "temp_min_semana",
+  "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+  "precip_total_semana"
+)
+
+cor_eventos <- map_dfr(vars_clima, function(v) {
+  x <- d_mod[[v]]
+  y <- d_mod$n_eventos
+  ok <- complete.cases(x, y)
+  ct <- suppressWarnings(cor.test(x[ok], y[ok], method = "spearman"))
+  tibble(
+    variable = v,
+    rho = unname(ct$estimate),
+    p_value = ct$p.value
+  )
+}) %>%
+  mutate(
+    rho = round(rho, 3),
+    p_value = signif(p_value, 3),
+    significativo = p_value < 0.05
+  ) %>%
+  arrange(desc(abs(rho)))
+
+kable(cor_eventos, col.names = c("Variable", "Spearman rho", "p-valor", "Significativo"))
+```
+
+```{r grafico-precip-eventos, fig.width=9, fig.height=5.5}
+d_precip <- d_mod %>%
+  filter(precip_total_semana > 0 | n_eventos > 0)
+
+p_precip <- ggplot(d_precip, aes(x = precip_total_semana, y = n_eventos)) +
+  geom_point(alpha = 0.12, size = 0.9, color = "#2E86AB") +
+  geom_smooth(method = "loess", se = TRUE, color = "#E84855", linewidth = 0.9) +
+  scale_x_continuous(labels = comma) +
+  labs(
+    title = "Relacion precipitacion semanal y n_eventos por cuadrante",
+    subtitle = "D_mod (2024-2025); suavizado LOESS",
+    x = "Precipitacion total semanal (mm)", y = "n_eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_precip
+guardar_plot(p_precip, "dispersion_precip_eventos_patrones_mod.png", 9, 5.5)
+```
+
+## 4. Segmentacion por nivel de actividad
+
+```{r segmentacion}
+cuadrante_actividad <- ranking_cuadrantes %>%
+  mutate(
+    nivel = case_when(
+      n_eventos == 0 ~ "Sin eventos",
+      n_eventos <= quantile(n_eventos[n_eventos > 0], 0.50) ~ "Baja",
+      n_eventos <= quantile(n_eventos[n_eventos > 0], 0.85) ~ "Media",
+      TRUE ~ "Alta"
+    ),
+    nivel = factor(nivel, levels = c("Sin eventos", "Baja", "Media", "Alta"))
+  )
+
+tabla_segmentacion <- cuadrante_actividad %>%
+  count(nivel, name = "n_cuadrantes") %>%
+  mutate(pct = round(100 * n_cuadrantes / sum(n_cuadrantes), 1))
+
+kable(tabla_segmentacion, col.names = c("Nivel de actividad", "Cuadrantes", "%"))
+```
+
+```{r grafico-segmentacion, fig.width=8, fig.height=5}
+p_segmentacion <- ggplot(tabla_segmentacion, aes(x = nivel, y = n_cuadrantes, fill = nivel)) +
+  geom_col(alpha = 0.9, show.legend = FALSE) +
+  geom_text(aes(label = paste0(n_cuadrantes, " (", pct, "%)")), vjust = -0.4, fontface = "bold") +
+  scale_fill_manual(values = c("#95A5A6", "#74C69D", "#F4A261", "#E84855")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+  labs(
+    title = "Segmentacion de cuadrantes por actividad (D_mod)",
+    x = "Nivel", y = "Numero de cuadrantes"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_segmentacion
+guardar_plot(p_segmentacion, "segmentacion_cuadrantes_patrones_mod.png", 8, 5)
+```
+
+## 5. Sintesis de hallazgos
+
+```{r sintesis}
+hallazgos <- tibble(
+  bloque = c(
+    "Temporal",
+    "Temporal",
+    "Espacial",
+    "Clima",
+    "Segmentacion"
+  ),
+  hallazgo = c(
+    paste0("Media semanal de eventos: ", round(mean(serie_semanal_mod$n_eventos_total), 1)),
+    paste0("ACF rezago 1: ", round(acf_val[2], 2)),
+    paste0("Top 10 cuadrantes concentran ", concentracion_top10$pct, "% de eventos"),
+    paste0(
+      "Mayor |rho| clima-evento: ",
+      cor_eventos$variable[1], " (rho = ", cor_eventos$rho[1], ")"
+    ),
+    paste0(
+      "Cuadrantes nivel alto: ",
+      tabla_segmentacion$n_cuadrantes[tabla_segmentacion$nivel == "Alta"], " (",
+      tabla_segmentacion$pct[tabla_segmentacion$nivel == "Alta"], "%)"
+    )
+  )
+)
+
+kable(hallazgos, col.names = c("Bloque", "Hallazgo"))
+```
+
+Los patrones identificados sobre $D_{\mathrm{mod}}$ orientan la Etapa~4: rezagos temporales,
+variables climaticas con mayor asociacion y estratificacion territorial para el modelado de
+continuidad del servicio.
