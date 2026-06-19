@@ -891,7 +891,7 @@ Una vez completadas las etapas de extracción e integración (Etapas~1 y~2), se 
 Para las variables cuantitativas se calculan medidas de tendencia central y dispersión, así como la proporción de valores atípicos; adicionalmente se construyen histogramas y diagramas de caja para examinar la forma de las distribuciones. En el caso de las variables categóricas, se analizan las frecuencias absolutas y relativas de cada categoría. El grado de asociación entre variables cuantitativas se evalúa mediante el coeficiente de correlación de Spearman y entre variables cualitativas mediante el estadístico de Cramér, con el fin de identificar redundancias y relaciones preliminares que orienten la depuración de variables en la Etapa~4. Las visualizaciones incluyen series de tiempo, gráficos de dispersión, mapas temáticos y mapas de calor de correlaciones.
 
 
-Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes. Tras la caracterización del panel, se documentan el diagnóstico de datos faltantes (Sección~\ref{sec:identificacion_datos_faltantes}) y la identificación de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}); a continuación se profundiza en estadísticos descriptivos, distribuciones, patrones temporales y asociaciones entre variables.
+Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes. Tras la caracterización del panel, se documentan el diagnóstico de datos faltantes (Sección~\ref{sec:identificacion_datos_faltantes}) y la identificación de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}); a continuación se profundiza en estadísticos descriptivos, distribuciones, patrones temporales y asociaciones entre variables. Sobre $D_{\mathrm{mod}}$, la identificación de patrones y la visualización exploratoria (series de tiempo, gráficos de dispersión y mapas temáticos) se integran en la Sección~\ref{sec:identificacion_patrones_tendencias}.
 
 \subsection{Identificación de datos faltantes}
 
@@ -1335,12 +1335,12 @@ El procedimiento reproducible se documenta en \href{\urlemparejamientoeventos}{e
 
 \paragraph{Materialización de $D_{\mathrm{mod}}$.} Para operacionalizar la delimitación temporal sin alterar el insumo exploratorio, se construyó el archivo \texttt{data\_agrupada\_mod.csv} como subconjunto de \texttt{data\_agrupada.csv} con filtro \texttt{year(semana)} $\in \{2024,\,2025\}$, conservando el grano cuadrante~$\times$~semana y el conjunto completo de variables climáticas y operativas. La tabla original 2021--2025 permanece intacta como $D_{\mathrm{EDA}}$; el resultado filtrado ($36{,}120$ filas; $344$ cuadrantes; $105$ semanas; $33{,}410$ eventos) constituye el insumo analítico para las Secciones~5.3.6 en adelante y la Etapa~4, con partición natural entrenamiento 2024 / prueba 2025. El procedimiento reproducible ---lectura, filtro, resumen por año y exportación--- se documenta en \href{\urlconsolidadodatamod}{consolidado\_data\_mod.html}.
 
-\subsection{Identificación de patrones y tendencias}
+\subsection{Identificación de patrones, tendencias y visualización exploratoria}
 \label{sec:identificacion_patrones_tendencias}
 
-Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{,}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{,}410$ eventos en 2024--2025). El procedimiento reproducible se documenta en \href{\urlidentificacionpatrones}{identificacion\_patrones.html}.
+Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{,}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{,}410$ eventos en 2024--2025). En esta misma subsección se integra la \textbf{visualización exploratoria} sobre $D_{\mathrm{mod}}$: series de tiempo, diagramas de dispersión y mapas temáticos que complementan el análisis cuantitativo de patrones. El procedimiento reproducible se documenta en \href{\urlidentificacionpatrones}{identificacion\_patrones.html}.
 
-\paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma mayor actividad y dispersión en los meses asociados al régimen de lluvias, coherente con el análisis de §5.3.5 sobre $D_{\mathrm{EDA}}$. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{,}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
+\paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. Aunque las etiquetas del eje horizontal se muestran cada 3 meses para facilitar la lectura, cada tramo de la linea corresponde a observaciones semanales consecutivas. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma mayor actividad y dispersión en los meses asociados al régimen de lluvias, coherente con el análisis de §5.3.5 sobre $D_{\mathrm{EDA}}$. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{,}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
 
 \begin{figure}[H]
     \centering
@@ -1372,6 +1372,15 @@ Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:deli
     \label{fig:ranking_cuadrantes_mod}
 \end{figure}
 
+\noindent La Figura~\ref{fig:ubicacion_top_cuadrantes_mod} complementa el ranking anterior con la \textbf{ubicación geográfica} de los cuadrantes más activos sobre la malla territorial del área de estudio. Los recuadros resaltados corresponden a los primeros cuadrantes \emph{top} del periodo 2024--2025 y muestran una concentración en cuatro zonas: (i)~el área metropolitana de Cúcuta y Villa del Rosario; (ii)~un corredor al suroccidente, en torno a Salazar, Arboledas, Durania y Chinácota; (iii)~la subregión de Tibú, al norte del departamento; y (iv)~los municipios de Ocaña y Aguachica, al occidente. Esta distribución espacial confirma que la mayor actividad de interrupciones no es aleatoria, sino que se agrupa en núcleos urbanos y corredores de servicio de la red.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/ubicacion_top_cuadrantes_mod.png}
+    \caption{Ubicación geográfica de los cuadrantes \emph{top} con mayor acumulado de eventos en $D_{\mathrm{mod}}$ (2024--2025). Los recuadros resaltados identifican la posición espacial de los primeros cuadrantes del ranking.}
+    \label{fig:ubicacion_top_cuadrantes_mod}
+\end{figure}
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.90\textwidth]{img/mapa_intensidad_cuadrantes_patrones_mod.png}
@@ -1395,9 +1404,7 @@ Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:deli
     \label{fig:segmentacion_mod}
 \end{figure}
 
-\noindent En síntesis, el análisis de patrones sobre $D_{\mathrm{mod}}$ confirma: (i)~persistencia y estacionalidad temporal; (ii)~concentración espacial en un subconjunto de cuadrantes; y (iii)~asociación positiva entre precipitación y frecuencia de interrupciones. Estos hallazgos orientan la selección de variables predictoras y la estratificación territorial de la Etapa~4.
-
-\subsection{Visualización exploratoria}
+\noindent En síntesis, el análisis de patrones y la visualización exploratoria sobre $D_{\mathrm{mod}}$ confirman: (i)~persistencia y estacionalidad temporal (series semanales, estacionalidad mensual y ACF); (ii)~concentración espacial en un subconjunto de cuadrantes (ranking, mapa de intensidad y segmentación por actividad); y (iii)~asociación positiva entre precipitación y frecuencia de interrupciones (correlación de Spearman y diagrama de dispersión). Estos hallazgos orientan la selección de variables predictoras y la estratificación territorial de la Etapa~4. Los mapas de calor de correlaciones y el análisis multivariado formal se desarrollan en las Secciones~5.3.7 y~5.3.8.
 
 \subsection{Análisis de correlación y asociación}
 

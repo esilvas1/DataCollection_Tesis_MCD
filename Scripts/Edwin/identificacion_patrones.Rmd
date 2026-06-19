@@ -1,5 +1,5 @@
 ---
-title: "Identificacion de patrones y tendencias (D_mod 2024-2025)"
+title: "Identificacion de patrones, tendencias y visualizacion exploratoria (D_mod 2024-2025)"
 author: "Edwin Silva Salas"
 date: "`r Sys.Date()`"
 output:
@@ -8,17 +8,22 @@ output:
     toc_depth: 2
 ---
 
-# Etapa 3 — Identificacion de patrones y tendencias (Seccion 5.3.6)
+# Etapa 3 — Identificacion de patrones, tendencias y visualizacion exploratoria (Seccion 5.3.6)
 
 Dataset **$D_{\mathrm{mod}}$**: tabla agregada cuadrante × semana (`data_agrupada_mod.csv`, 2024–2025).
 Restringido tras el diagnostico de cobertura OMS (Seccion 5.3.5).
 
+Esta seccion integra la identificacion de patrones y la visualizacion exploratoria sobre $D_{\mathrm{mod}}$
+(series de tiempo, diagramas de dispersión y mapas tematicos). La actividad de visualizacion exploratoria
+(antes prevista como seccion independiente) se fusiona aqui para evitar duplicar figuras con el analisis de patrones.
+
 Metodologias aplicadas:
 
 1. **Patrones temporales:** serie semanal territorial, estacionalidad mensual, comparacion 2024 vs 2025 y ACF/PACF.
-2. **Patrones espaciales:** ranking de cuadrantes, mapa de intensidad y concentracion territorial.
+2. **Patrones espaciales:** ranking de cuadrantes, ubicacion geografica de cuadrantes top, mapa de intensidad y concentracion territorial.
 3. **Patrones clima–evento:** correlacion de Spearman entre variables meteorologicas semanales y `n_eventos`.
 4. **Segmentacion por actividad:** clasificacion de cuadrantes segun frecuencia e impacto acumulado.
+5. **Visualizacion exploratoria:** series, dispersión precipitacion–eventos, mapas tematicos y segmentacion grafica.
 
 ```{r setup}
 library(tidyverse)
@@ -260,7 +265,34 @@ p_ranking
 guardar_plot(p_ranking, "ranking_cuadrantes_patrones_mod.png", 10, 6)
 ```
 
-### 2.2 Mapa de intensidad territorial
+### 2.2 Ubicacion geografica de cuadrantes top
+
+La figura siguiente complementa el ranking con la **ubicacion espacial** de los cuadrantes mas activos
+sobre la malla del area de estudio (Norte de Santander). Los recuadros resaltados corresponden a los
+primeros cuadrantes *top* del periodo 2024--2025 y muestran concentracion en: (i) el area metropolitana
+de Cucuta y Villa del Rosario; (ii) un corredor al suroccidente (Salazar, Arboledas, Durania, Chinacota);
+(iii) la subregion de Tibu; y (iv) los municipios de Ocana y Aguachica.
+
+```{r ubicacion-top-cuadrantes, fig.width=11, fig.height=7, out.width="95%"}
+archivo_ubicacion <- "ubicacion_top_cuadrantes_mod.png"
+path_ubicacion_tesis <- file.path(path_img_tesis, archivo_ubicacion)
+path_ubicacion_data <- file.path(UBICACION_DATA, archivo_ubicacion)
+
+if (!file.exists(path_ubicacion_tesis)) {
+  stop(
+    "No se encontro la imagen de ubicacion top cuadrantes: ",
+    path_ubicacion_tesis
+  )
+}
+
+if (!identical(normalizePath(path_ubicacion_data), normalizePath(path_ubicacion_tesis))) {
+  file.copy(path_ubicacion_tesis, path_ubicacion_data, overwrite = TRUE)
+}
+
+knitr::include_graphics(path_ubicacion_tesis)
+```
+
+### 2.3 Mapa de intensidad territorial
 
 ```{r mapa-intensidad, fig.width=10, fig.height=7}
 p_mapa <- ggplot(ranking_cuadrantes, aes(x = longitud, y = latitud)) +
