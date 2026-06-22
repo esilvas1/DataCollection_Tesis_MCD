@@ -1407,6 +1407,74 @@ Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:deli
 \noindent En síntesis, el análisis de patrones y la visualización exploratoria sobre $D_{\mathrm{mod}}$ confirman: (i)~persistencia y estacionalidad temporal (series semanales, estacionalidad mensual y ACF); (ii)~concentración espacial en un subconjunto de cuadrantes (ranking, mapa de intensidad y segmentación por actividad); y (iii)~asociación positiva entre precipitación y frecuencia de interrupciones (correlación de Spearman y diagrama de dispersión). Estos hallazgos orientan la selección de variables predictoras y la estratificación territorial de la Etapa~4. Los mapas de calor de correlaciones y el análisis multivariado formal se desarrollan en las Secciones~5.3.7 y~5.3.8.
 
 \subsection{Análisis de correlación y asociación}
+\label{sec:analisis_correlacion_asociacion}
+
+Con fundamento en los patrones preliminares de la Sección~\ref{sec:identificacion_patrones_tendencias}, se realizó un análisis sistemático de asociación pareada sobre \texttt{data\_agrupada\_mod.csv} ($D_{\mathrm{mod}}$; $36{,}120$ filas cuadrante~$\times$~semana). Dado el carácter asimétrico, cero-inflado y de colas pesadas de las variables operativas (Sección~\ref{sec:distribucion_variables}), se empleó el coeficiente de correlación de \textbf{Spearman} en lugar de Pearson. El procedimiento reproducible se documenta en \href{\urlanalisisCorrelacion}{analisis\_correlacion.html}.
+
+\paragraph{Matriz de asociación global.} Se calcularon las correlaciones de Spearman entre las variables operativas (\texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total}), las siete variables climáticas semanales y las coordenadas geográficas (\texttt{altitud}, \texttt{latitud}, \texttt{longitud}). La Figura~\ref{fig:heatmap_cor_clima_operativo} resume la submatriz clima--operativo. Los pares con mayor asociación absoluta del panel completo concentran redundancia operativa: \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho = 0{,}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho = 0{,}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho = 0{,}97$), coherentes con la co-ocurrencia de afectación y frecuencia en semanas con interrupción.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{img/heatmap_correlacion_clima_operativo_mod.png}
+    \caption{Mapa de calor de correlaciones de Spearman entre variables climáticas y operativas en $D_{\mathrm{mod}}$.}
+    \label{fig:heatmap_cor_clima_operativo}
+\end{figure}
+
+\paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textbf{nueve} pares con $|\rho| \geq 0{,}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{,}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{,}91$) y entre componentes de viento ($\rho = 0{,}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{,}80$) y con el viento ($\rho \approx -0{,}72$ a $-0{,}81$). Estos resultados anticipan \textbf{multicolinealidad} entre covariables climáticas y orientan la depuración de variables en la Etapa~4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{img/heatmap_correlacion_clima_mod.png}
+    \caption{Correlaciones de Spearman en el bloque climático semanal ($D_{\mathrm{mod}}$).}
+    \label{fig:heatmap_cor_clima}
+\end{figure}
+
+\paragraph{Bloque operativo.} La Figura~\ref{fig:heatmap_cor_operativo} muestra que las cuatro métricas de continuidad y severidad están fuertemente correlacionadas entre sí ($\rho$ entre $0{,}83$ y $0{,}99$), aunque \texttt{duracion\_total} exhibe una asociación algo menor con \texttt{n\_eventos} ($\rho = 0{,}86$) que con las variables de afectación. Ello sugiere que frecuencia, alcance (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) y magnitud temporal (\texttt{duracion\_total}) capturan dimensiones parcialmente distintas del impacto operativo.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{img/heatmap_correlacion_operativo_mod.png}
+    \caption{Correlaciones de Spearman entre variables operativas en $D_{\mathrm{mod}}$.}
+    \label{fig:heatmap_cor_operativo}
+\end{figure}
+
+\paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. La \texttt{precip\_total\_semana} presenta la relación positiva más fuerte con \texttt{n\_eventos} ($\rho = 0{,}41$; $p < 0{,}001$), seguida de asociaciones del mismo orden con \texttt{usuarios\_afectados} ($\rho = 0{,}41$), \texttt{elementos\_afectados} ($\rho = 0{,}40$) y \texttt{duracion\_total} ($\rho = 0{,}38$). Las variables de viento muestran asociaciones positivas débiles ($\rho \approx 0{,}12$--$0{,}14$), mientras las temperaturas y la humedad registran correlaciones cercanas a cero o ligeramente negativas ($|\rho| < 0{,}05$), en línea con el análisis exploratorio de la Sección~\ref{sec:identificacion_patrones_tendencias}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/barras_correlacion_clima_operativo_mod.png}
+    \caption{Coeficientes de Spearman entre variables climáticas y operativas en $D_{\mathrm{mod}}$.}
+    \label{fig:barras_cor_clima_operativo}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Asociación Spearman entre precipitación y variables operativas ($D_{\mathrm{mod}}$; panel completo)}
+\label{tab:clima_operativo_cor}
+\begin{tabular}{@{}l r r@{}}
+\toprule
+\textbf{Par de variables} & \textbf{Spearman $\rho$} & \textbf{$p$-valor} \\
+\midrule
+\texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0,414 & $< 0{,}001$ \\
+\texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{usuarios\_afectados}  & 0,406 & $< 0{,}001$ \\
+\texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{elementos\_afectados} & 0,399 & $< 0{,}001$ \\
+\texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{duracion\_total}      & 0,383 & $< 0{,}001$ \\
+\texttt{viento\_medio\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0,135 & $< 0{,}001$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Análisis condicionado.} Dado que el $63$~\% de las filas cuadrante~$\times$~semana registra \texttt{n\_eventos} $= 0$, se repitió el análisis sobre el subconjunto con al menos un evento ($13{,}351$ filas; $37$~\% del panel). En este régimen, la asociación precipitación--\texttt{n\_eventos} se atenúa ($\rho = 0{,}29$), lo que indica que parte de la señal climática se concentra en la transición entre semanas sin y con interrupción, y no solo en la intensidad condicional de los eventos. La Figura~\ref{fig:heatmap_cor_condicionado} resume las correlaciones en este subconjunto.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{img/heatmap_correlacion_condicionado_mod.png}
+    \caption{Correlaciones de Spearman en semanas-cuadrante con \texttt{n\_eventos} $> 0$ ($n = 13{,}351$).}
+    \label{fig:heatmap_cor_condicionado}
+\end{figure}
+
+\noindent En síntesis, el análisis de correlación sobre $D_{\mathrm{mod}}$ confirma: (i)~\textbf{alta redundancia} entre variables operativas de severidad y entre temperaturas/vientos del bloque climático; (ii)~\textbf{señal climática dominante} de la precipitación hacia la frecuencia e impacto de interrupciones; y (iii)~\textbf{asociaciones débiles} de temperatura y humedad en el grano semanal. Estos hallazgos fundamentan la selección de \texttt{precip\_total\_semana} (y eventualmente viento) como predictoras, la exclusión de variables climáticas redundantes y la definición explícita de la variable respuesta (\texttt{n\_eventos} vs.\ \texttt{duracion\_total} vs.\ indicadores de afectación) en la Etapa~4. El análisis multivariado formal (VIF, redundancia simultánea) se desarrolla en la Sección~5.3.8.
 
 \subsection{Evaluación inicial de relaciones multivariadas}
 

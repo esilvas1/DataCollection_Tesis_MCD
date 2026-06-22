@@ -1,0 +1,488 @@
+---
+title: "Analisis de correlacion y asociacion (D_mod 2024-2025)"
+author: "Edwin Silva Salas & Edwin Henao Ochoa"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Analisis de correlacion y asociacion (Seccion 5.3.7)
+
+Dataset **$D_{\mathrm{mod}}$**: tabla agregada cuadrante × semana (`data_agrupada_mod.csv`, 2024–2025).
+
+Analisis sistematico de asociacion pareada mediante **correlacion de Spearman** sobre el panel completo
+y sobre el subconjunto de semanas con al menos un evento (`n_eventos > 0`). Objetivo: identificar senales
+utiles, redundancias entre variables climaticas y relaciones entre bloques operativo y meteorologico
+como insumo de la depuracion de variables en la Etapa 4.
+
+Metodologia aplicada:
+
+1. **Matriz Spearman completa** entre variables operativas, climaticas y geograficas.
+2. **Submatrices** clima–clima, operativo–operativo y clima–operativo.
+3. **Mapas de calor** de correlacion.
+4. **Analisis condicionado** en filas con `n_eventos > 0`.
+5. **Tablas** de pares con mayor |ρ| y redundancias climaticas (|ρ| ≥ 0,70).
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+path_full <- file.path(UBICACION_DATA, "data_agrupada.csv")
+
+if (file.exists(path_mod)) {
+  path_agrupada <- path_mod
+  aplicar_filtro_anio <- FALSE
+} else if (file.exists(path_full)) {
+  path_agrupada <- path_full
+  aplicar_filtro_anio <- TRUE
+  warning("No se encontro data_agrupada_mod.csv; filtrando data_agrupada.csv a 2024-2025.")
+} else {
+  stop("No se encontro data_agrupada_mod.csv ni data_agrupada.csv.")
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+```{r funciones-correlacion}
+vars_operativo <- c(
+  "n_eventos", "usuarios_afectados", "elementos_afectados", "duracion_total"
+)
+
+vars_clima <- c(
+  "temp_media_semana", "temp_max_semana", "temp_min_semana",
+  "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+  "precip_total_semana"
+)
+
+vars_geo <- c("altitud", "latitud", "longitud")
+
+vars_analisis <- c(vars_operativo, vars_clima, vars_geo)
+
+etiquetas_vars <- c(
+  n_eventos = "n_eventos",
+  usuarios_afectados = "usuarios_afectados",
+  elementos_afectados = "elementos_afectados",
+  duracion_total = "duracion_total",
+  temp_media_semana = "temp_media",
+  temp_max_semana = "temp_max",
+  temp_min_semana = "temp_min",
+  humedad_media_semana = "humedad",
+  viento_medio_semana = "viento_medio",
+  viento_max_semana = "viento_max",
+  precip_total_semana = "precip_total",
+  altitud = "altitud",
+  latitud = "latitud",
+  longitud = "longitud"
+)
+
+spearman_matriz <- function(data, variables) {
+  vars <- variables[variables %in% names(data)]
+  n <- length(vars)
+  rho <- matrix(NA_real_, n, n, dimnames = list(vars, vars))
+  pval <- matrix(NA_real_, n, n, dimnames = list(vars, vars))
+
+  for (i in seq_len(n)) {
+    for (j in seq_len(n)) {
+      if (j < i) next
+      x <- data[[vars[i]]]
+      y <- data[[vars[j]]]
+      ok <- complete.cases(x, y)
+      if (sum(ok) < 3) next
+      ct <- suppressWarnings(cor.test(x[ok], y[ok], method = "spearman", exact = FALSE))
+      rho[i, j] <- unname(ct$estimate)
+      rho[j, i] <- unname(ct$estimate)
+      pval[i, j] <- ct$p.value
+      pval[j, i] <- ct$p.value
+    }
+  }
+
+  list(rho = rho, p_value = pval)
+}
+
+matriz_a_largo <- function(mat, p_mat = NULL) {
+  df <- as.data.frame(mat) %>%
+    rownames_to_column("var1") %>%
+    pivot_longer(-var1, names_to = "var2", values_to = "rho")
+
+  if (!is.null(p_mat)) {
+    p_df <- as.data.frame(p_mat) %>%
+      rownames_to_column("var1") %>%
+      pivot_longer(-var1, names_to = "var2", values_to = "p_value")
+    df <- df %>% left_join(p_df, by = c("var1", "var2"))
+  }
+
+  df %>%
+    mutate(
+      var1 = factor(var1, levels = rownames(mat)),
+      var2 = factor(var2, levels = colnames(mat)),
+      etiqueta1 = etiquetas_vars[as.character(var1)],
+      etiqueta2 = etiquetas_vars[as.character(var2)],
+      significativo = if (!is.null(p_mat)) p_value < 0.05 else NA
+    )
+}
+
+plot_heatmap_cor <- function(df_largo, titulo, subtitulo = NULL, archivo = NULL,
+                             w = 10, h = 8) {
+  p <- ggplot(df_largo, aes(x = var2, y = var1, fill = rho)) +
+    geom_tile(color = "white", linewidth = 0.3) +
+    geom_text(
+      aes(label = ifelse(is.na(rho), "", sprintf("%.2f", rho))),
+      size = 2.8,
+      color = "black"
+    ) +
+    scale_fill_gradient2(
+      low = "#2166AC", mid = "white", high = "#B2182B",
+      midpoint = 0, limits = c(-1, 1), name = expression(rho)
+    ) +
+    scale_x_discrete(labels = function(x) etiquetas_vars[x]) +
+    scale_y_discrete(labels = function(x) etiquetas_vars[x]) +
+    labs(title = titulo, subtitle = subtitulo, x = NULL, y = NULL) +
+    theme_minimal(base_size = 11) +
+    theme(
+      plot.title = element_text(face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      panel.grid = element_blank()
+    )
+
+  print(p)
+  if (!is.null(archivo)) guardar_plot(p, archivo, w, h)
+  invisible(p)
+}
+```
+
+```{r lectura}
+message("Leyendo D_mod (cuadrante x semana, 2024-2025)...")
+d_mod <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(d_mod) && !inherits(d_mod$semana, "Date")) {
+  d_mod <- d_mod %>% mutate(semana = as.Date(semana))
+}
+
+d_mod <- if (aplicar_filtro_anio) {
+  d_mod %>% filter(year(semana) %in% 2024:2025)
+} else {
+  d_mod
+}
+
+resumen_panel <- tibble(
+  metrica = c("Filas", "Cuadrantes", "Semanas", "Total eventos", "Semana min", "Semana max"),
+  valor = c(
+    nrow(d_mod),
+    n_distinct(d_mod$id_cuadrante),
+    n_distinct(d_mod$semana),
+    sum(d_mod$n_eventos, na.rm = TRUE),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana))
+  )
+)
+
+kable(resumen_panel, col.names = c("Metrica", "Valor"))
+```
+
+## 1. Matriz Spearman — panel completo
+
+```{r matriz-completa}
+cor_completa <- spearman_matriz(d_mod, vars_analisis)
+df_completa <- matriz_a_largo(cor_completa$rho, cor_completa$p_value)
+
+pares_top <- df_completa %>%
+  filter(var1 != var2, !is.na(rho)) %>%
+  mutate(par = paste(pmin(as.character(var1), as.character(var2)),
+                     pmax(as.character(var1), as.character(var2)), sep = " | ")) %>%
+  distinct(par, .keep_all = TRUE) %>%
+  arrange(desc(abs(rho))) %>%
+  slice_head(n = 15) %>%
+  transmute(
+    variable_1 = as.character(var1),
+    variable_2 = as.character(var2),
+    rho = round(rho, 3),
+    p_valor = signif(p_value, 3),
+    significativo = ifelse(p_value < 0.05, "Si", "No")
+  )
+
+kable(pares_top, col.names = c("Variable 1", "Variable 2", "Spearman rho", "p-valor", "Sig. 5%"))
+```
+
+```{r heatmap-completa, fig.width=11, fig.height=9}
+plot_heatmap_cor(
+  df_completa,
+  titulo = "Matriz de correlacion de Spearman — D_mod (panel completo)",
+  subtitulo = "Cuadrante x semana, 2024-2025",
+  archivo = "heatmap_correlacion_completa_mod.png",
+  w = 11, h = 9
+)
+```
+
+## 2. Bloque climatico (redundancias)
+
+```{r matriz-clima}
+cor_clima <- spearman_matriz(d_mod, vars_clima)
+df_clima <- matriz_a_largo(cor_clima$rho, cor_clima$p_value)
+
+redundancias_clima <- df_clima %>%
+  filter(var1 != var2, !is.na(rho)) %>%
+  mutate(par = paste(pmin(as.character(var1), as.character(var2)),
+                     pmax(as.character(var1), as.character(var2)), sep = " | ")) %>%
+  distinct(par, .keep_all = TRUE) %>%
+  filter(abs(rho) >= 0.70) %>%
+  arrange(desc(abs(rho))) %>%
+  transmute(
+    variable_1 = as.character(var1),
+    variable_2 = as.character(var2),
+    rho = round(rho, 3),
+    p_valor = signif(p_value, 3)
+  )
+
+kable(
+  redundancias_clima,
+  col.names = c("Variable 1", "Variable 2", "Spearman rho", "p-valor"),
+  caption = "Pares climaticos con |rho| >= 0.70 (posible redundancia)"
+)
+```
+
+```{r heatmap-clima, fig.width=9, fig.height=7}
+plot_heatmap_cor(
+  df_clima,
+  titulo = "Correlacion de Spearman — bloque climatico",
+  subtitulo = "D_mod, panel completo",
+  archivo = "heatmap_correlacion_clima_mod.png",
+  w = 9, h = 7
+)
+```
+
+## 3. Bloque operativo
+
+```{r matriz-operativo}
+cor_operativo <- spearman_matriz(d_mod, vars_operativo)
+df_operativo <- matriz_a_largo(cor_operativo$rho, cor_operativo$p_value)
+
+kable(
+  df_operativo %>%
+    filter(var1 != var2) %>%
+    mutate(rho = round(rho, 3), p_value = signif(p_value, 3)) %>%
+    select(var1, var2, rho, p_value) %>%
+    arrange(desc(abs(rho)),
+            var1 = as.character(var1),
+            var2 = as.character(var2)),
+  col.names = c("Variable 1", "Variable 2", "Spearman rho", "p-valor")
+)
+```
+
+```{r heatmap-operativo, fig.width=7, fig.height=6}
+plot_heatmap_cor(
+  df_operativo,
+  titulo = "Correlacion de Spearman — bloque operativo",
+  subtitulo = "n_eventos, usuarios, elementos y duracion",
+  archivo = "heatmap_correlacion_operativo_mod.png",
+  w = 7, h = 6
+)
+```
+
+## 4. Clima vs. operativo
+
+```{r matriz-clima-operativo}
+vars_cruz <- c(vars_clima, vars_operativo)
+cor_cruz <- spearman_matriz(d_mod, vars_cruz)
+df_cruz <- matriz_a_largo(cor_cruz$rho, cor_cruz$p_value)
+
+clima_vs_operativo <- df_cruz %>%
+  filter(var1 %in% vars_clima, var2 %in% vars_operativo) %>%
+  transmute(
+    clima = as.character(var1),
+    operativo = as.character(var2),
+    rho = round(rho, 3),
+    p_valor = signif(p_value, 3),
+    significativo = ifelse(p_value < 0.05, "Si", "No")
+  ) %>%
+  arrange(desc(abs(rho)))
+
+kable(
+  clima_vs_operativo,
+  col.names = c("Variable climatica", "Variable operativa", "Spearman rho", "p-valor", "Sig. 5%")
+)
+```
+
+```{r heatmap-clima-operativo, fig.width=9, fig.height=7}
+df_cruz_plot <- df_cruz %>%
+  filter(
+    (var1 %in% vars_clima & var2 %in% vars_operativo) |
+      (var2 %in% vars_clima & var1 %in% vars_operativo) |
+      (var1 %in% vars_clima & var2 %in% vars_clima) |
+      (var1 %in% vars_operativo & var2 %in% vars_operativo)
+  )
+
+plot_heatmap_cor(
+  df_cruz_plot,
+  titulo = "Correlacion de Spearman — clima y operativo",
+  subtitulo = "Submatriz combinada, D_mod panel completo",
+  archivo = "heatmap_correlacion_clima_operativo_mod.png",
+  w = 9, h = 7.5
+)
+```
+
+```{r barras-clima-eventos, fig.width=10, fig.height=5.5}
+vars_respuesta <- c("n_eventos", "duracion_total", "usuarios_afectados")
+
+barras_clima <- df_cruz %>%
+  filter(var1 %in% vars_clima, var2 %in% vars_respuesta) %>%
+  mutate(
+    respuesta = factor(as.character(var2), levels = vars_respuesta),
+    clima = factor(as.character(var1), levels = vars_clima)
+  )
+
+p_barras <- ggplot(barras_clima, aes(x = clima, y = rho, fill = respuesta)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.75) +
+  geom_hline(yintercept = 0, linewidth = 0.3) +
+  scale_x_discrete(labels = function(x) etiquetas_vars[x]) +
+  scale_fill_brewer(palette = "Set2", name = "Variable operativa") +
+  labs(
+    title = "Asociacion Spearman: clima vs. variables operativas",
+    subtitle = "D_mod, panel completo (2024-2025)",
+    x = "Variable climatica", y = expression(Spearman~rho)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 35, hjust = 1)
+  )
+
+p_barras
+guardar_plot(p_barras, "barras_correlacion_clima_operativo_mod.png", 10, 5.5)
+```
+
+## 5. Analisis condicionado (`n_eventos > 0`)
+
+```{r condicionado}
+d_evento <- d_mod %>% filter(n_eventos > 0)
+
+resumen_cond <- tibble(
+  metrica = c("Filas con evento", "% del panel", "Total eventos"),
+  valor = c(
+    nrow(d_evento),
+    paste0(round(100 * nrow(d_evento) / nrow(d_mod), 1), "%"),
+    sum(d_evento$n_eventos, na.rm = TRUE)
+  )
+)
+
+kable(resumen_cond, col.names = c("Metrica", "Valor"))
+
+cor_evento <- spearman_matriz(d_evento, c(vars_clima, vars_operativo))
+df_evento <- matriz_a_largo(cor_evento$rho, cor_evento$p_value)
+
+clima_evento_cond <- df_evento %>%
+  filter(var1 %in% vars_clima, var2 %in% vars_respuesta) %>%
+  transmute(
+    clima = as.character(var1),
+    operativo = as.character(var2),
+    rho = round(rho, 3),
+    p_valor = signif(p_value, 3)
+  ) %>%
+  arrange(desc(abs(rho)))
+
+kable(
+  clima_evento_cond,
+  col.names = c("Variable climatica", "Variable operativa", "Spearman rho", "p-valor"),
+  caption = "Correlaciones en semanas-cuadrante con al menos un evento"
+)
+```
+
+```{r heatmap-condicionado, fig.width=9, fig.height=7}
+df_evento_plot <- df_evento %>%
+  filter(var1 %in% c(vars_clima, vars_operativo), var2 %in% c(vars_clima, vars_operativo))
+
+plot_heatmap_cor(
+  df_evento_plot,
+  titulo = "Spearman condicionado — semanas con n_eventos > 0",
+  subtitulo = paste0("n = ", nrow(d_evento), " filas cuadrante x semana"),
+  archivo = "heatmap_correlacion_condicionado_mod.png",
+  w = 9, h = 7.5
+)
+```
+
+## 6. Sintesis de hallazgos
+
+```{r sintesis}
+rho_precip_eventos <- clima_vs_operativo %>%
+  filter(clima == "precip_total_semana", operativo == "n_eventos") %>%
+  pull(rho)
+
+rho_viento_eventos <- clima_vs_operativo %>%
+  filter(clima == "viento_medio_semana", operativo == "n_eventos") %>%
+  pull(rho)
+
+par_operativo <- df_operativo %>%
+  filter(var1 != var2) %>%
+  slice_max(abs(rho), n = 1, with_ties = FALSE) %>%
+  mutate(
+    texto = paste0(
+      as.character(var1), " vs ", as.character(var2),
+      " (rho = ", round(rho, 2), ")"
+    )
+  ) %>%
+  pull(texto)
+
+hallazgos <- tibble(
+  bloque = c(
+    "Clima-operativo",
+    "Clima-operativo",
+    "Redundancia climatica",
+    "Operativo-operativo",
+    "Condicionado"
+  ),
+  hallazgo = c(
+    paste0("Mayor |rho| clima-n_eventos: precip_total (rho = ", rho_precip_eventos, ")"),
+    paste0("Viento medio vs n_eventos: rho = ", rho_viento_eventos),
+    paste0("Pares climaticos con |rho| >= 0.70: ", nrow(redundancias_clima)),
+    par_operativo,
+    paste0(
+      "Filas con evento: ", nrow(d_evento), " (",
+      round(100 * nrow(d_evento) / nrow(d_mod), 1), "% del panel)"
+    )
+  )
+)
+
+kable(hallazgos, col.names = c("Bloque", "Hallazgo"))
+```
+
+Los resultados orientan la Etapa 4: priorizar `precip_total_semana` y variables de viento como covariables
+climaticas; evaluar redundancia entre temperaturas; y distinguir `n_eventos`, `usuarios_afectados` y
+`duracion_total` segun el objetivo de modelado (frecuencia vs. severidad vs. continuidad).
