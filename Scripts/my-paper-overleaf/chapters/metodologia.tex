@@ -1477,6 +1477,80 @@ Con fundamento en los patrones preliminares de la Sección~\ref{sec:identificaci
 \noindent En síntesis, el análisis de correlación sobre $D_{\mathrm{mod}}$ confirma: (i)~\textbf{alta redundancia} entre variables operativas de severidad y entre temperaturas/vientos del bloque climático; (ii)~\textbf{señal climática dominante} de la precipitación hacia la frecuencia e impacto de interrupciones; y (iii)~\textbf{asociaciones débiles} de temperatura y humedad en el grano semanal. Estos hallazgos fundamentan la selección de \texttt{precip\_total\_semana} (y eventualmente viento) como predictoras, la exclusión de variables climáticas redundantes y la definición explícita de la variable respuesta (\texttt{n\_eventos} vs.\ \texttt{duracion\_total} vs.\ indicadores de afectación) en la Etapa~4. El análisis multivariado formal (VIF, redundancia simultánea) se desarrolla en la Sección~5.3.8.
 
 \subsection{Evaluación inicial de relaciones multivariadas}
+\label{sec:evaluacion_multivariada}
+
+Con fundamento en las redundancias bivariadas identificadas en la Sección~\ref{sec:analisis_correlacion_asociacion}, se evaluaron las relaciones \textbf{simultáneas} entre covariables sobre $D_{\mathrm{mod}}$ mediante VIF, PCA exploratorio, agrupamiento jerárquico de variables climáticas, correlación parcial y un GLM Poisson de diagnóstico. El procedimiento reproducible se documenta en \href{\urlanalisisMultivariado}{analisis\_multivariado.html}.
+
+\paragraph{Multicolinealidad climática (VIF).} Se estimó un modelo auxiliar lineal \texttt{n\_eventos $\sim$} bloque climático completo para calcular el factor de inflación de la varianza (VIF) de cada covariable. La Figura~\ref{fig:vif_clima_multivariado} muestra VIF elevados en \texttt{temp\_media\_semana} ($42{,}99$), \texttt{viento\_medio\_semana} ($19{,}63$), \texttt{viento\_max\_semana} ($17{,}87$), \texttt{temp\_max\_semana} ($17{,}17$) y \texttt{temp\_min\_semana} ($13{,}92$), mientras \texttt{precip\_total\_semana} ($1{,}05$) y \texttt{humedad\_media\_semana} ($4{,}56$) presentan inflación baja. Al restringir el bloque a \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, los VIF descienden a valores aceptables (máximo $6{,}94$ en temperatura media; Tabla~\ref{tab:vif_reducido}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{img/vif_clima_multivariado_mod.png}
+    \caption{VIF del bloque climático en modelo auxiliar \texttt{n\_eventos $\sim$ clima} ($D_{\mathrm{mod}}$).}
+    \label{fig:vif_clima_multivariado}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\caption{VIF con subconjunto climático reducido propuesto para la Etapa~4}
+\label{tab:vif_reducido}
+\begin{tabular}{@{}l r@{}}
+\toprule
+\textbf{Variable} & \textbf{VIF} \\
+\midrule
+\texttt{temp\_media\_semana}     & 6,94 \\
+\texttt{humedad\_media\_semana}  & 3,44 \\
+\texttt{viento\_medio\_semana}   & 3,33 \\
+\texttt{precip\_total\_semana}   & 1,04 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{PCA exploratorio del bloque climático.} El análisis de componentes principales (Figuras~\ref{fig:pca_scree_clima} y~\ref{fig:pca_loadings_clima}) condensa el $81{,}3$~\% de la varianza en las dos primeras componentes: PC1 explica el $66{,}5$~\% (eje temperatura--humedad--viento) y PC2 el $14{,}8$~\%. La precipitación aporta carga relativamente independiente en PC2--PC3, coherente con su bajo VIF y su rol como predictor no redundante.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{img/pca_scree_clima_multivariado_mod.png}
+    \caption{Varianza explicada por componentes principales del bloque climático.}
+    \label{fig:pca_scree_clima}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/pca_loadings_clima_multivariado_mod.png}
+    \caption{Loadings de las tres primeras componentes principales del bloque climático.}
+    \label{fig:pca_loadings_clima}
+\end{figure}
+
+\paragraph{Agrupamiento jerárquico.} El dendrograma de la Figura~\ref{fig:dendrograma_clima} confirma dos clusters principales: (i)~temperaturas y vientos, altamente intercorrelados; y (ii)~\texttt{precip\_total\_semana}, relativamente aislada. Este resultado valida la exclusión de \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana} y \texttt{viento\_max\_semana} del conjunto predictor reducido.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/dendrograma_clima_multivariado_mod.png}
+    \caption{Dendrograma de variables climáticas (distancia $= 1 - |\rho_{\mathrm{Spearman}}|$).}
+    \label{fig:dendrograma_clima}
+\end{figure}
+
+\paragraph{Asociación multivariada clima $\rightarrow$ \texttt{n\_eventos}.} La correlación parcial de Spearman entre precipitación y \texttt{n\_eventos}, controlando \texttt{temp\_media\_semana} y \texttt{viento\_medio\_semana}, es $\rho = 0{,}43$ (frente a $\rho = 0{,}41$ bivariado), lo que indica que la señal de lluvia persiste al aislar temperatura y viento. Un GLM Poisson exploratorio con subconjunto reducido (Figura~\ref{fig:glm_coef_multivariado}) confirma coeficientes positivos y significativos para \texttt{log(1+precip)} ($\hat{\beta} = 0{,}55$; $p < 0{,}001$) y viento medio estandarizado ($\hat{\beta} = 0{,}30$; $p < 0{,}001$), mientras temperatura y humedad aportan efectos marginales débiles en presencia conjunta de las demás covariables.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{img/glm_coef_clima_multivariado_mod.png}
+    \caption{Coeficientes del GLM Poisson exploratorio \texttt{n\_eventos $\sim$ clima reducido} (diagnóstico EDA).}
+    \label{fig:glm_coef_multivariado}
+\end{figure}
+
+\paragraph{Dimensiones del bloque operativo.} El PCA sobre \texttt{log(1+}$x$\texttt{)} del bloque operativo (Figura~\ref{fig:pca_loadings_operativo}) concentra el $83{,}8$~\% de la varianza en PC1, con cargas elevadas y del mismo signo en \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total}. PC2 ($11{,}9$~\%) contrasta frecuencia/afectación frente a duración. Ello respalda definir \textbf{una} métrica de respuesta principal por objetivo: \texttt{n\_eventos} como proxy de \textbf{SAIFI} (frecuencia) y \texttt{duracion\_total} como proxy de \textbf{SAIDI} (continuidad), sin emplear simultáneamente las cuatro variables operativas como respuestas o predictoras.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{img/pca_loadings_operativo_multivariado_mod.png}
+    \caption{Loadings PCA del bloque operativo en escala \texttt{log(1+}$x$\texttt{)}.}
+    \label{fig:pca_loadings_operativo}
+\end{figure}
+
+\noindent En síntesis, la evaluación multivariada sobre $D_{\mathrm{mod}}$ recomienda: (i)~predictoras climáticas \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}; (ii)~\texttt{n\_eventos} como variable respuesta de frecuencia para el modelado de SAIFI; y (iii) exclusión de temperaturas extremas y viento máximo por redundancia simultánea. Estos criterios se operacionalizan en la depuración cuantitativa y la construcción de matrices de diseño de la Etapa~4.
 
 \subsection{Segmentación exploratoria}
 
