@@ -1553,9 +1553,66 @@ Con fundamento en las redundancias bivariadas identificadas en la Sección~\ref{
 \noindent En síntesis, la evaluación multivariada sobre $D_{\mathrm{mod}}$ recomienda: (i)~predictoras climáticas \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}; (ii)~\texttt{n\_eventos} como variable respuesta de frecuencia para el modelado de SAIFI; y (iii) exclusión de temperaturas extremas y viento máximo por redundancia simultánea. Estos criterios se operacionalizan en la depuración cuantitativa y la construcción de matrices de diseño de la Etapa~4.
 
 \subsection{Segmentación exploratoria}
+\label{sec:segmentacion_exploratoria}
+
+Con fundamento en la segmentación territorial introducida en la Sección~\ref{sec:identificacion_patrones_tendencias}, se profundizó la heterogeneidad de $D_{\mathrm{mod}}$ mediante perfiles comparativos por nivel de actividad, evolución 2024--2025, estratificación por régimen de precipitación semanal y clustering multivariado de cuadrantes. El procedimiento reproducible se documenta en \href{\urlsegmentacionexploratoria}{segmentacion\_exploratoria.html}.
+
+\paragraph{Perfiles por nivel de actividad.} Sobre los $344$ cuadrantes del periodo, la clasificación Baja/Media/Alta (cuantiles P50 y P85 entre cuadrantes con eventos) arroja: $162$ cuadrantes baja ($47{,}1$~\%), $113$ media ($32{,}8$~\%) y $49$ alta ($14{,}2$~\%); $20$ cuadrantes ($5{,}8$~\%) no registraron eventos. Los perfiles acumulados (Tabla implícita en Figura~\ref{fig:heatmap_perfiles_segmentacion}) muestran escalamiento marcado: media de $22$ eventos por cuadrante en nivel baja frente a $114{,}6$ en media y $344{,}7$ en alta; usuarios afectados medios de $1{,}587$ a $88{,}534$ y precipitación media acumulada de $1{,}005$~mm a $6{,}907$~mm. La Figura~\ref{fig:boxplot_nivel_segmentacion} confirma que la dispersión semanal de \texttt{n\_eventos} crece con el estrato territorial.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/boxplot_eventos_por_nivel_segmentacion_mod.png}
+    \caption{Distribución semanal de \texttt{n\_eventos} por nivel de actividad del cuadrante ($D_{\mathrm{mod}}$).}
+    \label{fig:boxplot_nivel_segmentacion}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{img/heatmap_perfiles_nivel_segmentacion_mod.png}
+    \caption{Perfil normalizado por nivel de actividad (eventos, usuarios, duración, semanas activas, clima).}
+    \label{fig:heatmap_perfiles_segmentacion}
+\end{figure}
+
+\paragraph{Evolución 2024 vs 2025 por estrato.} El total territorial ascendió de $15{,}211$ eventos en 2024 ($287$/semana) a $18{,}199$ en 2025 ($350$/semana). Al desagregar por nivel fijado en el periodo completo, el ratio medio 2025/2024 es homogéneo: $1{,}24$ (baja), $1{,}26$ (media) y $1{,}24$ (alta), lo que indica incremento transversal sin reordenamiento fuerte de la jerarquía territorial (Figura~\ref{fig:barras_anio_nivel_segmentacion}). El crecimiento observado en 2024--2025 debe interpretarse en coherencia con la homogeneización de codificación activo/sitio bajo OMS-SP7 (Sección~\ref{sec:delimitacion_temporal_modelado}), no exclusivamente como deterioro operativo.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{img/barras_eventos_anio_nivel_segmentacion_mod.png}
+    \caption{Eventos acumulados por nivel de actividad y año en $D_{\mathrm{mod}}$.}
+    \label{fig:barras_anio_nivel_segmentacion}
+\end{figure}
+
+\paragraph{Régimen climático semanal.} Semanas con precipitación en o por encima del percentil 75 ($25$~\% de las filas; $9{,}030$ observaciones) presentan media de \texttt{n\_eventos} de $2{,}01$, frente a $0{,}56$ en semanas secas ($75$~\%; $27{,}090$ filas), con $61{,}8$~\% vs.\ $28{,}7$~\% de semanas con al menos un evento. La prueba de Wilcoxon confirma diferencia significativa ($p < 0{,}001$; Figura~\ref{fig:boxplot_regimen_segmentacion}), coherente con la señal de precipitación de las Secciones~\ref{sec:analisis_correlacion_asociacion} y~\ref{sec:evaluacion_multivariada}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{img/boxplot_eventos_regimen_lluvia_segmentacion_mod.png}
+    \caption{\texttt{n\_eventos} según régimen de precipitación semanal (umbral P75).}
+    \label{fig:boxplot_regimen_segmentacion}
+\end{figure}
+
+\paragraph{Clustering multivariado de cuadrantes.} Se aplicó k-means ($k = 4$) sobre cuadrantes con al menos un evento, con variables estandarizadas de frecuencia, severidad, duración, clima y altitud (excluyendo covariables de varianza nula). El mapa de la Figura~\ref{fig:mapa_cluster_segmentacion} y el heatmap de la Figura~\ref{fig:heatmap_cluster_segmentacion} distinguen: C1 ($1$ cuadrante; $2{,}224$ eventos; hub extremo), C2 ($41$ cuadrantes; media $294$ eventos; alta severidad y precipitación), C3 ($169$ cuadrantes; media $67$ eventos; perfil intermedio-bajo) y C4 ($113$ cuadrantes; media $69$ eventos; mayor altitud media, $1{,}797$~m). La concentración en C1--C2 respalda evaluar modelado global frente a estratificación por cluster en la Etapa~4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/mapa_clusters_cuadrantes_segmentacion_mod.png}
+    \caption{Clustering k-means de cuadrantes ($k = 4$) en $D_{\mathrm{mod}}$.}
+    \label{fig:mapa_cluster_segmentacion}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{img/heatmap_perfiles_cluster_segmentacion_mod.png}
+    \caption{Perfil medio por cluster de cuadrantes (variables operativas y climáticas).}
+    \label{fig:heatmap_cluster_segmentacion}
+\end{figure}
+
+\noindent En síntesis, la segmentación exploratoria sobre $D_{\mathrm{mod}}$ evidencia: (i)~heterogeneidad territorial persistente (14{,}2~\% de cuadrantes en nivel alta concentran actividad desproporcionada); (ii)~incremento homogéneo 2024$\rightarrow$2025 en todos los estratos; (iii)~mayor frecuencia de interrupciones en semanas lluviosas; y (iv)~cuatro perfiles espaciales distinguibles por clustering. Estos criterios orientan la estratificación territorial y la partición entrenamiento/prueba de la Etapa~4.
 
 \subsection{Resultados y entregables de la etapa}
+\label{sec:resultados_eda}
 
+La Etapa~3 sobre $D_{\mathrm{mod}}$ (2024--2025; $36{,}120$ filas cuadrante~$\times$~semana) produjo un diagnóstico exploratorio integrado: calidad y distribución de variables (Secciones~5.3.1--5.3.4), delimitación temporal y materialización del panel de modelado (Sección~5.3.5), patrones y visualización (Sección~5.3.6), correlación bivariada (Sección~5.3.7), evaluación multivariada con recomendación de predictoras y respuesta (Sección~\ref{sec:evaluacion_multivariada}) y segmentación territorial (Sección~\ref{sec:segmentacion_exploratoria}). Los hallazgos convergentes son: (i)~\textbf{precipitación semanal} como señal climática dominante hacia \texttt{n\_eventos}; (ii)~\textbf{redundancia} en bloques operativo y climático que justifica subconjuntos reducidos; (iii)~\textbf{\texttt{n\_eventos}} como proxy de frecuencia (SAIFI) y \texttt{duracion\_total} como proxy de continuidad (SAIDI); (iv)~\textbf{heterogeneidad espacial} y clusters territoriales que sugieren estratificación en el modelado; y (v)~\textbf{partición natural} entrenamiento 2024 / prueba 2025 bajo cobertura homogénea de emparejamiento evento--elemento. Los informes HTML reproducibles enlazados en el índice del repositorio constituyen el entregable analítico de esta etapa; las decisiones de ingeniería de variables se operacionalizan en la Etapa~4.
 
 \textbf{Resultado:} conocimiento exploratorio del comportamiento de los datos y hallazgos relevantes para el modelado.
 
