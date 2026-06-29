@@ -1,0 +1,481 @@
+---
+title: "Documento de Análisis Descriptivo y Exploratorio (EDA)"
+subtitle: "Etapa 3 — Entregable ejecutivo consolidado"
+author: "Edwin Silva Salas, Edwin Henao Ochoa & Cindy Lugo Rozo"
+date: "`r format(Sys.Date(), '%d de %B de %Y', locale = Sys.locale())`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    code_folding: hide
+    includes:
+      in_header: portada_eda.html
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    latex_engine: xelatex
+    fig_width: 7
+    fig_height: 4.5
+    keep_tex: false
+    includes:
+      in_header: portada_eda_header.tex
+      before_body: portada_eda.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.align = "center")
+
+library(knitr)
+
+template_path <- function(archivo) {
+  file.path("..", "my-paper-overleaf", "template", archivo)
+}
+
+img_path <- function(archivo) {
+  file.path("..", "my-paper-overleaf", "img", archivo)
+}
+
+mostrar_fig <- function(archivo, caption = NULL, width = "95%") {
+  ruta <- img_path(archivo)
+  if (!file.exists(ruta)) {
+    cat("*(Figura no disponible:", archivo, ")*\n")
+    return(invisible(NULL))
+  }
+  knitr::include_graphics(path = ruta)
+}
+```
+
+```{r portada-html, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  logo <- template_path("universis.png")
+  fondo <- template_path("unipdbg.pdf")
+  logo_src <- knitr::image_uri(logo)
+
+  fondo_src <- ""
+  if (file.exists(fondo) && requireNamespace("magick", quietly = TRUE)) {
+    fondo_src <- tryCatch({
+      tmp <- tempfile(fileext = ".png")
+      img <- magick::image_read_pdf(fondo, density = 120)
+      magick::image_write(img, path = tmp, format = "png")
+      knitr::image_uri(tmp)
+    }, error = function(e) "")
+  }
+
+  marca_agua <- if (nzchar(fondo_src)) {
+    sprintf('<img class="portada-watermark" src="%s" alt="" />', fondo_src)
+  } else {
+    ""
+  }
+
+  cat(sprintf('
+<div class="portada-tesis">
+  %s
+  <img class="portada-logo" src="%s" alt="Pontificia Universidad Javeriana" />
+  <p class="portada-institucion">
+    Pontificia Universidad Javeriana Cali<br />
+    Facultad de Ingeniería y Ciencias.<br />
+    MAESTRÍA EN CIENCIA DE DATOS
+  </p>
+  <h1 class="portada-titulo">Documento de Análisis Descriptivo y Exploratorio (EDA)</h1>
+  <p class="portada-subtitulo">Etapa 3 — Entregable ejecutivo consolidado</p>
+  <p class="portada-autores">
+    <strong>Edwin Henao Ochoa</strong><br />
+    <strong>Cindy Lugo Rozo</strong><br />
+    <strong>Edwin Silva Salas</strong>
+  </p>
+  <div class="portada-director">
+    <span class="portada-director-label">Director</span><br />
+    <strong>Sandra Milena Ramírez Buelvas</strong><br />
+    <strong>Pontificia Universidad Javeriana</strong>
+  </div>
+</div>
+<div class="portada-salto"></div>
+', marca_agua, logo_src))
+}
+```
+
+# Resumen ejecutivo
+
+Este documento consolida los hallazgos de la **Etapa 3 — Análisis descriptivo y exploratorio de datos (EDA)** del proyecto de predicción de indicadores de continuidad (*SAIDI* / *SAIFI*) en la red de distribución. El objetivo fue caracterizar la calidad del panel, diagnosticar distribuciones y extremos, identificar patrones temporales y espaciales, y evaluar asociaciones entre clima y operación para orientar la **Etapa 4 (modelado)**.
+
+**Hallazgos convergentes:**
+
+| Área | Conclusión principal |
+|------|----------------------|
+| **Calidad** | Panel diario con `NA` concentrados en clima (3,91 %); tabla agrupada sin faltantes |
+| **Distribución** | Bloque operativo cero-inflado y de colas pesadas; precipitación semanal muy asimétrica |
+| **Temporal** | Salto 2024–2025 explicado en gran parte por homogeneización OMS-SP7, no solo por operación |
+| **Dataset de modelado** | $D_{\mathrm{mod}}$ = 2024–2025 (36 120 filas; 33 410 eventos; cobertura GIS ≥ 79,8 %) |
+| **Clima → eventos** | Precipitación semanal: señal dominante ($\rho_{\mathrm{Spearman}} \approx 0{,}41$) |
+| **Multivariado** | Predictoras propuestas: precip, temp media, humedad y viento medio; respuesta: `n_eventos` (SAIFI) |
+| **Territorial** | 14,2 % de cuadrantes en nivel *Alta*; 4 clusters espaciales; régimen lluvioso con mayor actividad |
+
+**Recomendación para la Etapa 4:** entrenar sobre $D_{\mathrm{mod}}$ con partición **2024 (entrenamiento) / 2025 (prueba)**, transformaciones `log(1+x)` donde aplique, subconjunto climático reducido y `n_eventos` como variable respuesta de frecuencia.
+
+---
+
+# 1. Objetivo, alcance y fuentes de datos
+
+## 1.1 Objetivo (OE2)
+
+Comprender el comportamiento de los datos e identificar patrones, relaciones y comportamientos relevantes que orienten las decisiones de modelado predictivo de continuidad del servicio.
+
+## 1.2 Universo analítico
+
+| Conjunto | Archivo | Horizonte | Grano | Uso en EDA |
+|--------|---------|-----------|-------|------------|
+| Panel consolidado | `data_consolidada.csv` | 2021–2025 | Activo × día | Calidad (faltantes, extremos) |
+| Tabla agrupada $D_{\mathrm{EDA}}$ | `data_agrupada.csv` | 2021–2025 | Cuadrante × semana | §5.3.1–5.3.5 (90 128 filas) |
+| Tabla de modelado $D_{\mathrm{mod}}$ | `data_agrupada_mod.csv` | 2024–2025 | Cuadrante × semana | §5.3.6–5.3.9 y Etapa 4 (36 120 filas) |
+
+```{r resumen-datasets, results='asis'}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) readRenviron(".env") else if (file.exists(env_path)) readRenviron(env_path)
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA != "" && requireNamespace("readr", quietly = TRUE)) {
+  path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+  if (file.exists(path_mod)) {
+    d_mod <- readr::read_csv(path_mod, show_col_types = FALSE)
+    if ("semana" %in% names(d_mod)) d_mod$semana <- as.Date(d_mod$semana)
+    resumen <- data.frame(
+      Metrica = c(
+        "Filas (D_mod)", "Cuadrantes", "Semanas", "Total eventos",
+        "Eventos 2024", "Eventos 2025", "Media eventos/semana"
+      ),
+      Valor = c(
+        nrow(d_mod),
+        length(unique(d_mod$id_cuadrante)),
+        length(unique(d_mod$semana)),
+        sum(d_mod$n_eventos, na.rm = TRUE),
+        sum(d_mod$n_eventos[d_mod$semana >= as.Date("2024-01-01") & d_mod$semana < as.Date("2025-01-01")], na.rm = TRUE),
+        sum(d_mod$n_eventos[d_mod$semana >= as.Date("2025-01-01")], na.rm = TRUE),
+        round(sum(d_mod$n_eventos) / length(unique(d_mod$semana)), 1)
+      )
+    )
+    kable(resumen, caption = "Resumen operativo del dataset de modelado (data_agrupada_mod.csv)")
+  }
+}
+```
+
+## 1.3 Estructura del entregable
+
+Este informe ejecutivo sintetiza las subsecciones **5.3.1 a 5.3.10** del capítulo de Metodología. Cada bloque incluye conclusiones accionables y figuras representativas; el detalle reproducible (código, tablas completas) permanece en los informes técnicos enlazados al final.
+
+---
+
+# 2. Calidad de datos (§5.3.1–5.3.2)
+
+## 2.1 Datos faltantes
+
+**Panel consolidado** ($N = 87\,007\,074$; activo × día): la incompletitud se concentra en el bloque climático NASA POWER (3,91 % por variable meteorológica) y en `ALTITUD` (0,04 %). Variables operativas de interrupción sin `NA`. El 96,06 % de filas está completo.
+
+**Tabla agrupada** ($N_{\mathrm{agr}} = 90\,128$): **0 % de faltantes** en las 16 variables, coherente con `na.rm = TRUE` en la agregación semanal.
+
+```{r fig-faltantes, fig.cap="Porcentaje de NA por variable en el panel consolidado (§5.3.1).", out.width='92%'}
+mostrar_fig("grafico_datos_faltantes_por_variable.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Faltantes panel consolidado | [identificacion_datos_faltantes.html](identificacion_datos_faltantes.html) |
+| Faltantes tabla agrupada | [missing_values_grouped.html](missing_values_grouped.html) |
+
+## 2.2 Valores extremos
+
+Se aplicaron reglas IQR (1,5 y 3,0) y percentiles P1–P99.
+
+- **Clima:** temperaturas y humedad con extremos escasos; **precipitación** con cola derecha (Tukey: 10,38 % diario; 8,98 % semanal) — valores operativamente plausibles.
+- **Operativo:** dominancia de ceros (99,94 % días sin evento). En días/semanas con evento, colas pesadas; `duracion_total` con máximos que sugieren revisión puntual (no exclusión en EDA).
+
+```{r fig-extremos, fig.cap="Boxplots de variables climáticas — panel consolidado (§5.3.2).", out.width='92%'}
+mostrar_fig("boxplot_valores_extremos_clima_agrupada.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Extremos panel consolidado | [detection_outliers.html](detection_outliers.html) |
+| Extremos tabla agrupada | [outliers_gruped.html](outliers_gruped.html) |
+
+**Implicación Etapa 4:** tratamiento de incompletitud en panel diario; en $D_{\mathrm{mod}}$ no hay imputación por faltantes; evaluar winsorización o transformaciones para colas operativas.
+
+---
+
+# 3. Caracterización univariada (§5.3.3–5.3.4)
+
+## 3.1 Estadísticos descriptivos
+
+Sobre `data_agrupada.csv` ($N_{\mathrm{agr}} = 90\,128$):
+
+**Clima semanal:** distribuciones casi simétricas (CV 0,16–0,81), excepto `precip_total_semana` (mediana 618,8 mm; CV = 3,47; asimetría 30,6).
+
+**Operativo:** mediana 0 en las cuatro métricas; **74,9 %** de semanas-cuadrante sin eventos. Con evento: `usuarios_afectados` hasta 69 928; `n_eventos` hasta 58 por semana-cuadrante.
+
+```{r fig-desc, fig.cap="Distribución de actividad semanal por cuadrante (§5.3.3).", out.width='75%'}
+mostrar_fig("grafico_barras_actividad_agrupada.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Estadísticos descriptivos | [calculo_estadistico_descriptivo.html](calculo_estadistico_descriptivo.html) |
+
+## 3.2 Análisis de distribución
+
+Dos regímenes claros:
+
+1. **Bloque climático estable**, con precipitación como excepción asimétrica (9,1 % de semanas con 0 mm).
+2. **Bloque operativo cero-inflado** (72,5–74,9 % ceros) con curtosis elevada en semanas con evento.
+
+La transformación `log(1 + precip)` aproxima la precipitación a simetría; las variables operativas requieren modelos aptos para exceso de ceros (Poisson, ZIP, etc.).
+
+```{r fig-dist, fig.cap="Precipitación semanal: escala original vs log(1+x) (§5.3.4).", out.width='92%'}
+mostrar_fig("distribucion_densidad_precipitacion_agrupada.png")
+```
+
+```{r fig-ceros, fig.cap="Proporción de ceros en variables operativas (§5.3.4).", out.width='80%'}
+mostrar_fig("distribucion_pct_ceros_evento_agrupada.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Distribución de variables | [distribucion_variables.html](distribucion_variables.html) |
+
+---
+
+# 4. Dinámica temporal y dataset de modelado (§5.3.5)
+
+## 4.1 Serie territorial 2021–2025
+
+- **262 semanas**; mediana 124,5 eventos/semana (media 188,5).
+- Régimen bajo 2021–2023; incremento marcado desde 2024 (15 211 eventos) y 2025 (18 199).
+- **Estacionalidad:** mayor actividad en meses de lluvias.
+- **ACF:** rezago 1 = 0,92; componente anual (rezago 52 ≈ 0,43).
+
+```{r fig-temporal, fig.cap="Serie semanal de eventos con tendencia LOESS, 2021–2025 (§5.3.5).", out.width='95%'}
+mostrar_fig("serie_semanal_eventos_agrupada.png")
+```
+
+```{r fig-acf-eda, fig.cap="ACF/PACF de la serie semanal territorial (§5.3.5).", out.width='95%'}
+mostrar_fig("acf_serie_semanal_agrupada.png")
+```
+
+## 4.2 Delimitación de $D_{\mathrm{mod}}$
+
+El salto temporal **no debe atribuirse solo a mayor actividad operativa**. La brecha código activo vs código de sitio (OMS-SPARD → OMS-SP7) explica cobertura GIS del 30 % (2021–2023) al 80–95 % (2024–2025).
+
+| Año | Cobertura inventario GIS | Eventos panel espacial |
+|-----|--------------------------|------------------------|
+| 2021 | 30,5 % | 5 167 |
+| 2022 | 30,9 % | 4 934 |
+| 2023 | 31,7 % | 5 845 |
+| **2024** | **79,8 %** | **15 211** |
+| **2025** | **95,0 %** | **18 199** |
+
+**$D_{\mathrm{mod}}$:** 2024–2025 → 36 120 filas, 344 cuadrantes, 105 semanas, 33 410 eventos. Partición natural: entrenamiento 2024 / prueba 2025.
+
+```{r fig-cobertura, fig.cap="Cobertura anual emparejamiento evento–elemento vs panel espacial (§5.3.5).", out.width='95%'}
+mostrar_fig("cobertura_emparejamiento_por_anio.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Análisis temporal | [analisis_temporal_eventos.html](analisis_temporal_eventos.html) |
+| Emparejamiento y $D_{\mathrm{mod}}$ | [emparejamiento_eventos.html](emparejamiento_eventos.html) |
+| Exportación $D_{\mathrm{mod}}$ | [consolidado_data_mod.html](consolidado_data_mod.html) |
+
+---
+
+# 5. Patrones y visualización sobre $D_{\mathrm{mod}}$ (§5.3.6)
+
+Análisis restringido a 2024–2025 con cobertura homogénea.
+
+**Temporal:** media ≈ 318 eventos/semana; 287 (2024) → 350 (2025); ACF rezago 1 = 0,80; estacionalidad en meses lluviosos.
+
+**Espacial:** top 10 cuadrantes concentran 20,5 % de eventos; 49 cuadrantes (14,2 %) en nivel *Alta*.
+
+**Clima–evento:** asociación positiva precipitación–`n_eventos` visible en dispersión y correlaciones.
+
+```{r fig-patrones-1, fig.cap="Serie semanal de eventos en el dataset de modelado (Seccion 5.3.6).", out.width='95%'}
+mostrar_fig("serie_semanal_patrones_mod.png")
+```
+
+```{r fig-patrones-2, fig.cap="Estacionalidad mensual en el dataset de modelado (Seccion 5.3.6).", out.width='95%'}
+mostrar_fig("estacionalidad_mensual_patrones_mod.png")
+```
+
+```{r fig-patrones-3, fig.cap="Dispersion precipitacion semanal vs frecuencia de eventos (Seccion 5.3.6).", out.width='85%'}
+mostrar_fig("dispersion_precip_eventos_patrones_mod.png")
+```
+
+```{r fig-patrones-4, fig.cap="Mapa de intensidad territorial y segmentación por actividad (§5.3.6).", out.width='80%'}
+mostrar_fig("segmentacion_cuadrantes_patrones_mod.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Patrones y visualización | [identificacion_patrones.html](identificacion_patrones.html) |
+
+---
+
+# 6. Correlación y asociación (§5.3.7)
+
+Método: **Spearman** (datos asimétricos y cero-inflados). Universo: $D_{\mathrm{mod}}$, 36 120 filas.
+
+**Redundancia operativa:** $\rho$ hasta 0,99 (`usuarios_afectados`–`elementos_afectados`).
+
+**Redundancia climática:** 9 pares con $|\rho| \geq 0{,}70$ (temperaturas y vientos).
+
+**Clima → operativo:**
+
+| Par | $\rho$ | $p$ |
+|-----|--------|-----|
+| precip ↔ `n_eventos` | 0,414 | < 0,001 |
+| precip ↔ `usuarios_afectados` | 0,406 | < 0,001 |
+| precip ↔ `duracion_total` | 0,383 | < 0,001 |
+| `viento_medio` ↔ `n_eventos` | 0,135 | < 0,001 |
+
+**Condicionado** (`n_eventos > 0`; $n = 13\,351$): precip ↔ `n_eventos` se atenúa a $\rho = 0{,}29$ — parte de la señal está en la transición cero/no-cero.
+
+```{r fig-cor-1, fig.cap="Mapa de calor clima–operativo (§5.3.7).", out.width='92%'}
+mostrar_fig("heatmap_correlacion_clima_operativo_mod.png")
+```
+
+```{r fig-cor-2, fig.cap="Barras: Spearman clima → operativo (§5.3.7).", out.width='95%'}
+mostrar_fig("barras_correlacion_clima_operativo_mod.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Análisis de correlación | [analisis_correlacion.html](analisis_correlacion.html) |
+
+---
+
+# 7. Relaciones multivariadas (§5.3.8)
+
+**VIF (bloque climático completo):** inflación crítica en temperaturas y vientos; `precip_total_semana` con VIF ≈ 1,05.
+
+**Subconjunto propuesto para modelado:**
+
+| Variable | VIF |
+|----------|-----|
+| `temp_media_semana` | 6,94 |
+| `humedad_media_semana` | 3,44 |
+| `viento_medio_semana` | 3,33 |
+| `precip_total_semana` | 1,04 |
+
+**PCA clima:** 81,3 % varianza en PC1–PC2; precipitación relativamente independiente.
+
+**Correlación parcial** precip ↔ `n_eventos` (controlando temp y viento): $\rho = 0{,}43$.
+
+**GLM Poisson exploratorio:** `log(1+precip)` y viento medio significativos ($p < 0{,}001$).
+
+**PCA operativo:** PC1 concentra 83,8 % — justifica **una** respuesta principal: `n_eventos` (SAIFI) o `duracion_total` (SAIDI).
+
+```{r fig-multi-1, fig.cap="VIF del bloque climático (§5.3.8).", out.width='92%'}
+mostrar_fig("vif_clima_multivariado_mod.png")
+```
+
+```{r fig-multi-2, fig.cap="Dendrograma de variables climáticas (§5.3.8).", out.width='95%'}
+mostrar_fig("dendrograma_clima_multivariado_mod.png")
+```
+
+```{r fig-multi-3, fig.cap="Coeficientes GLM Poisson exploratorio (§5.3.8).", out.width='82%'}
+mostrar_fig("glm_coef_clima_multivariado_mod.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Evaluación multivariada | [analisis_multivariado.html](analisis_multivariado.html) |
+
+---
+
+# 8. Segmentación exploratoria (§5.3.9)
+
+**Niveles de actividad** (cuadrantes con eventos; P50/P85):
+
+| Nivel | Cuadrantes | % |
+|-------|------------|---|
+| Baja | 162 | 47,1 |
+| Media | 113 | 32,8 |
+| Alta | 49 | 14,2 |
+| Sin eventos | 20 | 5,8 |
+
+**2024 vs 2025:** ratio medio eventos 2025/2024 ≈ 1,24–1,26 en todos los estratos.
+
+**Régimen lluvioso (P75):** media `n_eventos` 2,01 vs 0,56 en semanas secas (Wilcoxon $p < 0{,}001$).
+
+**Clustering k-means ($k=4$):** hub extremo (C1, 1 cuadrante), cluster de alta severidad (C2, 41 cuadrantes), perfiles intermedios (C3–C4).
+
+```{r fig-seg-1, fig.cap="Frecuencia de eventos por nivel de actividad del cuadrante (Seccion 5.3.9).", out.width='95%'}
+mostrar_fig("boxplot_eventos_por_nivel_segmentacion_mod.png")
+```
+
+```{r fig-seg-2, fig.cap="Clusters espaciales de cuadrantes (§5.3.9).", out.width='95%'}
+mostrar_fig("mapa_clusters_cuadrantes_segmentacion_mod.png")
+```
+
+| Informe técnico | Enlace |
+|-----------------|--------|
+| Segmentación exploratoria | [segmentacion_exploratoria.html](segmentacion_exploratoria.html) |
+
+---
+
+# 9. Conclusiones y lineamientos para la Etapa 4 (§5.3.10)
+
+## 9.1 Síntesis del EDA
+
+El análisis exploratorio sobre el panel cuadrante × semana permitió:
+
+1. **Validar calidad** del insumo agregado y acotar el horizonte de modelado a periodos con trazabilidad GIS homogénea.
+2. **Caracterizar distribuciones** que exigen transformaciones y modelos para conteos y exceso de ceros.
+3. **Identificar persistencia temporal** y estacionalidad que respaldan rezagos y partición cronológica.
+4. **Cuantificar la señal climática** de la precipitación sobre la frecuencia de interrupciones.
+5. **Depurar redundancias** multivariadas y proponer un conjunto mínimo de predictoras.
+6. **Documentar heterogeneidad territorial** para eventual estratificación o efectos espaciales.
+
+## 9.2 Decisiones propuestas para modelado
+
+| Decisión | Propuesta |
+|----------|-----------|
+| Universo de estimación | $D_{\mathrm{mod}}$ (2024–2025) |
+| Partición | Entrenamiento 2024 / Prueba 2025 |
+| Variable respuesta (SAIFI) | `n_eventos` |
+| Variable respuesta (SAIDI) | `duracion_total` (análisis complementario) |
+| Predictoras climáticas | `precip_total_semana`, `temp_media_semana`, `humedad_media_semana`, `viento_medio_semana` |
+| Excluir por redundancia | `temp_max/min`, `viento_max` |
+| Transformaciones | `log(1+x)` en precipitación y bloque operativo según distribución |
+| Rezagos / estacionalidad | Incorporar por ACF elevada (rezago 1 ≈ 0,80–0,92) |
+| Estratificación opcional | Nivel *Alta* o clusters C1–C2 para modelos por zona |
+
+## 9.3 Limitaciones reconocidas
+
+- Los años 2021–2023 no son comparables en nivel absoluto por la brecha de codificación activo/sitio.
+- El 63 % de filas en $D_{\mathrm{mod}}$ tiene `n_eventos = 0`; modelos deben contemplar inflación de ceros o enfoques de dos partes.
+- Extremos de duración en días con evento requieren validación operativa antes de exclusiones.
+
+---
+
+# Anexo A — Informes técnicos reproducibles
+
+| § | Tema | Informe |
+|---|------|---------|
+| 5.3.1 | Datos faltantes (panel) | [identificacion_datos_faltantes.html](identificacion_datos_faltantes.html) |
+| 5.3.1 | Datos faltantes (agrupada) | [missing_values_grouped.html](missing_values_grouped.html) |
+| 5.3.2 | Valores extremos (panel) | [detection_outliers.html](detection_outliers.html) |
+| 5.3.2 | Valores extremos (agrupada) | [outliers_gruped.html](outliers_gruped.html) |
+| 5.3.3 | Estadísticos descriptivos | [calculo_estadistico_descriptivo.html](calculo_estadistico_descriptivo.html) |
+| 5.3.4 | Distribución de variables | [distribucion_variables.html](distribucion_variables.html) |
+| 5.3.5 | Análisis temporal | [analisis_temporal_eventos.html](analisis_temporal_eventos.html) |
+| 5.3.5 | Emparejamiento / $D_{\mathrm{mod}}$ | [emparejamiento_eventos.html](emparejamiento_eventos.html) |
+| 5.3.5 | Materialización $D_{\mathrm{mod}}$ | [consolidado_data_mod.html](consolidado_data_mod.html) |
+| 5.3.6 | Patrones y visualización | [identificacion_patrones.html](identificacion_patrones.html) |
+| 5.3.7 | Correlación | [analisis_correlacion.html](analisis_correlacion.html) |
+| 5.3.8 | Multivariado | [analisis_multivariado.html](analisis_multivariado.html) |
+| 5.3.9 | Segmentación | [segmentacion_exploratoria.html](segmentacion_exploratoria.html) |
+
+---
+
+*Documento generado de forma reproducible desde `Scripts/Edwin/EDA.Rmd`. Versión: `r Sys.Date()`.*

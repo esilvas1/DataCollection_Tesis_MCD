@@ -1,0 +1,89 @@
+<style>
+#header,
+.title.author-date,
+.date {
+  display: none !important;
+}
+
+.portada-tesis {
+  position: relative;
+  min-height: 92vh;
+  margin: -1.5rem -2rem 0;
+  padding: 2.5rem 3.5rem 2rem;
+  background-color: #ffffff;
+  overflow: hidden;
+  page-break-after: always;
+}
+
+.portada-watermark {
+  position: absolute;
+  left: 50%;
+  bottom: -2rem;
+  transform: translateX(-50%);
+  width: 140%;
+  max-width: none;
+  opacity: 1;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.portada-tesis > :not(.portada-watermark) {
+  position: relative;
+  z-index: 1;
+}
+
+.portada-logo {
+  height: 4cm;
+  max-width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.portada-institucion {
+  font-variant: small-caps;
+  font-size: 1rem;
+  line-height: 1.55;
+  margin: 0 0 2.5rem;
+}
+
+.portada-titulo {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 1rem;
+  border: none;
+  padding: 0;
+}
+
+.portada-subtitulo {
+  font-size: 1.25rem;
+  margin: 0 0 2rem;
+  color: #333;
+}
+
+.portada-autores {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin: 0 0 2rem;
+}
+
+.portada-director {
+  margin-top: 2rem;
+}
+
+.portada-director-label {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
+
+.portada-salto {
+  height: 0;
+  page-break-after: always;
+}
+
+@media print {
+  .portada-tesis {
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+</style>
