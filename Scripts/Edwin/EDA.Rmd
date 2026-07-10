@@ -63,7 +63,7 @@ autores_portada <- function() {
 autores <- autores_portada()
 
 if (knitr::is_latex_output()) {
-  autores_tex <- paste(sprintf("\\textbf{%s}", autores), collapse = "\\\\\n")
+  autores_tex <- paste(sprintf(paste0("\\textbf{", "%s", "}"), autores), collapse = "\\\\\n")
   portada_tex <- sprintf('
 \\begin{titlepage}
 \\thispagestyle{empty}
@@ -78,7 +78,7 @@ if (knitr::is_latex_output()) {
 \\noindent\\includegraphics[height=4cm]{../my-paper-overleaf/template/universis.png}
 
 \\vspace{4ex}
-{\\normalsize\\textsc{%%
+{\\normalsize\\textsc{
 Pontificia Universidad Javeriana Cali \\\\
 Facultad de Ingeniería y Ciencias.\\\\
 MAESTRÍA EN CIENCIA DE DATOS}}
