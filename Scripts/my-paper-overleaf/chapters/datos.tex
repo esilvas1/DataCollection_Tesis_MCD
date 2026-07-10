@@ -1,10 +1,10 @@
 
 Para el desarrollo del modelo de predicción de indicadores de calidad del servicio eléctrico, se utilizará una base de datos histórica de eventos de falla reportados en el sistema de distribución. La tabla principal consolidada tiene $N = 87{,}007{,}074$ observaciones ($A = 47{,}649$ activos eléctricos únicos $\times$ $T = 1{,}826$ días), correspondientes al panel \textbf{activo $\times$ día} entre el $1$ de enero de $2021$ y el $31$ de diciembre de $2025$.
 
-\section{Tiempo o periodo de estudio}
+\paragraph{Tiempo o periodo de estudio.}
 El periodo de estudio abarca desde el $1$ de enero de $2021$ hasta el $31$ de diciembre de $2025$.
 
-\section{Unidad muestral}
+\paragraph{Unidad muestral.}
 La unidad muestral adoptada corresponde a un activo eléctrico por día, lo que define un nivel de granularidad tipo \textit{elemento-día}. Esta elección permite capturar la variabilidad temporal de los eventos e integrar variables de red y climáticas a nivel diario.
 
 \section{Construcción del dataset}
@@ -32,72 +32,77 @@ La construcción del conjunto de datos sigue la siguiente lógica:
 Las variables de eventos se definen así:
 
 \begin{itemize}
-    \item \textbf{DURACION (minutos):} duración total del evento de interrupción, expresada en minutos, asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días). En días sin falla, el valor es $0$.
+    \item \textbf{Duracion (minutos):} duración total del evento de interrupción, expresada en minutos, asignada al día de \texttt{Fecha\_Desconexion} (sin prorrateo entre días). En días sin falla, el valor es $0$.
     
-    \item \textbf{FRECUENCIA:} número de interrupciones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en el día.
+    \item \textbf{Frecuencia:} número de interrupciones cuyo inicio (\texttt{Fecha\_Desconexion}) ocurre en el día.
 \end{itemize}
 
 \subsection{Estructura del dataset consolidado}
 
-El dataset final incluye las siguientes variables:
+El dataset final incluye las variables agrupadas por bloque temático, como se resume en la Tabla~\ref{tab:estructura_dataset_consolidado}.
 
-\begin{itemize}
-    \item \textbf{Información del activo:}
-    \begin{itemize}
-        \item ID\_ACTIVO\_ELECTRICO
-        \item TIPO\_ACTIVO\_ELECTRICO
-    \end{itemize}
-    
-    \item \textbf{Información geoespacial:}
-    \begin{itemize}
-        \item LATITUD, LONGITUD, ALTITUD
-        \item ID\_CUADRANTE
-        \item LATITUD\_CUADRANTE, LONGITUD\_CUADRANTE
-    \end{itemize}
-    
-    \item \textbf{Variables de red:}
-    \begin{itemize}
-        \item FECHA
-        \item CANTIDAD\_ELEMENTOS
-        \item CANTIDAD\_USUARIOS
-        \item ANTIGUEDAD\_RED
-        \item EXPANSION\_RED
-    \end{itemize}
-    
-    \item \textbf{Variables climáticas:}
-    \begin{itemize}
-        \item VELOCIDAD\_VIENTO\_MS
-        \item TEMPERATURA\_MEDIA\_C
-        \item HUMEDAD\_RELATIVA\_PCT
-        \item TEMPERATURA\_MINIMA\_C
-        \item TEMPERATURA\_MAXIMA\_C
-        \item PRECIPITACION\_TOTAL\_MM
-    \end{itemize}
-    
-    \item \textbf{Variables objetivo:}
-    \begin{itemize}
-        \item DURACION
-        \item FRECUENCIA
-    \end{itemize}
-\end{itemize}
+\begin{table}[H]
+\centering
+\small
+\caption{Estructura del dataset consolidado (grano activo $\times$ día).}
+\label{tab:estructura_dataset_consolidado}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{10cm}@{}}
+\toprule
+\textbf{Bloque} & \textbf{Variables} \\
+\midrule
+Información del activo &
+\begin{minipage}[t]{\linewidth}
+\texttt{Id\_Activo\_Electrico}\\[0.1em]
+\texttt{Tipo\_Activo\_Electrico}
+\end{minipage} \\
+Información geoespacial &
+\begin{minipage}[t]{\linewidth}
+\texttt{Latitud}\\[0.1em]
+\texttt{Longitud}\\[0.1em]
+\texttt{Altitud}\\[0.1em]
+\texttt{Id\_Cuadrante}\\[0.1em]
+\texttt{Latitud\_Cuadrante}\\[0.1em]
+\texttt{Longitud\_Cuadrante}
+\end{minipage} \\
+Variables de red &
+\begin{minipage}[t]{\linewidth}
+\texttt{Fecha}\\[0.1em]
+\texttt{Cantidad\_Elementos}\\[0.1em]
+\texttt{Cantidad\_Usuarios}\\[0.1em]
+\texttt{Antiguedad\_Red}\\[0.1em]
+\texttt{Expansion\_Red}
+\end{minipage} \\
+Variables climáticas &
+\begin{minipage}[t]{\linewidth}
+\texttt{Velocidad\_Viento\_Ms}\\[0.1em]
+\texttt{Temperatura\_Media\_C}\\[0.1em]
+\texttt{Humedad\_Relativa\_Pct}\\[0.1em]
+\texttt{Temperatura\_Minima\_C}\\[0.1em]
+\texttt{Temperatura\_Maxima\_C}\\[0.1em]
+\texttt{Precipitacion\_Total\_Mm}
+\end{minipage} \\
+Variables objetivo &
+\begin{minipage}[t]{\linewidth}
+\texttt{Duracion}\\[0.1em]
+\texttt{Frecuencia}
+\end{minipage} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\section{Numero de observaciones:}
-\begin{itemize}
-\item La tabla consolidada final se estima como:
-
+\paragraph{Número de observaciones.}
+La tabla consolidada final se estima como
 \[
-\text{Total de observaciones} = 47{,}649 \times 1{,}826 = 87{,}007{,}074
+\text{Total de observaciones} = 47{,}649 \times 1{,}826 = 87{,}007{,}074,
 \]
+correspondiente a cinco años de información a nivel elemento-día.
 
-correspondiente a 5 años de información a nivel elemento-día.
-\end{itemize}
+\section*{Procedencia de la información}
 
-\section{Origen de la información:}
+\paragraph{Origen de la información.}
+La empresa origen de los datos operativos y técnicos es \textbf{Centrales Eléctricas de Norte de Santander S.A E.S.P (Cens S.A E.S.P)}.
 
-La empresa origen de los datos operativos y técnicos es \textbf{CENTRALES ELÉCTRICAS DE NORTE DE SANTANDER S.A E.S.P (CENS S.A E.S.P)}.
-
-\section{Lugar donde se registra la información:}
-Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER.
+\paragraph{Lugar donde se registra la información.}
+Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa Nasa Power.
 
 La información se registra en la red de distribución eléctrica de Norte de Santander, con soporte de localización geográfica por activo y por cuadrante.
-

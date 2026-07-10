@@ -26,7 +26,7 @@
 % -- GENERAL SETUP --
 
 % ref class
-\LoadClass[11pt, a4paper, twoside, openright]{book}
+\LoadClass[11pt, a4paper, twoside, openany]{book}
 
 % page geometry
 \RequirePackage[
@@ -288,7 +288,7 @@
     % create cover
     \maketitle
     \secondcoverpage
-    \cleardoublepage
+    \clearpage
     
     % set preamble style
     \pagestyle{plain}
@@ -309,7 +309,7 @@
     
     % insert table of contents
     {\hypersetup{linkcolor=black}\titlespacing*{\chapter}{0pt}{10pt}{10pt}\tableofcontents}
-    \cleardoublepage
+    \clearpage
     
     % insert abstract
     \abstractpage
@@ -428,7 +428,7 @@
     \@dedication
     \end{flushright}
     
-    \cleardoublepage
+    \clearpage
 \fi
 }
 
@@ -550,7 +550,7 @@
     % english version
   %  \input{docs/abstract}
     % italian version
-    \cleardoublepage
+    \clearpage
     \input{docs/sommario}
 }
 
@@ -558,7 +558,7 @@
 
 % -- MAIN MATTER --
 \renewcommand{\mainmatter} {
-    \cleardoublepage
+    \clearpage
     \pagestyle{fancy}
     \setDefaultHF
     \renewcommand{\headrulewidth}{1pt}
@@ -593,7 +593,7 @@
 
 % -- BACKMATTER --
 \renewcommand{\backmatter}{
-    %\cleardoublepage
+    %\clearpage
 
     % glossary
     \begingroup     
@@ -602,13 +602,13 @@
     \endgroup
     
     % references
-    \cleardoublepage
+    \clearpage
     \phantomsection
     \addcontentsline{toc}{chapter}{\bibname}
         \printbibliography
   
     % acknowledgments
-    \cleardoublepage
+    \clearpage
     \phantomsection
     \addcontentsline{toc}{chapter}{\acknowledgmentsname}
     \acknowledgments
