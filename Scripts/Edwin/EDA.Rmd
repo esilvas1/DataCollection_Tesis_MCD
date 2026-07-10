@@ -211,11 +211,11 @@ if (UBICACION_DATA != "" && requireNamespace("readr", quietly = TRUE)) {
 mostrar_fig("grafico_datos_faltantes_por_variable.png")
 ```
 
-**Qué muestra este gráfico.** Cada barra representa una variable de la base de datos, y su longitud indica qué porcentaje de registros llega vacío (sin dato). En términos simples, es una "radiografía de la calidad de la información" con la que trabaja la empresa.
+Cada barra representa una variable de la base de datos, y su longitud indica qué porcentaje de registros llega vacío (sin dato). En términos simples, es una "radiografía de la calidad de la información" con la que trabaja la empresa.
 
-**Qué revela.** La gran mayoría de la información está completa: el **96 %** de los registros no tiene huecos. Los vacíos se concentran casi exclusivamente en las variables de **clima** (3,91 %), que provienen de una fuente externa (satélite NASA POWER), no de los sistemas internos. Las variables críticas del negocio —las que describen las interrupciones del servicio— **no presentan vacíos**.
+La gran mayoría de la información está completa: el **96 %** de los registros no tiene huecos. Los vacíos se concentran casi exclusivamente en las variables de **clima** (3,91 %), que provienen de una fuente externa (satélite NASA POWER), no de los sistemas internos. Las variables críticas del negocio —las que describen las interrupciones del servicio— **no presentan vacíos**.
 
-**Por qué le importa a la empresa.** Confirma que los sistemas operativos (OMS, GIS) están registrando de forma confiable los eventos de interrupción; el riesgo de calidad de datos no está en la operación, sino en un insumo externo y secundario. Esto da **confianza para construir modelos predictivos** sin necesidad de costosos procesos de limpieza o de descartar grandes volúmenes de información. El hallazgo no evidente es que la calidad del dato **no es un obstáculo** para avanzar al modelado.
+Confirma que los sistemas operativos (OMS, GIS) están registrando de forma confiable los eventos de interrupción; el riesgo de calidad de datos no está en la operación, sino en un insumo externo y secundario. Esto da **confianza para construir modelos predictivos** sin necesidad de costosos procesos de limpieza o de descartar grandes volúmenes de información. El hallazgo no evidente es que la calidad del dato **no es un obstáculo** para avanzar al modelado.
 
 
 ## 2.2 Valores extremos
@@ -251,11 +251,11 @@ En variables con **exceso de ceros** (semanas sin interrupción), $Q_1 = Q_3 = 0
 mostrar_fig("boxplot_valores_extremos_clima_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** Cada "caja" resume cómo se comporta una variable climática: la caja contiene la mitad central de los valores habituales, y los puntos que quedan por fuera son los **casos fuera de lo normal**. Es la forma visual de detectar qué tan dispersos o atípicos son los datos.
+ Cada "caja" resume cómo se comporta una variable climática: la caja contiene la mitad central de los valores habituales, y los puntos que quedan por fuera son los **casos fuera de lo normal**. Es la forma visual de detectar qué tan dispersos o atípicos son los datos.
 
-**Qué revela.** Temperatura, humedad y viento se comportan de forma **estable y predecible** (cajas compactas, pocos puntos fuera). La **precipitación** es la excepción: tiene una larga cola de valores altos, que corresponden a **semanas de lluvia intensa reales**, no a errores. Estos picos de lluvia son precisamente los que coinciden con mayor número de interrupciones.
+ Temperatura, humedad y viento se comportan de forma **estable y predecible** (cajas compactas, pocos puntos fuera). La **precipitación** es la excepción: tiene una larga cola de valores altos, que corresponden a **semanas de lluvia intensa reales**, no a errores. Estos picos de lluvia son precisamente los que coinciden con mayor número de interrupciones.
 
-**Por qué le importa a la empresa.** El gráfico señala que el principal factor climático de riesgo es la **lluvia extrema**, y que esos episodios son identificables con anticipación. El hallazgo no evidente es que la empresa puede **anticipar semanas de alto riesgo** mirando el pronóstico de precipitación, en lugar de reaccionar solo cuando las fallas ya ocurrieron.
+ El gráfico señala que el principal factor climático de riesgo es la **lluvia extrema**, y que esos episodios son identificables con anticipación. El hallazgo no evidente es que la empresa puede **anticipar semanas de alto riesgo** mirando el pronóstico de precipitación, en lugar de reaccionar solo cuando las fallas ya ocurrieron.
 
 ### Qué hacer en un caso real cuando un valor sale de lo normal
 
@@ -277,11 +277,6 @@ En operación y en el paso a modelado, se recomienda **no eliminar automáticame
 
 En esta **Etapa 3** no se excluyeron ni transformaron observaciones: el objetivo fue **diagnosticar y documentar** para fundamentar las decisiones de la Etapa 4.
 
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Extremos panel consolidado | [detection_outliers.html](detection_outliers.html) |
-| Extremos tabla agrupada | [outliers_gruped.html](outliers_gruped.html) |
-
 **Implicación Etapa 4:** definir reglas de winsorización, transformaciones o exclusión puntual solo para extremos validados; priorizar modelos que toleren colas pesadas y exceso de ceros en el bloque operativo.
 
 ---
@@ -300,15 +295,11 @@ Sobre `data_agrupada.csv` ($N_{\mathrm{agr}} = 90\,128$):
 mostrar_fig("grafico_barras_actividad_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** Compara cuántas combinaciones de zona-semana tienen interrupciones frente a cuántas no tienen ninguna. Responde a la pregunta: ¿con qué frecuencia ocurren realmente las fallas en el territorio?
+ Compara cuántas combinaciones de zona-semana tienen interrupciones frente a cuántas no tienen ninguna. Responde a la pregunta: ¿con qué frecuencia ocurren realmente las fallas en el territorio?
 
-**Qué revela.** En cerca del **75 %** de las semanas-zona **no ocurre ninguna interrupción**. Las fallas no están repartidas de manera uniforme: se concentran en pocas zonas y pocas semanas. Cuando ocurren, su magnitud varía enormemente (desde unos pocos usuarios afectados hasta casi 70 000).
+ En cerca del **75 %** de las semanas-zona **no ocurre ninguna interrupción**. Las fallas no están repartidas de manera uniforme: se concentran en pocas zonas y pocas semanas. Cuando ocurren, su magnitud varía enormemente (desde unos pocos usuarios afectados hasta casi 70 000).
 
-**Por qué le importa a la empresa.** Muestra que la afectación del servicio es un fenómeno **concentrado, no generalizado**. El hallazgo no evidente es que **dirigir recursos a todo el territorio por igual es ineficiente**: la mayor parte del esfuerzo de prevención debería enfocarse en el pequeño grupo de zonas y temporadas donde realmente se concentran los eventos.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Estadísticos descriptivos | [calculo_estadistico_descriptivo.html](calculo_estadistico_descriptivo.html) |
+ Muestra que la afectación del servicio es un fenómeno **concentrado, no generalizado**. El hallazgo no evidente es que **dirigir recursos a todo el territorio por igual es ineficiente**: la mayor parte del esfuerzo de prevención debería enfocarse en el pequeño grupo de zonas y temporadas donde realmente se concentran los eventos.
 
 ## 3.2 Análisis de distribución
 
@@ -323,25 +314,21 @@ La transformación `log(1 + precip)` aproxima la precipitación a simetría; las
 mostrar_fig("distribucion_densidad_precipitacion_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** La forma de la distribución de la lluvia semanal: a la izquierda en su escala natural, a la derecha transformada para hacerla más legible. Indica si los valores se agrupan de forma equilibrada o si hay muchos casos pequeños y pocos muy grandes.
+ La forma de la distribución de la lluvia semanal: a la izquierda en su escala natural, a la derecha transformada para hacerla más legible. Indica si los valores se agrupan de forma equilibrada o si hay muchos casos pequeños y pocos muy grandes.
 
-**Qué revela.** La lluvia tiene un patrón **muy desbalanceado**: muchísimas semanas con precipitación baja y unas pocas con valores extremadamente altos. Esos pocos episodios intensos son los que tienen mayor poder explicativo sobre las fallas.
+ La lluvia tiene un patrón **muy desbalanceado**: muchísimas semanas con precipitación baja y unas pocas con valores extremadamente altos. Esos pocos episodios intensos son los que tienen mayor poder explicativo sobre las fallas.
 
-**Por qué le importa a la empresa.** Confirma que **no todas las lluvias importan por igual**: el riesgo se dispara en los episodios excepcionales. El hallazgo no evidente es que basta con vigilar un número reducido de semanas críticas de lluvia para cubrir buena parte del riesgo operativo del año.
+ Confirma que **no todas las lluvias importan por igual**: el riesgo se dispara en los episodios excepcionales. El hallazgo no evidente es que basta con vigilar un número reducido de semanas críticas de lluvia para cubrir buena parte del riesgo operativo del año.
 
 ```{r fig-ceros, fig.cap="Proporción de ceros en variables operativas (§5.3.4).", out.width='80%'}
 mostrar_fig("distribucion_pct_ceros_evento_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** Qué proporción de los registros operativos vale cero (sin interrupción) en cada variable del negocio.
+ Qué proporción de los registros operativos vale cero (sin interrupción) en cada variable del negocio.
 
-**Qué revela.** Entre el **72 % y el 75 %** de los registros son ceros: la operación "normal" es que no haya fallas. Las interrupciones son eventos relativamente escasos pero de alto impacto cuando ocurren.
+ Entre el **72 % y el 75 %** de los registros son ceros: la operación "normal" es que no haya fallas. Las interrupciones son eventos relativamente escasos pero de alto impacto cuando ocurren.
 
-**Por qué le importa a la empresa.** Refuerza que la continuidad del servicio es, en general, buena, y que el reto está en **predecir los eventos poco frecuentes pero costosos**. El hallazgo no evidente es que cualquier herramienta de predicción debe diseñarse específicamente para detectar esos casos raros, no para describir el promedio.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Distribución de variables | [distribucion_variables.html](distribucion_variables.html) |
+ Refuerza que la continuidad del servicio es, en general, buena, y que el reto está en **predecir los eventos poco frecuentes pero costosos**. El hallazgo no evidente es que cualquier herramienta de predicción debe diseñarse específicamente para detectar esos casos raros, no para describir el promedio.
 
 ---
 
@@ -358,21 +345,21 @@ mostrar_fig("distribucion_pct_ceros_evento_agrupada.png")
 mostrar_fig("serie_semanal_eventos_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** La evolución semana a semana del número de interrupciones entre 2021 y 2025, con una línea de tendencia que suaviza los altibajos.
+ La evolución semana a semana del número de interrupciones entre 2021 y 2025, con una línea de tendencia que suaviza los altibajos.
 
-**Qué revela.** Se observa un **incremento marcado a partir de 2024**, además de subidas y bajadas que se repiten cada año (estacionalidad ligada a las temporadas de lluvia). Importante: parte de ese "salto" no significa que el servicio haya empeorado, sino que **a partir de 2024 se registran mucho mejor los eventos** (ver gráfico de cobertura más adelante).
+ Se observa un **incremento marcado a partir de 2024**, además de subidas y bajadas que se repiten cada año (estacionalidad ligada a las temporadas de lluvia). Importante: parte de ese "salto" no significa que el servicio haya empeorado, sino que **a partir de 2024 se registran mucho mejor los eventos** (ver gráfico de cobertura más adelante).
 
-**Por qué le importa a la empresa.** Permite distinguir entre un **deterioro real** y una **mejora en la captura del dato**. El hallazgo no evidente es que las comparaciones históricas de indicadores (SAIDI/SAIFI) antes y después de 2024 pueden ser engañosas si no se considera este cambio de registro, lo que tiene impacto directo en reportes regulatorios y metas internas.
+ Permite distinguir entre un **deterioro real** y una **mejora en la captura del dato**. El hallazgo no evidente es que las comparaciones históricas de indicadores (SAIDI/SAIFI) antes y después de 2024 pueden ser engañosas si no se considera este cambio de registro, lo que tiene impacto directo en reportes regulatorios y metas internas.
 
 ```{r fig-acf-eda, fig.cap="ACF/PACF de la serie semanal territorial (§5.3.5).", out.width='95%'}
 mostrar_fig("acf_serie_semanal_agrupada.png")
 ```
 
-**Qué muestra este gráfico.** Mide qué tanto se "parece" una semana a las semanas anteriores; es decir, si lo que pasó recientemente ayuda a anticipar lo que viene.
+ Mide qué tanto se "parece" una semana a las semanas anteriores; es decir, si lo que pasó recientemente ayuda a anticipar lo que viene.
 
-**Qué revela.** Existe una **fuerte memoria** en los datos: una semana con muchas fallas tiende a estar seguida por otra con comportamiento similar (correlación de 0,92 con la semana previa), y aparece también un patrón que se repite cada año.
+ Existe una **fuerte memoria** en los datos: una semana con muchas fallas tiende a estar seguida por otra con comportamiento similar (correlación de 0,92 con la semana previa), y aparece también un patrón que se repite cada año.
 
-**Por qué le importa a la empresa.** Confirma que el comportamiento de las fallas **es predecible** a partir de la historia reciente y del calendario. El hallazgo no evidente es que la empresa tiene una base sólida para **planear con anticipación** cuadrillas, materiales y mantenimiento, porque el futuro cercano se parece al pasado inmediato.
+ Confirma que el comportamiento de las fallas **es predecible** a partir de la historia reciente y del calendario. El hallazgo no evidente es que la empresa tiene una base sólida para **planear con anticipación** cuadrillas, materiales y mantenimiento, porque el futuro cercano se parece al pasado inmediato.
 
 ## 4.2 Delimitación de $D_{\mathrm{mod}}$
 
@@ -392,17 +379,11 @@ El salto temporal **no debe atribuirse solo a mayor actividad operativa**. La br
 mostrar_fig("cobertura_emparejamiento_por_anio.png")
 ```
 
-**Qué muestra este gráfico.** Qué porcentaje de las fallas registradas se logró ubicar correctamente en el mapa (asociar a un activo y a una zona) en cada año.
+ Qué porcentaje de las fallas registradas se logró ubicar correctamente en el mapa (asociar a un activo y a una zona) en cada año.
 
-**Qué revela.** Antes de 2024 solo se ubicaba alrededor del **30 %** de los eventos; a partir de 2024 la cobertura sube a **80–95 %**. Esto se debe a un cambio en la forma de codificar los activos (de OMS-SPARD a OMS-SP7), no a un cambio en la red.
+ Antes de 2024 solo se ubicaba alrededor del **30 %** de los eventos; a partir de 2024 la cobertura sube a **80–95 %**. Esto se debe a un cambio en la forma de codificar los activos (de OMS-SPARD a OMS-SP7), no a un cambio en la red.
 
-**Por qué le importa a la empresa.** Este es uno de los hallazgos **más relevantes y menos visibles**: explica por qué los datos previos a 2024 no son comparables con los actuales. Por eso el análisis y el modelo se construyen sobre **2024–2025**, donde la información es confiable. La lección de negocio es clara: **la trazabilidad geográfica de las fallas mejoró drásticamente**, y mantener esa calidad de registro es clave para cualquier analítica futura.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Análisis temporal | [analisis_temporal_eventos.html](analisis_temporal_eventos.html) |
-| Emparejamiento y $D_{\mathrm{mod}}$ | [emparejamiento_eventos.html](emparejamiento_eventos.html) |
-| Exportación $D_{\mathrm{mod}}$ | [consolidado_data_mod.html](consolidado_data_mod.html) |
+ Este es uno de los hallazgos **más relevantes y menos visibles**: explica por qué los datos previos a 2024 no son comparables con los actuales. Por eso el análisis y el modelo se construyen sobre **2024–2025**, donde la información es confiable. La lección de negocio es clara: **la trazabilidad geográfica de las fallas mejoró drásticamente**, y mantener esa calidad de registro es clave para cualquier analítica futura.
 
 ---
 
@@ -420,45 +401,41 @@ Análisis restringido a 2024–2025 con cobertura homogénea.
 mostrar_fig("serie_semanal_patrones_mod.png")
 ```
 
-**Qué muestra este gráfico.** La evolución semanal de las interrupciones ya en el periodo confiable (2024–2025).
+ La evolución semanal de las interrupciones ya en el periodo confiable (2024–2025).
 
-**Qué revela.** La actividad pasa de un promedio de **287 eventos semanales en 2024 a 350 en 2025**, con picos que coinciden con las temporadas de lluvia. La tendencia es de aumento sostenido.
+ La actividad pasa de un promedio de **287 eventos semanales en 2024 a 350 en 2025**, con picos que coinciden con las temporadas de lluvia. La tendencia es de aumento sostenido.
 
-**Por qué le importa a la empresa.** Aun con datos limpios y comparables, **la carga de eventos crece**. El hallazgo no evidente es que la presión sobre la operación va en aumento, lo que justifica invertir en capacidad predictiva y preventiva antes de que el crecimiento impacte los indicadores regulatorios.
+ Aun con datos limpios y comparables, **la carga de eventos crece**. El hallazgo no evidente es que la presión sobre la operación va en aumento, lo que justifica invertir en capacidad predictiva y preventiva antes de que el crecimiento impacte los indicadores regulatorios.
 
 ```{r fig-patrones-2, fig.cap="Estacionalidad mensual en el dataset de modelado (Seccion 5.3.6).", out.width='95%'}
 mostrar_fig("estacionalidad_mensual_patrones_mod.png")
 ```
 
-**Qué muestra este gráfico.** Cómo se distribuyen las fallas a lo largo de los meses del año.
+ Cómo se distribuyen las fallas a lo largo de los meses del año.
 
-**Qué revela.** Hay meses claramente más críticos que otros, concentrados en las **temporadas de lluvia**. La diferencia entre meses tranquilos y meses pico es sustancial.
+ Hay meses claramente más críticos que otros, concentrados en las **temporadas de lluvia**. La diferencia entre meses tranquilos y meses pico es sustancial.
 
-**Por qué le importa a la empresa.** Permite **planificar el año por temporadas**: reforzar cuadrillas, inventarios y disponibilidad en los meses de mayor riesgo, y optimizar costos en los meses tranquilos. El hallazgo no evidente es que la estacionalidad es lo bastante marcada como para construir un **calendario operativo basado en datos**.
+ Permite **planificar el año por temporadas**: reforzar cuadrillas, inventarios y disponibilidad en los meses de mayor riesgo, y optimizar costos en los meses tranquilos. El hallazgo no evidente es que la estacionalidad es lo bastante marcada como para construir un **calendario operativo basado en datos**.
 
 ```{r fig-patrones-3, fig.cap="Dispersion precipitacion semanal vs frecuencia de eventos (Seccion 5.3.6).", out.width='85%'}
 mostrar_fig("dispersion_precip_eventos_patrones_mod.png")
 ```
 
-**Qué muestra este gráfico.** Cada punto es una semana-zona; se cruza cuánta lluvia cayó (eje horizontal) contra cuántas fallas hubo (eje vertical). Permite ver si más lluvia se asocia con más interrupciones.
+ Cada punto es una semana-zona; se cruza cuánta lluvia cayó (eje horizontal, hasta 200.000 mm) contra cuántas fallas hubo (eje vertical). El límite del eje concentra la vista en el rango donde se acumula la mayoría de las observaciones.
 
-**Qué revela.** La nube de puntos tiene una **inclinación ascendente**: a mayor precipitación, tiende a haber más eventos. La relación no es perfecta (hay otros factores), pero es consistente y estadísticamente sólida.
+ La nube de puntos tiene una **inclinación ascendente**: a mayor precipitación, tiende a haber más eventos. La relación no es perfecta (hay otros factores), pero es consistente y estadísticamente sólida.
 
-**Por qué le importa a la empresa.** Cuantifica, con datos propios, algo que operativamente se intuía: **la lluvia es el principal disparador climático de fallas**. El hallazgo no evidente es que esta relación es lo bastante fuerte como para usar el pronóstico de lluvia como **alerta temprana** de semanas de alta exigencia.
+ Cuantifica, con datos propios, algo que operativamente se intuía: **la lluvia es el principal disparador climático de fallas**. El hallazgo no evidente es que esta relación es lo bastante fuerte como para usar el pronóstico de lluvia como **alerta temprana** de semanas de alta exigencia.
 
 ```{r fig-patrones-4, fig.cap="Mapa de intensidad territorial y segmentación por actividad (§5.3.6).", out.width='80%'}
 mostrar_fig("segmentacion_cuadrantes_patrones_mod.png")
 ```
 
-**Qué muestra este gráfico.** Un mapa del territorio donde el color/intensidad indica qué zonas acumulan más interrupciones.
+ Un mapa del territorio donde el color/intensidad indica qué zonas acumulan más interrupciones.
 
-**Qué revela.** Las fallas se **concentran geográficamente**: un grupo reducido de zonas explica una parte desproporcionada de los eventos (el top 10 de zonas concentra el 20,5 %).
+ Las fallas se **concentran geográficamente**: un grupo reducido de zonas explica una parte desproporcionada de los eventos (el top 10 de zonas concentra el 20,5 %).
 
-**Por qué le importa a la empresa.** Identifica los **"puntos calientes" de la red** con nombre y ubicación. El hallazgo no evidente es que intervenir o modernizar ese pequeño conjunto de zonas críticas tendría un impacto mucho mayor en los indicadores que acciones distribuidas en toda la red.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Patrones y visualización | [identificacion_patrones.html](identificacion_patrones.html) |
+ Identifica los **"puntos calientes" de la red** con nombre y ubicación. El hallazgo no evidente es que intervenir o modernizar ese pequeño conjunto de zonas críticas tendría un impacto mucho mayor en los indicadores que acciones distribuidas en toda la red.
 
 ---
 
@@ -485,25 +462,21 @@ Método: **Spearman** (datos asimétricos y cero-inflados). Universo: $D_{\mathr
 mostrar_fig("heatmap_correlacion_clima_operativo_mod.png")
 ```
 
-**Qué muestra este gráfico.** Un "mapa de calor" donde cada celda indica qué tan relacionadas están dos variables: colores intensos significan relación fuerte; colores tenues, relación débil.
+ Un "mapa de calor" donde cada celda indica qué tan relacionadas están dos variables: colores intensos significan relación fuerte; colores tenues, relación débil.
 
-**Qué revela.** Dos cosas. Primero, varias variables operativas miden prácticamente **lo mismo** (relación cercana a 1), igual que varias climáticas entre sí. Segundo, la **precipitación** es la variable climática mejor relacionada con las fallas.
+ Dos cosas. Primero, varias variables operativas miden prácticamente **lo mismo** (relación cercana a 1), igual que varias climáticas entre sí. Segundo, la **precipitación** es la variable climática mejor relacionada con las fallas.
 
-**Por qué le importa a la empresa.** El hallazgo no evidente es que **se está midiendo información redundante**: no se necesitan decenas de variables para entender el fenómeno, sino unas pocas bien elegidas. Esto simplifica tableros, reportes y modelos, y reduce el costo de gestionar datos que no aportan información nueva.
+ El hallazgo no evidente es que **se está midiendo información redundante**: no se necesitan decenas de variables para entender el fenómeno, sino unas pocas bien elegidas. Esto simplifica tableros, reportes y modelos, y reduce el costo de gestionar datos que no aportan información nueva.
 
 ```{r fig-cor-2, fig.cap="Barras: Spearman clima → operativo (§5.3.7).", out.width='95%'}
 mostrar_fig("barras_correlacion_clima_operativo_mod.png")
 ```
 
-**Qué muestra este gráfico.** Un ranking de qué factores climáticos influyen más sobre las interrupciones, ordenados de mayor a menor.
+ Un ranking de qué factores climáticos influyen más sobre las interrupciones, ordenados de mayor a menor.
 
-**Qué revela.** La **precipitación encabeza el ranking** con clara ventaja; el viento aporta de forma secundaria; temperatura y humedad tienen un papel menor.
+ La **precipitación encabeza el ranking** con clara ventaja; el viento aporta de forma secundaria; temperatura y humedad tienen un papel menor.
 
-**Por qué le importa a la empresa.** Prioriza dónde poner el foco: **vigilar la lluvia** es la palanca de mayor retorno para anticipar fallas. El hallazgo no evidente es que se puede construir un indicador de riesgo climático sencillo, centrado en precipitación, sin depender de modelos meteorológicos complejos.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Análisis de correlación | [analisis_correlacion.html](analisis_correlacion.html) |
+ Prioriza dónde poner el foco: **vigilar la lluvia** es la palanca de mayor retorno para anticipar fallas. El hallazgo no evidente es que se puede construir un indicador de riesgo climático sencillo, centrado en precipitación, sin depender de modelos meteorológicos complejos.
 
 ---
 
@@ -532,35 +505,32 @@ mostrar_fig("barras_correlacion_clima_operativo_mod.png")
 mostrar_fig("vif_clima_multivariado_mod.png")
 ```
 
-**Qué muestra este gráfico.** Mide cuánta información "repetida" aporta cada variable climática respecto a las demás: barras altas indican que la variable dice casi lo mismo que otra ya incluida.
+ Mide cuánta información "repetida" aporta cada variable climática respecto a las demás: barras altas indican que la variable dice casi lo mismo que otra ya incluida.
 
-**Qué revela.** Algunas variables (varias temperaturas y vientos) son **redundantes entre sí**, mientras que la **precipitación aporta información única**.
+ Algunas variables (varias temperaturas y vientos) son **redundantes entre sí**, mientras que la **precipitación aporta información única**.
 
-**Por qué le importa a la empresa.** Justifica trabajar con un **conjunto reducido y limpio de variables**, sin perder capacidad de explicación. El hallazgo no evidente es que "más datos" no siempre es mejor: incluir variables redundantes puede confundir los modelos y encarecer su mantenimiento.
+ Justifica trabajar con un **conjunto reducido y limpio de variables**, sin perder capacidad de explicación. El hallazgo no evidente es que "más datos" no siempre es mejor: incluir variables redundantes puede confundir los modelos y encarecer su mantenimiento.
 
 ```{r fig-multi-2, fig.cap="Dendrograma de variables climáticas (§5.3.8).", out.width='95%'}
 mostrar_fig("dendrograma_clima_multivariado_mod.png")
 ```
 
-**Qué muestra este gráfico.** Un "árbol" que agrupa las variables climáticas por similitud: las que se unen antes son las más parecidas entre sí.
+ Un "árbol" que agrupa las variables climáticas por similitud: las que se unen antes son las más parecidas entre sí.
 
-**Qué revela.** Las temperaturas forman un grupo, los vientos otro, y la **precipitación queda separada**, confirmando que mide algo distinto.
+ Las temperaturas forman un grupo, los vientos otro, y la **precipitación queda separada**, confirmando que mide algo distinto.
 
-**Por qué le importa a la empresa.** Respalda visualmente la decisión de **quedarse con un representante de cada grupo** más la precipitación. El hallazgo no evidente es que la complejidad climática puede resumirse en pocas dimensiones independientes, lo que facilita la comunicación y la toma de decisiones.
+ Respalda visualmente la decisión de **quedarse con un representante de cada grupo** más la precipitación. El hallazgo no evidente es que la complejidad climática puede resumirse en pocas dimensiones independientes, lo que facilita la comunicación y la toma de decisiones.
 
 ```{r fig-multi-3, fig.cap="Coeficientes GLM Poisson exploratorio (§5.3.8).", out.width='82%'}
 mostrar_fig("glm_coef_clima_multivariado_mod.png")
 ```
 
-**Qué muestra este gráfico.** Un primer modelo exploratorio que estima el efecto de cada factor climático sobre el número de fallas: barras hacia la derecha aumentan el riesgo, hacia la izquierda lo reducen.
+ Un primer modelo exploratorio que estima el efecto de cada factor climático sobre el número de fallas: barras hacia la derecha aumentan el riesgo, hacia la izquierda lo reducen.
 
-**Qué revela.** La **precipitación y el viento** salen como factores significativos que **incrementan** la cantidad esperada de eventos.
+ La **precipitación y el viento** salen como factores significativos que **incrementan** la cantidad esperada de eventos.
 
-**Por qué le importa a la empresa.** Es la primera evidencia cuantitativa de que **el clima puede traducirse en una estimación de fallas esperadas**. El hallazgo no evidente es que ya existe una base estadística para pasar de "intuición operativa" a **predicción medible**, antesala del modelo definitivo de la siguiente etapa.
+ Es la primera evidencia cuantitativa de que **el clima puede traducirse en una estimación de fallas esperadas**. El hallazgo no evidente es que ya existe una base estadística para pasar de "intuición operativa" a **predicción medible**, antesala del modelo definitivo de la siguiente etapa.
 
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Evaluación multivariada | [analisis_multivariado.html](analisis_multivariado.html) |
 
 ---
 
@@ -585,25 +555,21 @@ mostrar_fig("glm_coef_clima_multivariado_mod.png")
 mostrar_fig("boxplot_eventos_por_nivel_segmentacion_mod.png")
 ```
 
-**Qué muestra este gráfico.** Clasifica las zonas en niveles (baja, media, alta actividad) y compara cuántas fallas concentra cada grupo.
+ Clasifica las zonas en niveles (baja, media, alta actividad) y compara cuántas fallas concentra cada grupo.
 
-**Qué revela.** Un **14,2 % de las zonas** está en nivel "alta" y concentra una porción desproporcionada de los eventos, mientras casi la mitad tiene actividad baja. Además, las semanas lluviosas multiplican la frecuencia de fallas (2,01 vs 0,56 eventos en promedio frente a semanas secas).
+ Un **14,2 % de las zonas** está en nivel "alta" y concentra una porción desproporcionada de los eventos, mientras casi la mitad tiene actividad baja. Además, las semanas lluviosas multiplican la frecuencia de fallas (2,01 vs 0,56 eventos en promedio frente a semanas secas).
 
-**Por qué le importa a la empresa.** Ofrece un criterio objetivo para **priorizar inversión y mantenimiento** en las zonas que más lo necesitan. El hallazgo no evidente es que un plan focalizado en ese 14 % de zonas críticas podría mejorar los indicadores globales de continuidad de forma más rentable que cualquier acción generalizada.
+ Ofrece un criterio objetivo para **priorizar inversión y mantenimiento** en las zonas que más lo necesitan. El hallazgo no evidente es que un plan focalizado en ese 14 % de zonas críticas podría mejorar los indicadores globales de continuidad de forma más rentable que cualquier acción generalizada.
 
 ```{r fig-seg-2, fig.cap="Clusters espaciales de cuadrantes (§5.3.9).", out.width='95%'}
 mostrar_fig("mapa_clusters_cuadrantes_segmentacion_mod.png")
 ```
 
-**Qué muestra este gráfico.** Agrupa las zonas en perfiles con comportamiento similar (frecuencia y severidad de fallas) y los ubica en el mapa.
+ Agrupa las zonas en perfiles con comportamiento similar (frecuencia y severidad de fallas) y los ubica en el mapa.
 
-**Qué revela.** Surgen perfiles bien diferenciados: desde un **"punto crítico" extremo** (una zona excepcional), pasando por un grupo de **alta severidad** (41 zonas), hasta perfiles intermedios. No todas las zonas problemáticas lo son por la misma razón.
+ Surgen perfiles bien diferenciados: desde un **"punto crítico" extremo** (una zona excepcional), pasando por un grupo de **alta severidad** (41 zonas), hasta perfiles intermedios. No todas las zonas problemáticas lo son por la misma razón.
 
-**Por qué le importa a la empresa.** Permite diseñar **estrategias diferenciadas por tipo de zona** en lugar de una sola receta. El hallazgo no evidente es que existe un caso atípico que merece atención individual, y un bloque de zonas severas que justifican un programa específico de intervención.
-
-| Informe técnico | Enlace |
-|-----------------|--------|
-| Segmentación exploratoria | [segmentacion_exploratoria.html](segmentacion_exploratoria.html) |
+ Permite diseñar **estrategias diferenciadas por tipo de zona** en lugar de una sola receta. El hallazgo no evidente es que existe un caso atípico que merece atención individual, y un bloque de zonas severas que justifican un programa específico de intervención.
 
 ---
 

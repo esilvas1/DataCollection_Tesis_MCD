@@ -347,15 +347,16 @@ kable(cor_eventos, col.names = c("Variable", "Spearman rho", "p-valor", "Signifi
 
 ```{r grafico-precip-eventos, fig.width=9, fig.height=5.5}
 d_precip <- d_mod %>%
+  filter(precip_total_semana <= 200000) %>%
   filter(precip_total_semana > 0 | n_eventos > 0)
 
 p_precip <- ggplot(d_precip, aes(x = precip_total_semana, y = n_eventos)) +
   geom_point(alpha = 0.12, size = 0.9, color = "#2E86AB") +
   geom_smooth(method = "loess", se = TRUE, color = "#E84855", linewidth = 0.9) +
-  scale_x_continuous(labels = comma) +
+  scale_x_continuous(labels = comma, limits = c(0, 200000)) +
   labs(
     title = "Relacion precipitacion semanal y n_eventos por cuadrante",
-    subtitle = "D_mod (2024-2025); suavizado LOESS",
+    subtitle = "D_mod (2024-2025); suavizado LOESS; precipitacion <= 200.000 mm",
     x = "Precipitacion total semanal (mm)", y = "n_eventos"
   ) +
   theme_minimal(base_size = 12) +
