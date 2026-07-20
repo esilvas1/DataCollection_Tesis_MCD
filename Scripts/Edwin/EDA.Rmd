@@ -155,7 +155,7 @@ if (knitr::is_html_output()) {
 
 # Resumen ejecutivo
 
-Este documento consolida los hallazgos de la **Etapa 3 — Análisis descriptivo y exploratorio de datos (EDA)** del proyecto de predicción de indicadores de continuidad (*SAIDI* / *SAIFI*) en la red de distribución. El objetivo fue caracterizar la calidad del panel, diagnosticar distribuciones y extremos, identificar patrones temporales y espaciales, y evaluar asociaciones entre clima y operación para orientar la **Etapa 4 (modelado)**.
+Este documento consolida los hallazgos de la **Etapa 3 — Análisis descriptivo y exploratorio de datos (EDA)** del proyecto de pronóstico de la **frecuencia y la duración** de interrupciones eléctricas (variables proxy asociadas a *SAIFI* / *SAIDI*, sin estimar los indicadores regulatorios en sentido estricto) en la red de distribución. El objetivo fue caracterizar la calidad del panel, diagnosticar distribuciones y extremos, identificar patrones temporales y espaciales, y evaluar asociaciones entre clima y operación para orientar la **Etapa 4 (modelado)**.
 
 ---
 
@@ -499,7 +499,7 @@ mostrar_fig("barras_correlacion_clima_operativo_mod.png")
 
 **GLM Poisson exploratorio:** `log(1+precip)` y viento medio significativos ($p < 0{,}001$).
 
-**PCA operativo:** PC1 concentra 83,8 % — justifica **una** respuesta principal: `n_eventos` (SAIFI) o `duracion_total` (SAIDI).
+**PCA operativo:** PC1 concentra 83,8 % — justifica **una** respuesta principal: `n_eventos` (proxy de frecuencia, asociada a SAIFI) o `duracion_total` (proxy de duración, asociada a SAIDI). Estas proxies **no** equivalen al cálculo regulatorio ponderado por usuarios.
 
 ```{r fig-multi-1, fig.cap="VIF del bloque climático (§5.3.8).", out.width='92%'}
 mostrar_fig("vif_clima_multivariado_mod.png")
@@ -585,7 +585,7 @@ Más allá del detalle técnico, este análisis pone sobre la mesa cinco mensaje
 4. **El comportamiento de las fallas es predecible** (memoria semanal y estacionalidad clara), lo que permite planear cuadrillas, materiales y mantenimiento con anticipación.
 5. **La carga de eventos está creciendo**, lo que da urgencia a pasar de un enfoque reactivo a uno **preventivo y predictivo**.
 
-En conjunto, los gráficos no solo describen el pasado: revelan **dónde, cuándo y bajo qué condiciones** es más probable que el servicio se vea afectado, información que puede traducirse directamente en mejores indicadores de continuidad (SAIDI/SAIFI) y en una asignación más eficiente del presupuesto operativo.
+En conjunto, los gráficos no solo describen el pasado: revelan **dónde, cuándo y bajo qué condiciones** es más probable que el servicio se vea afectado, información que puede traducirse en mejor anticipación operativa de la frecuencia y la duración de interrupciones (proxies asociadas a SAIDI/SAIFI) y en una asignación más eficiente del presupuesto.
 
 ## 9.1 Síntesis del EDA
 
@@ -604,8 +604,9 @@ El análisis exploratorio sobre el panel cuadrante × semana permitió:
 |----------|-----------|
 | Universo de estimación | $D_{\mathrm{mod}}$ (2024–2025) |
 | Partición | Entrenamiento 2024 / Prueba 2025 |
-| Variable respuesta (SAIFI) | `n_eventos` |
-| Variable respuesta (SAIDI) | `duracion_total` (análisis complementario) |
+| Variable respuesta (frecuencia; proxy SAIFI) | `n_eventos` |
+| Variable respuesta (duración; proxy SAIDI) | `duracion_total` (análisis complementario) |
+| Alcance regulatorio | No se estima SAIDI/SAIFI CREG 015 (requiere $NU$/$UT$); se predicen proxies de frecuencia y duración |
 | Predictoras climáticas | `precip_total_semana`, `temp_media_semana`, `humedad_media_semana`, `viento_medio_semana` |
 | Excluir por redundancia | `temp_max/min`, `viento_max` |
 | Transformaciones | `log(1+x)` en precipitación y bloque operativo según distribución |
@@ -617,6 +618,7 @@ El análisis exploratorio sobre el panel cuadrante × semana permitió:
 - Los años 2021–2023 no son comparables en nivel absoluto por la brecha de codificación activo/sitio.
 - El 63 % de filas en $D_{\mathrm{mod}}$ tiene `n_eventos = 0`; modelos deben contemplar inflación de ceros o enfoques de dos partes.
 - Extremos de duración en días con evento requieren validación operativa antes de exclusiones.
+- `n_eventos` y `duracion_total` son **proxies** de frecuencia y duración; **no** reproducen SAIDI/SAIFI regulatorios (ponderación por usuarios afectados y usuarios totales).
 
 ---
 
@@ -636,7 +638,7 @@ El análisis descriptivo y exploratorio desarrollado en la Etapa 3 cumplió su p
 
 6. **La carga de eventos está creciendo** (de ~287 a ~350 eventos semanales entre 2024 y 2025, ya con datos comparables), lo que aporta **urgencia** a la adopción de capacidades predictivas antes de que el incremento impacte los indicadores regulatorios.
 
-**Cierre.** En síntesis, los datos no solo describen lo ocurrido: revelan **dónde, cuándo y bajo qué condiciones** es más probable que se afecte el servicio. Esta comprensión constituye la base para la **Etapa 4 (modelado predictivo)**, en la que estos hallazgos se traducirán en herramientas concretas para anticipar interrupciones, mejorar los indicadores de continuidad (SAIDI/SAIFI) y asignar el presupuesto operativo de manera más eficiente.
+**Cierre.** En síntesis, los datos no solo describen lo ocurrido: revelan **dónde, cuándo y bajo qué condiciones** es más probable que se afecte el servicio. Esta comprensión constituye la base para la **Etapa 4 (modelado predictivo)**, en la que estos hallazgos se traducirán en herramientas concretas para anticipar la **frecuencia y la duración** de interrupciones (proxies asociadas a SAIFI/SAIDI), apoyar la gestión de continuidad y asignar el presupuesto operativo de manera más eficiente.
 
 ---
 

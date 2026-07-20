@@ -3,17 +3,17 @@
 
 \subsection{Pregunta general}
 
-¿Qué variables técnicas, operativas y climáticas permiten predecir con mayor precisión los indicadores SAIDI y SAIFI a nivel de circuito o zona en la red de distribución de la empresa en Norte de Santander, y qué modelos estadísticos o de Machine Learning ofrecen mejor desempeño predictivo, capacidad de generalización e interpretabilidad operativa?
+¿Qué variables técnicas, operativas y climáticas permiten predecir con mayor precisión la \textbf{frecuencia} y la \textbf{duración} de interrupciones eléctricas a nivel de circuito o zona en la red de distribución de la empresa en Norte de Santander ---medidas mediante variables proxy territoriales asociadas a la continuidad del servicio (\texttt{n\_eventos} y \texttt{duracion\_total}), y no mediante la estimación regulatoria estricta de SAIFI y SAIDI---, y qué modelos estadísticos o de Machine Learning ofrecen mejor desempeño predictivo, capacidad de generalización e interpretabilidad operativa?
 
 
 \subsection{Preguntas específicas}
 
 \begin{itemize}
-    \item ¿Qué limitaciones estructurales, inconsistencias y problemas de calidad presentan las distintas fuentes de información (operativas, geográficas, administrativas y climáticas) utilizadas en la estimación de SAIDI y SAIFI, y cómo dichas limitaciones afectan la capacidad de representar adecuadamente el fenómeno de interrupciones en la red de distribución?
+    \item ¿Qué limitaciones estructurales, inconsistencias y problemas de calidad presentan las distintas fuentes de información (operativas, geográficas, administrativas y climáticas) utilizadas para caracterizar el fenómeno de interrupciones, y cómo dichas limitaciones afectan la capacidad de representar adecuadamente la frecuencia y la duración de fallas en la red de distribución?
     
-    \item ¿Qué patrones temporales, espaciales, estacionales y comportamientos atípicos caracterizan la variabilidad de SAIDI y SAIFI a nivel de circuito, y de qué manera estos patrones influyen en la comprensión del fenómeno de continuidad del servicio y en la identificación de los factores que explican sus fluctuaciones?
+    \item ¿Qué patrones temporales, espaciales, estacionales y comportamientos atípicos caracterizan la variabilidad de la frecuencia y la duración de interrupciones a nivel de zona, y de qué manera estos patrones influyen en la comprensión del fenómeno de continuidad del servicio y en la identificación de los factores que explican sus fluctuaciones?
     
-    \item ¿Qué tipos de ruido, sesgos, discrepancias u omisiones emergen al integrar información proveniente de SCADA, OMS, GIS, CIS y fuentes climáticas, y cómo estas discrepancias condicionan la validez, coherencia y trazabilidad de la información utilizada para caracterizar el comportamiento de los indicadores SAIDI y SAIFI?
+    \item ¿Qué tipos de ruido, sesgos, discrepancias u omisiones emergen al integrar información proveniente de SCADA, OMS, GIS, CIS y fuentes climáticas, y cómo estas discrepancias condicionan la validez, coherencia y trazabilidad de la información utilizada para caracterizar la frecuencia y la duración de interrupciones?
     
-    \item ¿Qué restricciones regulatorias, operativas y técnicas deben considerarse para garantizar que la caracterización del fenómeno de continuidad del servicio eléctrico sea trazable, interpretable y útil para la priorización de intervenciones, la gestión del riesgo operativo y el cumplimiento de los estándares de la CREG y la SSPD?
+    \item ¿Qué restricciones regulatorias, operativas y técnicas deben considerarse para garantizar que la caracterización del fenómeno de continuidad del servicio eléctrico sea trazable, interpretable y útil para la priorización de intervenciones, la gestión del riesgo operativo y el cumplimiento de los estándares de la CREG y la SSPD, reconociendo que SAIDI y SAIFI constituyen el marco de referencia regulatorio y no la variable respuesta modelada en sentido estricto?
 \end{itemize}
