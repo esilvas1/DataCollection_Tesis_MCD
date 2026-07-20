@@ -36,11 +36,11 @@ Esta dualidad de fuentes implica diferencias estructurales en los esquemas de da
 Se integran datos de cinco fuentes de información principales:
 
 \begin{itemize}
-\item BRAE: base regulatoria e histórica de eventos.
-\item OMS SPARD (sistema histórico): fuente de elemento causante antes de la migración.
-\item OMS SP7 (sistema actual): fuente de elemento causante en archivos CSV mensuales.
-\item GTECH (GIS): inventario y georreferenciación de activos eléctricos.
-\item NASA POWER (API): serie diaria de variables climatológicas por coordenada/cuadrante.
+\item \textbf{BRAE}: base regulatoria e histórica de eventos.
+\item \textbf{OMS SPARD} (sistema histórico): fuente de elemento causante antes de la migración.
+\item \textbf{OMS SP7} (sistema actual): fuente de elemento causante en archivos CSV mensuales.
+\item \textbf{GTECH (GIS)}: inventario y georreferenciación de activos eléctricos.
+\item \textbf{NASA POWER (API)}: serie diaria de variables climatológicas por coordenada/cuadrante.
 \end{itemize}
 
 \subsection{Extracción base y depuración de eventos de interrupción (BRAE)}
@@ -438,8 +438,8 @@ Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integraci
     \item \textbf{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
     La tabla base de eventos obtenida en la Sección~5.1.2 se construyó con el campo \texttt{ELEMENTO\_FALLADO} vacío, reservado para su completamiento en la integración. Dado el cambio de sistema OMS en el año 2023, la información del elemento causante se extrajo de forma separada en dos fuentes: la Sección~5.1.4 (\emph{Extracción del elemento causante histórico}, OMS SPARD) y la Sección~5.1.5 (\emph{Extracción del elemento causante actual}, OMS SP7). En este paso, la tabla de la Sección~5.1.2 se cruza con ambas tablas OMS, aplicando en cada caso la lógica de emparejamiento definida en su extracción:
     \begin{itemize}
-        \item \emph{Histórico (Sección~5.1.4 -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
-        \item \emph{Actual (Sección~5.1.5 -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
+        \item \textbf{Histórico (Sección~5.1.4 -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
+        \item \textbf{Actual (Sección~5.1.5 -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
     \end{itemize}
 
     \item \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
@@ -458,8 +458,8 @@ Una vez extraídas y depuradas las fuentes descritas en la Etapa~1, la integraci
     \item \textbf{Agregación de variables objetivo (\texttt{DURACION} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
     En este paso se construyen las columnas \texttt{DURACION} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~5.2.1.6 ($N = 87{,}007{,}074$ filas). Para ello, se agregan previamente los eventos de la Tabla~5.1 (Sección~5.1.2) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~5.1 contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
     \begin{itemize}
-        \item \texttt{DURACION} (minutos): duración del evento prorrateada por día. Cuando un evento abarca varios días, su duración se reparte entre cada \texttt{FECHA\_DIA} según los minutos que el evento ocupa dentro de ese día (intersección del intervalo \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con cada día calendario). Así, el día de inicio recibe los minutos desde \texttt{FECHA\_DESCONEXION} hasta la medianoche, los días intermedios reciben $1{,}440$~min cada uno, y el día de cierre recibe los minutos desde la medianoche hasta \texttt{FECHA\_CONEXION}.
-        \item \texttt{FRECUENCIA}: número de desconexiones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA} (no se prorratea; se cuenta en el día de inicio).
+        \item \textbf{DURACION} (minutos): duración del evento prorrateada por día. Cuando un evento abarca varios días, su duración se reparte entre cada \texttt{FECHA\_DIA} según los minutos que el evento ocupa dentro de ese día (intersección del intervalo \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con cada día calendario). Así, el día de inicio recibe los minutos desde \texttt{FECHA\_DESCONEXION} hasta la medianoche, los días intermedios reciben $1{,}440$~min cada uno, y el día de cierre recibe los minutos desde la medianoche hasta \texttt{FECHA\_CONEXION}.
+        \item \textbf{FRECUENCIA}: número de desconexiones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA} (no se prorratea; se cuenta en el día de inicio).
     \end{itemize}
     \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION = 0} y \texttt{FRECUENCIA = 0}. El cruce exige que \texttt{COMPONENTE\_FALLADO} coincida con \texttt{ELEMENTO} del inventario \texttt{tipo\_elemento.csv} (Tabla~5.5), el cual emplea el \textbf{código de sitio} georreferenciado. Cuando OMS registra el \textbf{código del activo} reemplazado en lugar del código de sitio, el emparejamiento falla y el evento no se propaga al panel espacial (Sección~\ref{sec:delimitacion_temporal_modelado}).
 
@@ -667,7 +667,7 @@ Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIV
 Este bloque concentra las variables objetivo del análisis, construidas en el paso~5.2.1.7 a partir de la Tabla~5.1 (eventos depurados, Sección~5.1.2) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
 
 \begin{itemize}
-    \item \textbf{DURACION} (\texttt{DURACION}, en \textbf{minutos}): duración total del evento de interrupción, calculada como la diferencia entre \texttt{FECHA\_CONEXION} y \texttt{FECHA\_DESCONEXION} y asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días calendario). En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa continua.
+    \item \textbf{DURACION} (\texttt{DURACION}, en minutos): duración total del evento de interrupción, calculada como la diferencia entre \texttt{FECHA\_CONEXION} y \texttt{FECHA\_DESCONEXION} y asignada al día de \texttt{FECHA\_DESCONEXION} (sin prorrateo entre días calendario). En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa continua.
 
     \item \textbf{FRECUENCIA} (\texttt{FRECUENCIA}): número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de ocurrencia del evento. En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa discreta.
 \end{itemize}

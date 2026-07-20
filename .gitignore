@@ -67,3 +67,5 @@ logs/*.txt
 *.brf
 *.cb
 *.dvi
+
+metodologia_con_errores.tex
