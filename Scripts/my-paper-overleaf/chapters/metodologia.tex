@@ -57,24 +57,8 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Posteriormente, se aplicaron criterios de depuración y filtrado. En primer lugar, se restringió la muestra al periodo comprendido entre los años 2021 y 2025, garantizando consistencia temporal del análisis. En segundo lugar, se excluyeron aquellos registros marcados como no relevantes mediante la variable \texttt{FDD\_EXCLUSION}, conservando únicamente los eventos clasificados como \texttt{NO EXCLUIDA}. En tercer lugar, se eliminaron eventos asociados a causas no válidas según la regulación (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}), así como aquellos registros sin fecha de finalización (\texttt{FDD\_FFINAL IS NOT NULL}), los cuales no permiten calcular la duración del evento.
     
-    Finalmente, se utilizó la instrucción \texttt{DISTINCT} para garantizar la eliminación de duplicados en el identificador de evento, obteniéndose una base depurada y consistente a nivel de evento de interrupción. Como resultado de este proceso de extracción y limpieza, se obtuvo un total de 95{,}280 registros válidos de eventos de desconexión para el periodo de análisis.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % Los códigos que siguen deberían ir en apendices y citarlos en este párrafo.
-    % Revisar todos los casos similares.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    Finalmente, se utilizó la instrucción \texttt{DISTINCT} para garantizar la eliminación de duplicados en el identificador de evento, obteniéndose una base depurada y consistente a nivel de evento de interrupción. Como resultado de este proceso de extracción y limpieza, se obtuvo un total de 95{,}280 registros válidos de eventos de desconexión para el periodo de análisis. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_brae} (Apéndice~\ref{app:codigo}).
 
-    
-    \begin{lstlisting}[style=thesiscode,language=SQL]
-    SELECT DISTINCT FDD_CODIGOEVENTO AS ID_EVENTO
-          ,FDD_FINICIAL AS FECHA_DESCONEXION
-          ,FDD_FFINAL AS FECHA_CONEXION
-          ,'' AS ELEMENTO_FALLADO
-    FROM BRAE.QA_TFDDREGISTRO
-    WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
-      AND FDD_EXCLUSION = 'NO EXCLUIDA'
-      AND FDD_CAUSA_SSPD NOT IN (1)
-      AND FDD_FFINAL IS NOT NULL;
-    \end{lstlisting}
     
     \begin{table}[H]
     \centering
@@ -113,28 +97,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Posteriormente, se aplicaron los mismos criterios de depuración utilizados en la etapa anterior, restringiendo el análisis al periodo 2021–2025, excluyendo eventos marcados como no relevantes (\texttt{FDD\_EXCLUSION = 'NO EXCLUIDA'}), eliminando causas no válidas según la clasificación regulatoria (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}) y conservando únicamente registros con fecha de finalización válida (\texttt{FDD\_FFINAL IS NOT NULL}).
     
-    Finalmente, los datos se agregaron a nivel de evento (\texttt{FDD\_CODIGOEVENTO}) utilizando la función \texttt{GROUP BY}, obteniendo como resultado dos indicadores clave: el número de elementos fallados por evento y el total de usuarios afectados. El procedimiento permitió consolidar una base consistente de 95{,}280 registros, alineada con la estructura del conjunto de eventos previamente depurado.
-    
-    \begin{lstlisting}[style=thesiscode,language=SQL]
-    SELECT FDD_CODIGOEVENTO AS ID_EVENTO
-          ,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS
-          ,SUM(CANTIDAD_USUARIOS) AS CANTIDAD_USUARIOS
-    FROM BRAE.QA_TFDDREGISTRO
-    LEFT JOIN (
-        SELECT TC1_CODCONEX AS TRANSFORMADOR
-              ,COUNT(TC1_CODCONEX) AS CANTIDAD_USUARIOS
-              ,TC1_PERIODO AS PERIODO
-        FROM QA_TTC1
-        WHERE SUBSTR(TC1_PERIODO, 1, 4) IN ('2021', '2022', '2023', '2024', '2025')
-        GROUP BY TC1_PERIODO, TC1_CODCONEX
-    ) ON FDD_CODIGOELEMENTO = TRANSFORMADOR
-     AND FDD_PERIODO_TC1 = PERIODO
-    WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
-      AND FDD_EXCLUSION = 'NO EXCLUIDA'
-      AND FDD_CAUSA_SSPD NOT IN (1)
-      AND FDD_FFINAL IS NOT NULL
-    GROUP BY FDD_CODIGOEVENTO;
-    \end{lstlisting}
+    Finalmente, los datos se agregaron a nivel de evento (\texttt{FDD\_CODIGOEVENTO}) utilizando la función \texttt{GROUP BY}, obteniendo como resultado dos indicadores clave: el número de elementos fallados por evento y el total de usuarios afectados. El procedimiento permitió consolidar una base consistente de 95{,}280 registros, alineada con la estructura del conjunto de eventos previamente depurado. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_afectacion} (Apéndice~\ref{app:codigo}).
     
     \begin{table}[!htbp]
     \centering
@@ -169,15 +132,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Adicionalmente, se aplicaron criterios de filtrado temporal y de calidad de datos. En primer lugar, se restringió la información a registros con fecha igual o posterior al año 2021, garantizando la consistencia histórica del análisis. En segundo lugar, se excluyeron aquellos eventos clasificados como pruebas operativas mediante la condición \texttt{CAUSA != 'PRUEBA'}, con el fin de conservar únicamente eventos reales de operación del sistema.
     
-    Como resultado de este proceso de extracción y depuración, se obtuvo una base de datos estructurada a nivel de maniobra, la cual permite complementar la trazabilidad entre eventos de interrupción y los elementos físicos de la red asociados a su ocurrencia.
-    
-    \begin{lstlisting}[style=thesiscode,language=SQL]
-    SELECT CODE AS CODIGO_MANIOBRA
-          ,BREAKER AS ELEMENTO_FALLADO
-    FROM OMS.MANIOBRAS@SPARD
-    WHERE TO_NUMBER(TO_CHAR(FECHA, 'YYYY')) >= 2021
-      AND CAUSA != 'PRUEBA';
-    \end{lstlisting}
+    Como resultado de este proceso de extracción y depuración, se obtuvo una base de datos estructurada a nivel de maniobra, la cual permite complementar la trazabilidad entre eventos de interrupción y los elementos físicos de la red asociados a su ocurrencia. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_oms_historico} (Apéndice~\ref{app:codigo}).
     
     \begin{table}[H]
     \centering
@@ -208,15 +163,8 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     A continuación, se seleccionaron únicamente las variables relevantes para el análisis: \texttt{Maniobra Apertura}, \texttt{Tipo Elemento} y \texttt{Elemento\_Falla}. Esta selección permitió homogenizar la estructura de la base con la información histórica previamente construida. Finalmente, se eliminaron los registros duplicados mediante la función \texttt{drop\_duplicates}, garantizando la unicidad de las observaciones a nivel de combinación de variables relevantes.
     
-    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final.
-    
-    \begin{lstlisting}[style=thesiscode,language=Python]
-    columnas_necesarias = ['Maniobra Apertura', 'Tipo Elemento', 'Elemento_Falla']
-    df = pd.read_csv(ruta_actual)
-    df.columns = df.columns.str.strip()
-    df = df[columnas_necesarias].drop_duplicates()
-    \end{lstlisting}
-    
+    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final. El fragmento Python correspondiente se presenta en el Listado~\ref{lst:py_oms_sp7} (Apéndice~\ref{app:codigo}).
+
     \begin{table}[!htbp]
     \centering
     \small
@@ -251,34 +199,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformador}, con el fin de estandarizar la clasificación dentro del conjunto de datos integrado. Esta homogenización resulta clave para la posterior vinculación con los eventos de interrupción y la construcción del panel activo–día.
     
-    Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado.
-    
-    \begin{lstlisting}[style=thesiscode,language=SQL]
-    SELECT 
-        nodo_transform_v AS ELEMENTO,
-        coor_gps_lat     AS LATITUD,
-        coor_gps_lon     AS LONGITUD,
-        coor_z           AS ALTITUD,
-        'Transformador'  AS TIPO,
-        ubicacion
-    FROM ccomun@gtech c
-    JOIN cconectividad_e@gtech USING (g3e_fid)
-    WHERE c.estado = 'OPERACION'
-      AND c.g3e_fno = 20400
-    UNION
-    SELECT 
-        r.codigo         AS ELEMENTO,
-        coor_gps_lat     AS LATITUD,
-        coor_gps_lon     AS LONGITUD,
-        coor_z           AS ALTITUD,
-        'Reconectador'   AS TIPO,
-        ubicacion
-    FROM ereconec_at@gtech r
-    JOIN ccomun@gtech c USING (g3e_fid)
-    JOIN cconectividad_e@gtech USING (g3e_fid)
-    WHERE c.estado = 'OPERACION';
-    
-    \end{lstlisting}
+    Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_gis} (Apéndice~\ref{app:codigo}); la consulta se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
     
     \begin{table}[!htbp]
     \centering
@@ -322,17 +243,11 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     \end{tabularx}
     \end{table}
     
-    Y asi sucesivamente para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
-    
 \subsection{Extracción de variables meteorológicas}
     Con el objetivo de incorporar condiciones climáticas como variables explicativas en el análisis de interrupciones del sistema eléctrico, se realizó la extracción de información meteorológica a partir de la plataforma NASA POWER. Esta fuente proporciona series temporales diarias de variables climáticas relevantes, las cuales permiten capturar la influencia del entorno atmosférico sobre la ocurrencia y duración de eventos en la red.
     
-    El proceso de extracción se centró en un conjunto de variables meteorológicas seleccionadas por su relevancia en el análisis de confiabilidad del sistema eléctrico. En particular, se consideraron las variables de precipitación total (\texttt{PRECTOT}), temperatura media (\texttt{T2M}), temperatura máxima (\texttt{T2M\_MAX}), temperatura mínima (\texttt{T2M\_MIN}), humedad relativa (\texttt{RH2M}) y velocidad del viento (\texttt{WS2M}).
-    
-    \begin{lstlisting}[style=code,language=Python]
-    parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
-    \end{lstlisting}
-    
+    El proceso de extracción se centró en un conjunto de variables meteorológicas seleccionadas por su relevancia en el análisis de confiabilidad del sistema eléctrico. En particular, se consideraron las variables de precipitación total (\texttt{PRECTOT}), temperatura media (\texttt{T2M}), temperatura máxima (\texttt{T2M\_MAX}), temperatura mínima (\texttt{T2M\_MIN}), humedad relativa (\texttt{RH2M}) y velocidad del viento (\texttt{WS2M}). La definición de estos parámetros en el código de extracción se presenta en el Listado~\ref{lst:py_nasa} (Apéndice~\ref{app:codigo}).
+
     \begin{table}[!htbp]
     \centering
     \small

@@ -1,8 +1,105 @@
 
-\section{Parte 1}
-\label{sec:parte1} 
+Este apéndice consolida el código de extracción utilizado en la Etapa~1 de la metodología (consultas SQL y fragmentos Python). En el cuerpo del documento se describe el procedimiento y se referencia el listado correspondiente.
+\label{app:codigo}
 
+\section{Consultas SQL}
 
+\subsection{Eventos de interrupción (BRAE)}
+\label{app:sql-brae}
 
-\section{Parte 2}
-\label{sec:parte2} 
+\begin{lstlisting}[style=thesiscode,language=SQL,caption={Consulta SQL de extracción y depuración de eventos de interrupción (BRAE)},label={lst:sql_brae}]
+SELECT DISTINCT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,FDD_FINICIAL AS FECHA_DESCONEXION
+      ,FDD_FFINAL AS FECHA_CONEXION
+      ,'' AS ELEMENTO_FALLADO
+FROM BRAE.QA_TFDDREGISTRO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL;
+\end{lstlisting}
+
+\subsection{Afectación por evento (BRAE + QA\_TTC1)}
+\label{app:sql-afectacion}
+
+\begin{lstlisting}[style=thesiscode,language=SQL,caption={Consulta SQL de afectación por evento (elementos y usuarios)},label={lst:sql_afectacion}]
+SELECT FDD_CODIGOEVENTO AS ID_EVENTO
+      ,COUNT(FDD_CODIGOELEMENTO) AS CANTIDAD_ELEMENTOS_FALLADOS
+      ,SUM(CANTIDAD_USUARIOS) AS CANTIDAD_USUARIOS
+FROM BRAE.QA_TFDDREGISTRO
+LEFT JOIN (
+    SELECT TC1_CODCONEX AS TRANSFORMADOR
+          ,COUNT(TC1_CODCONEX) AS CANTIDAD_USUARIOS
+          ,TC1_PERIODO AS PERIODO
+    FROM QA_TTC1
+    WHERE SUBSTR(TC1_PERIODO, 1, 4) IN ('2021', '2022', '2023', '2024', '2025')
+    GROUP BY TC1_PERIODO, TC1_CODCONEX
+) ON FDD_CODIGOELEMENTO = TRANSFORMADOR
+ AND FDD_PERIODO_TC1 = PERIODO
+WHERE TO_CHAR(FDD_FINICIAL,'YYYY') IN ('2021', '2022', '2023', '2024', '2025')
+  AND FDD_EXCLUSION = 'NO EXCLUIDA'
+  AND FDD_CAUSA_SSPD NOT IN (1)
+  AND FDD_FFINAL IS NOT NULL
+GROUP BY FDD_CODIGOEVENTO;
+\end{lstlisting}
+
+\subsection{Elemento causante histórico (OMS SPARD)}
+\label{app:sql-oms-historico}
+
+\begin{lstlisting}[style=thesiscode,language=SQL,caption={Consulta SQL del elemento causante histórico (OMS SPARD)},label={lst:sql_oms_historico}]
+SELECT CODE AS CODIGO_MANIOBRA
+      ,BREAKER AS ELEMENTO_FALLADO
+FROM OMS.MANIOBRAS@SPARD
+WHERE TO_NUMBER(TO_CHAR(FECHA, 'YYYY')) >= 2021
+  AND CAUSA != 'PRUEBA';
+\end{lstlisting}
+
+\subsection{Inventario georreferenciado (GIS GTECH)}
+\label{app:sql-gis}
+
+\begin{lstlisting}[style=thesiscode,language=SQL,caption={Consulta SQL del inventario georreferenciado de activos (GIS GTECH)},label={lst:sql_gis}]
+SELECT 
+    nodo_transform_v AS ELEMENTO,
+    coor_gps_lat     AS LATITUD,
+    coor_gps_lon     AS LONGITUD,
+    coor_z           AS ALTITUD,
+    'Transformador'  AS TIPO,
+    ubicacion
+FROM ccomun@gtech c
+JOIN cconectividad_e@gtech USING (g3e_fid)
+WHERE c.estado = 'OPERACION'
+  AND c.g3e_fno = 20400
+UNION
+SELECT 
+    r.codigo         AS ELEMENTO,
+    coor_gps_lat     AS LATITUD,
+    coor_gps_lon     AS LONGITUD,
+    coor_z           AS ALTITUD,
+    'Reconectador'   AS TIPO,
+    ubicacion
+FROM ereconec_at@gtech r
+JOIN ccomun@gtech c USING (g3e_fid)
+JOIN cconectividad_e@gtech USING (g3e_fid)
+WHERE c.estado = 'OPERACION';
+\end{lstlisting}
+
+\noindent La consulta del Listado~\ref{lst:sql_gis} se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador, homologando el tipo de activo en cada bloque \texttt{UNION}.
+
+\section{Fragmentos Python}
+
+\subsection{Elemento causante actual (OMS SP7)}
+\label{app:py-oms-sp7}
+
+\begin{lstlisting}[style=thesiscode,language=Python,caption={Fragmento Python de lectura y depuración del elemento causante actual (OMS SP7)},label={lst:py_oms_sp7}]
+columnas_necesarias = ['Maniobra Apertura', 'Tipo Elemento', 'Elemento_Falla']
+df = pd.read_csv(ruta_actual)
+df.columns = df.columns.str.strip()
+df = df[columnas_necesarias].drop_duplicates()
+\end{lstlisting}
+
+\subsection{Parámetros meteorológicos (NASA POWER)}
+\label{app:py-nasa}
+
+\begin{lstlisting}[style=thesiscode,language=Python,caption={Definición de parámetros meteorológicos extraídos de NASA POWER},label={lst:py_nasa}]
+parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
+\end{lstlisting}
