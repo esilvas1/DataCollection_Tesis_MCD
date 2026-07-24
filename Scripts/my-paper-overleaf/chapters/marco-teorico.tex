@@ -138,7 +138,7 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \[
     x \notin \bigl[Q_1 - k\cdot\mathrm{IQR},\; Q_3 + k\cdot\mathrm{IQR}\bigr]
     \]
-    (p.\,ej.\ $k=1{,}5$ o $k=3$), complementados con percentiles altos (P95, P99) sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
+    (p.\,ej.\ $k=1{.}5$ o $k=3$), complementados con percentiles altos (P95, P99) sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
 
     \item \textbf{Transformaciones de variables:}
     Ante asimetría y ceros, se usa la transformación
@@ -152,7 +152,7 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \[
     \rho(h)=\frac{\mathrm{Cov}(E_t,E_{t-h})}{\mathrm{Var}(E_t)}.
     \]
-    En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{,}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
+    En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{.}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
 
     \item \textbf{Análisis de correlación:}
     Por la asimetría y la cero-inflación de las variables operativas, se emplea el coeficiente de Spearman entre rangos:
@@ -160,7 +160,7 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \rho_S(X,Y)=1-\frac{6\sum_{i=1}^{n}d_i^{2}}{n(n^{2}-1)},
     \]
     donde $d_i$ es la diferencia de rangos. El par de mayor interés es
-    $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, con $\rho_S\approx 0{,}41$ en $D_{\mathrm{mod}}$.
+    $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, con $\rho_S\approx 0{.}41$ en $D_{\mathrm{mod}}$.
 
     \item \textbf{Datos de entrenamiento y prueba:}
     La partición es temporal (no aleatoria):

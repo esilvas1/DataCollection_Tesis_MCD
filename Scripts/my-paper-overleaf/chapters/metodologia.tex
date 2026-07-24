@@ -561,12 +561,12 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     El panel consolidado con grano \textbf{activo eléctrico $\times$ día} ($N = 87{.}007{.}074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~5.2.1. No obstante, el objetivo del estudio ---pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión--- exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
     
-    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textbf{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{,}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
+    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textbf{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{.}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
     
     \begin{figure}[!htbp]
         \centering
         \includegraphics[width=0.95\textwidth]{img/cuadrantes_800.png}
-        \caption{Malla de 800 cuadrantes sobre el territorio de concesión (celdas de aprox.\ $5 \times 2{,}5$\,km).}
+        \caption{Malla de 800 cuadrantes sobre el territorio de concesión (celdas de aprox.\ $5 \times 2{.}5$\,km).}
         \label{fig:cuadrantes_800}
     \end{figure}
     
@@ -782,9 +782,9 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     En el análisis por columna, para cada una de las $16$ variables del panel se calculó el número absoluto de \texttt{NA} y su porcentaje respecto a $N$. En el análisis por fila, se determinó cuántas observaciones $(i,t)$ presentan cero, uno o más campos incompletos, junto con el máximo de variables faltantes registradas en una misma fila.
     
-    Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~5.2.1.6. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{.}401{.}838$ valores faltantes cada una, equivalente al $3{,}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{.}868$ faltantes ($0{,}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~5.2.1.5 y~5.2.1.7 asignan $0$ en días sin evento.
+    Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~5.2.1.6. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{.}401{.}838$ valores faltantes cada una, equivalente al $3{.}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{.}868$ faltantes ($0{.}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~5.2.1.5 y~5.2.1.7 asignan $0$ en días sin evento.
     
-    A nivel de fila, $83{.}576{.}020$ observaciones ($96{,}06$~\%) están completas; $3{.}431{.}054$ filas ($3{,}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
+    A nivel de fila, $83{.}576{.}020$ observaciones ($96{.}06$~\%) están completas; $3{.}431{.}054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
     
     \begin{figure}[!htbp]
         \centering
@@ -802,13 +802,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{$n$ de \texttt{NA}} & \textbf{\% sobre $N$} \\
     \midrule
-    \texttt{velocidad\_viento\_ms} & 3{.}401{.}838 & 3,91 \\
-    \texttt{temperatura\_media\_c} & 3{.}401{.}838 & 3,91 \\
-    \texttt{humedad\_relativa\_pct} & 3{.}401{.}838 & 3,91 \\
-    \texttt{temperatura\_minima\_c} & 3{.}401{.}838 & 3,91 \\
-    \texttt{temperatura\_maxima\_c} & 3{.}401{.}838 & 3,91 \\
-    \texttt{precipitacion\_total\_mm} & 3{.}401{.}838 & 3,91 \\
-    \texttt{ALTITUD} & 32{.}868 & 0,04 \\
+    \texttt{velocidad\_viento\_ms} & 3{.}401{.}838 & 3.91 \\
+    \texttt{temperatura\_media\_c} & 3{.}401{.}838 & 3.91 \\
+    \texttt{humedad\_relativa\_pct} & 3{.}401{.}838 & 3.91 \\
+    \texttt{temperatura\_minima\_c} & 3{.}401{.}838 & 3.91 \\
+    \texttt{temperatura\_maxima\_c} & 3{.}401{.}838 & 3.91 \\
+    \texttt{precipitacion\_total\_mm} & 3{.}401{.}838 & 3.91 \\
+    \texttt{ALTITUD} & 32{.}868 & 0.04 \\
     \midrule
     \multicolumn{3}{l}{\textit{Resto de variables del panel:} $0$ \texttt{NA} ($0$~\%)} \\
     \bottomrule
@@ -834,11 +834,11 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
 \subsection{Identificación de valores extremos en variables cuantitativas}
 \label{sec:identificacion_valores_extremos}
-    Se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y diagramas de caja e histogramas. El análisis distingue observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos. Para cada variable se aplicaron tres reglas: (i)~rango intercuartílico de Tukey, $[Q_1 - 1{,}5\,\mathrm{IQR},\; Q_3 + 1{,}5\,\mathrm{IQR}]$; (ii)~rango ampliado con factor $3{,}0$; y (iii)~percentiles P1--P99.
+    Se evaluó la presencia de valores extremos en las variables cuantitativas mediante reglas univariadas y diagramas de caja e histogramas. El análisis distingue observaciones operativamente plausibles de posibles inconsistencias de registro, sin aplicar aún transformaciones ni exclusiones definitivas; el tratamiento se difiere a la Etapa~4 con base en estos hallazgos. Para cada variable se aplicaron tres reglas: (i)~rango intercuartílico de Tukey, $[Q_1 - 1{.}5\,\mathrm{IQR},\; Q_3 + 1{.}5\,\mathrm{IQR}]$; (ii)~rango ampliado con factor $3{.}0$; y (iii)~percentiles P1--P99.
     
     \paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87{.}007{.}074$) se aplicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en \href{\urldetectionoutliers}{detection\_outliers.html}.
     
-    \subparagraph{Variables climáticas diarias.} Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{,}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{,}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{,}38$~\% de las observaciones y la ampliada el $5{,}30$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{.}000$ observaciones.
+    \subparagraph{Variables climáticas diarias.} Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{.}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{.}0$ prácticamente no se identifican extremos severos. La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica y con exceso de ceros (días sin lluvia), la regla de Tukey marca el $10{.}38$~\% de las observaciones y la ampliada el $5{.}30$~\%, aunque la regla de percentiles solo señala el $1{.}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200{.}000$ observaciones.
     
     \begin{table}[!htbp]
     \centering
@@ -849,12 +849,12 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
     \midrule
-    \texttt{velocidad\_viento\_ms}   & 1,20  & 0,03  & 0,00 & 1,60 \\
-    \texttt{temperatura\_media\_c}   & 25,47 & 0,02  & 0,00 & 1,99 \\
-    \texttt{humedad\_relativa\_pct}  & 69,08 & 0,00  & 0,00 & 1,98 \\
-    \texttt{temperatura\_minima\_c}  & 20,91 & 0,20  & 0,00 & 1,99 \\
-    \texttt{temperatura\_maxima\_c}  & 31,32 & 0,05  & 0,00 & 1,99 \\
-    \texttt{precipitacion\_total\_mm} & 0,50 & 10,38 & 5,30 & 1,00 \\
+    \texttt{velocidad\_viento\_ms}   & 1.20  & 0.03  & 0.00 & 1.60 \\
+    \texttt{temperatura\_media\_c}   & 25.47 & 0.02  & 0.00 & 1.99 \\
+    \texttt{humedad\_relativa\_pct}  & 69.08 & 0.00  & 0.00 & 1.98 \\
+    \texttt{temperatura\_minima\_c}  & 20.91 & 0.20  & 0.00 & 1.99 \\
+    \texttt{temperatura\_maxima\_c}  & 31.32 & 0.05  & 0.00 & 1.99 \\
+    \texttt{precipitacion\_total\_mm} & 0.50 & 10.38 & 5.30 & 1.00 \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -865,9 +865,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \caption{Diagramas de caja de las variables climáticas (muestra de $200{.}000$ observaciones).}
         \label{fig:boxplot_clima}
     \end{figure}
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % Deberían usar puntos y no comas
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  
 
     
     \begin{figure}[!htbp]
@@ -877,7 +874,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:histograma_clima}
     \end{figure}
     
-    \subparagraph{Variables de severidad y continuidad diarias.} Estas variables están dominadas por ceros (días sin interrupción): el $99{,}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{,}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{.}375$ registros de afectación y $48{.}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{.}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{.}395$ minutos ($\approx 231$~días), sugerente de posibles inconsistencias de registro que se marcan para revisión. La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
+    \subparagraph{Variables de severidad y continuidad diarias.} Estas variables están dominadas por ceros (días sin interrupción): el $99{.}94$~\% de las filas registra $0$, por lo que sobre el panel completo se cumple $Q_1 = Q_3 = 0$ y la regla de Tukey resulta poco informativa (marca como extremo cualquier día con evento, $0{.}06$~\% del panel). Por ello, el análisis relevante se realiza sobre los días con evento ($\text{valor} > 0$), donde se concentran $48{.}375$ registros de afectación y $48{.}364$ de continuidad. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{CANTIDAD\_USUARIOS} es $23$ usuarios pero su máximo alcanza $34{.}622$; la \texttt{DURACION} tiene mediana de $417$ minutos ($\approx 7$~horas) y un máximo de $332{.}395$ minutos ($\approx 231$~días), sugerente de posibles inconsistencias de registro que se marcan para revisión. La regla de Tukey marca entre el $9$~\% y el $15$~\% de los días con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento} resume estos resultados y las Figuras~\ref{fig:boxplot_evento} y~\ref{fig:histograma_evento} presentan los diagramas de caja e histogramas sobre los días con evento.
     
     \begin{table}[!htbp]
     \centering
@@ -888,10 +885,10 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
     \midrule
-    \texttt{CANTIDAD\_ELEMENTOS} & 48{.}375 & 2   & 2{.}469   & 14,91 & 11,78 \\
-    \texttt{CANTIDAD\_USUARIOS}  & 48{.}375 & 23  & 34{.}622  & 14,50 & 10,83 \\
-    \texttt{DURACION}       & 48{.}364 & 417 & 332{.}395 & 8,94  & 5,36  \\
-    \texttt{FRECUENCIA}          & 48{.}364 & 1   & 6         & 1,96  & 1,96  \\
+    \texttt{CANTIDAD\_ELEMENTOS} & 48{.}375 & 2   & 2{.}469   & 14.91 & 11.78 \\
+    \texttt{CANTIDAD\_USUARIOS}  & 48{.}375 & 23  & 34{.}622  & 14.50 & 10.83 \\
+    \texttt{DURACION}       & 48{.}364 & 417 & 332{.}395 & 8.94  & 5.36  \\
+    \texttt{FRECUENCIA}          & 48{.}364 & 1   & 6         & 1.96  & 1.96  \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -912,7 +909,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     \paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90{.}128$ observaciones, se replicó el mismo esquema excluyendo \texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud} y \texttt{altitud}. El procedimiento se documenta en \href{\urloutliersagrupada}{outliers\_gruped.html}.
     
-    \subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura, humedad y viento presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo Tukey (entre $0$~\% y $0{,}03$~\%); con el factor $3{,}0$ no se identifican extremos severos. La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal fuertemente asimétrico, la regla de Tukey marca el $8{,}98$~\% de las observaciones y la ampliada el $4{,}51$~\%, aunque la regla de percentiles solo señala el $1{,}00$~\%; estos valores corresponden a semanas de lluvia intensa operativamente plausibles. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90{.}128$ observaciones.
+    \subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura, humedad y viento presentan distribuciones aproximadamente simétricas y un porcentaje muy bajo de extremos bajo Tukey (entre $0$~\% y $0{.}03$~\%); con el factor $3{.}0$ no se identifican extremos severos. La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal fuertemente asimétrico, la regla de Tukey marca el $8{.}98$~\% de las observaciones y la ampliada el $4{.}51$~\%, aunque la regla de percentiles solo señala el $1{.}00$~\%; estos valores corresponden a semanas de lluvia intensa operativamente plausibles. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90{.}128$ observaciones.
     
     \begin{table}[!htbp]
     \centering
@@ -923,13 +920,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{Mediana} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
     \midrule
-    \texttt{temp\_media\_semana}    & 24,84 & 0,00 & 0,00 & 1,95 \\
-    \texttt{temp\_max\_semana}      & 32,76 & 0,00 & 0,00 & 1,99 \\
-    \texttt{temp\_min\_semana}      & 18,95 & 0,03 & 0,00 & 1,96 \\
-    \texttt{humedad\_media\_semana} & 72,28 & 0,00 & 0,00 & 1,97 \\
-    \texttt{viento\_medio\_semana}  & 0,91  & 0,00 & 0,00 & 1,99 \\
-    \texttt{viento\_max\_semana}    & 1,29  & 0,00 & 0,00 & 1,69 \\
-    \texttt{precip\_total\_semana}  & 618,8 & 8,98 & 4,51 & 1,00 \\
+    \texttt{temp\_media\_semana}    & 24.84 & 0.00 & 0.00 & 1.95 \\
+    \texttt{temp\_max\_semana}      & 32.76 & 0.00 & 0.00 & 1.99 \\
+    \texttt{temp\_min\_semana}      & 18.95 & 0.03 & 0.00 & 1.96 \\
+    \texttt{humedad\_media\_semana} & 72.28 & 0.00 & 0.00 & 1.97 \\
+    \texttt{viento\_medio\_semana}  & 0.91  & 0.00 & 0.00 & 1.99 \\
+    \texttt{viento\_max\_semana}    & 1.29  & 0.00 & 0.00 & 1.69 \\
+    \texttt{precip\_total\_semana}  & 618.8 & 8.98 & 4.51 & 1.00 \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -948,7 +945,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:histograma_clima_agrupada}
     \end{figure}
     
-    \subparagraph{Variables de severidad y continuidad.} En la tabla completa persisten semanas sin interrupción registrada ($Q_1 = Q_3 = 0$ en \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{n\_eventos}), por lo que la regla de Tukey sobre el total es poco informativa para esas variables. El análisis relevante se realiza sobre semanas con evento ($\text{valor} > 0$), con $22{.}660$--$24{.}800$ registros según la variable. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{usuarios\_afectados} es $52$ usuarios pero su máximo alcanza $69{.}928$; \texttt{duracion\_total} tiene mediana de $19{,}7$~horas y un máximo de $2{.}227$~horas ($\approx 93$~días acumulados en la semana). La regla de Tukey marca entre el $11{,}6$~\% y el $15{,}2$~\% de las semanas con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_evento_agrupada} y~\ref{fig:histograma_evento_agrupada} presentan los diagramas de caja e histogramas.
+    \subparagraph{Variables de severidad y continuidad.} En la tabla completa persisten semanas sin interrupción registrada ($Q_1 = Q_3 = 0$ en \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{n\_eventos}), por lo que la regla de Tukey sobre el total es poco informativa para esas variables. El análisis relevante se realiza sobre semanas con evento ($\text{valor} > 0$), con $22{.}660$--$24{.}800$ registros según la variable. En este subconjunto las distribuciones son fuertemente asimétricas a la derecha: la mediana de \texttt{usuarios\_afectados} es $52$ usuarios pero su máximo alcanza $69{.}928$; \texttt{duracion\_total} tiene mediana de $19{.}7$~horas y un máximo de $2{.}227$~horas ($\approx 93$~días acumulados en la semana). La regla de Tukey marca entre el $11{.}6$~\% y el $15{.}2$~\% de las semanas con evento como extremos, proporción esperable en distribuciones de cola pesada. La Tabla~\ref{tab:extremos_evento_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_evento_agrupada} y~\ref{fig:histograma_evento_agrupada} presentan los diagramas de caja e histogramas.
     
     \begin{table}[!htbp]
     \centering
@@ -959,10 +956,10 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
     \midrule
-    \texttt{usuarios\_afectados}  & 22{.}660 & 52    & 69{.}928 & 15,16 & 11,21 \\
-    \texttt{elementos\_afectados} & 22{.}660 & 7     & 3{.}626  & 15,00 & 10,70 \\
-    \texttt{duracion\_total}      & 24{.}800 & 19,7  & 2{.}227  & 11,56 & 4,25  \\
-    \texttt{n\_eventos}            & 22{.}659 & 1     & 58       & 14,53 & 5,73  \\
+    \texttt{usuarios\_afectados}  & 22{.}660 & 52    & 69{.}928 & 15.16 & 11.21 \\
+    \texttt{elementos\_afectados} & 22{.}660 & 7     & 3{.}626  & 15.00 & 10.70 \\
+    \texttt{duracion\_total}      & 24{.}800 & 19.7  & 2{.}227  & 11.56 & 4.25  \\
+    \texttt{n\_eventos}            & 22{.}659 & 1     & 58       & 14.53 & 5.73  \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -1003,7 +1000,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:boxplot_descriptivo_agrupada}
     \end{figure}
     
-    \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{,}16$ (\texttt{temp\_max\_semana}) y $0{,}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{,}8$~\textdegree C (media $23{,}8$~\textdegree C; $Q_1$--$Q_3$: $20{,}4$--$27{,}2$~\textdegree C) y asimetría cercana a cero ($-0{,}37$). La humedad relativa media semanal concentra la mediana en $72{,}3$~\% (CV $= 0{,}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $618{,}8$~mm, media de $1{.}942$~mm, CV $= 3{,}47$ y fuerte asimetría positiva ($30{,}6$), coherente con semanas de lluvia intensa puntuales (P99 $= 18{.}217$~mm). La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
+    \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{.}16$ (\texttt{temp\_max\_semana}) y $0{.}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{.}8$~\textdegree C (media $23{.}8$~\textdegree C; $Q_1$--$Q_3$: $20{.}4$--$27{.}2$~\textdegree C) y asimetría cercana a cero ($-0{.}37$). La humedad relativa media semanal concentra la mediana en $72{.}3$~\% (CV $= 0{.}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $618{.}8$~mm, media de $1{.}942$~mm, CV $= 3{.}47$ y fuerte asimetría positiva ($30{.}6$), coherente con semanas de lluvia intensa puntuales (P99 $= 18{.}217$~mm). La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
     
     \begin{table}[!htbp]
     \centering
@@ -1014,13 +1011,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{Media} & \textbf{Mediana} & \textbf{Desv. est.} & \textbf{CV} & \textbf{Asimetría} \\
     \midrule
-    \texttt{temp\_media\_semana}    & 23,8  & 24,8 & 4,63  & 0,19 & $-0{,}37$ \\
-    \texttt{temp\_max\_semana}      & 31,9  & 32,8 & 5,30  & 0,17 & $-0{,}44$ \\
-    \texttt{temp\_min\_semana}      & 17,9  & 19,0 & 4,49  & 0,25 & $-0{,}49$ \\
-    \texttt{humedad\_media\_semana} & 70,9  & 72,3 & 11,5  & 0,16 & $-0{,}36$ \\
-    \texttt{viento\_medio\_semana}  & 0,99  & 0,91 & 0,80  & 0,81 & 0,44 \\
-    \texttt{viento\_max\_semana}    & 1,31  & 1,29 & 1,01  & 0,77 & 0,35 \\
-    \texttt{precip\_total\_semana}  & 1{.}942 & 618,8 & 6{.}728 & 3,47 & 30,6 \\
+    \texttt{temp\_media\_semana}    & 23.8  & 24.8 & 4.63  & 0.19 & $-0{.}37$ \\
+    \texttt{temp\_max\_semana}      & 31.9  & 32.8 & 5.30  & 0.17 & $-0{.}44$ \\
+    \texttt{temp\_min\_semana}      & 17.9  & 19.0 & 4.49  & 0.25 & $-0{.}49$ \\
+    \texttt{humedad\_media\_semana} & 70.9  & 72.3 & 11.5  & 0.16 & $-0{.}36$ \\
+    \texttt{viento\_medio\_semana}  & 0.99  & 0.91 & 0.80  & 0.81 & 0.44 \\
+    \texttt{viento\_max\_semana}    & 1.31  & 1.29 & 1.01  & 0.77 & 0.35 \\
+    \texttt{precip\_total\_semana}  & 1{.}942 & 618.8 & 6{.}728 & 3.47 & 30.6 \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -1032,7 +1029,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:densidad_clima_agrupada}
     \end{figure}
     
-    \paragraph{Variables de severidad y continuidad.} Las cuatro variables operativas están dominadas por ceros: la mediana de \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{n\_eventos} y \texttt{duracion\_total} es $0$ en el $74{,}9$~\% de las semanas-cuadrante sin eventos registrados (Tabla~\ref{tab:frecuencias_actividad_agrupada}). Cuando ocurre al menos un evento, las distribuciones son fuertemente leptocúrticas y con cola derecha pesada: \texttt{usuarios\_afectados} alcanza un máximo de $69{.}928$ usuarios (media $156{,}1$; CV $= 7{,}81$); \texttt{duracion\_total} un máximo de $2{.}227$~horas acumuladas en la semana (media $13{,}7$~h; CV $= 3{,}67$). La Tabla~\ref{tab:desc_evento_agrupada} resume las medidas principales; la Figura~\ref{fig:densidad_evento_agrupada} presenta las densidades en escala $\log(1+x)$ para semanas con evento.
+    \paragraph{Variables de severidad y continuidad.} Las cuatro variables operativas están dominadas por ceros: la mediana de \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{n\_eventos} y \texttt{duracion\_total} es $0$ en el $74{.}9$~\% de las semanas-cuadrante sin eventos registrados (Tabla~\ref{tab:frecuencias_actividad_agrupada}). Cuando ocurre al menos un evento, las distribuciones son fuertemente leptocúrticas y con cola derecha pesada: \texttt{usuarios\_afectados} alcanza un máximo de $69{.}928$ usuarios (media $156{.}1$; CV $= 7{.}81$); \texttt{duracion\_total} un máximo de $2{.}227$~horas acumuladas en la semana (media $13{.}7$~h; CV $= 3{.}67$). La Tabla~\ref{tab:desc_evento_agrupada} resume las medidas principales; la Figura~\ref{fig:densidad_evento_agrupada} presenta las densidades en escala $\log(1+x)$ para semanas con evento.
     
     \begin{table}[!htbp]
     \centering
@@ -1043,10 +1040,10 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{Media} & \textbf{Mediana} & \textbf{Máx.} & \textbf{CV} & \textbf{Asimetría} & \textbf{$Q_3$} \\
     \midrule
-    \texttt{usuarios\_afectados}  & 156,1 & 0 & 69{.}928 & 7,81 & 20,6 & 1 \\
-    \texttt{elementos\_afectados} & 12,0  & 0 & 3{.}626  & 5,74 & 14,1 & 1 \\
-    \texttt{n\_eventos}            & 0,55  & 0 & 58       & 2,76 & 8,18 & 1 \\
-    \texttt{duracion\_total}      & 13,7  & 0 & 2{.}227  & 3,67 & 10,2 & 2,5 \\
+    \texttt{usuarios\_afectados}  & 156.1 & 0 & 69{.}928 & 7.81 & 20.6 & 1 \\
+    \texttt{elementos\_afectados} & 12.0  & 0 & 3{.}626  & 5.74 & 14.1 & 1 \\
+    \texttt{n\_eventos}            & 0.55  & 0 & 58       & 2.76 & 8.18 & 1 \\
+    \texttt{duracion\_total}      & 13.7  & 0 & 2{.}227  & 3.67 & 10.2 & 2.5 \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -1060,10 +1057,10 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Categoría (\texttt{n\_eventos})} & \textbf{Frec. absoluta} & \textbf{Frec. relativa (\%)} & \textbf{Frec. acumulada (\%)} \\
     \midrule
-    Sin eventos           & 67{.}469 & 74,86 & 74,86 \\
-    $1$ evento            & 12{.}115 & 13,44 & 88,30 \\
-    $2$ a $5$ eventos     &  9{.}246 & 10,26 & 98,56 \\
-    Más de $5$ eventos    &  1{.}298 &  1,44 & 100,00 \\
+    Sin eventos           & 67{.}469 & 74.86 & 74.86 \\
+    $1$ evento            & 12{.}115 & 13.44 & 88.30 \\
+    $2$ a $5$ eventos     &  9{.}246 & 10.26 & 98.56 \\
+    Más de $5$ eventos    &  1{.}298 &  1.44 & 100.00 \\
     \bottomrule
     \end{tabular}
     \end{table}
@@ -1095,7 +1092,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \label{sec:distribucion_variables}
     Con el propósito de comprender el comportamiento estadístico de las variables incluidas en el estudio, se realizó un análisis de distribución sobre las variables climáticas, de severidad y de continuidad contenidas en la tabla agregada cuadrante~$\times$~semana ($N_{\mathrm{agr}} = 90{.}128$; Sección~\ref{sec:agrupacion_cuadrante_semana}). Para las variables cuantitativas se emplearon diagramas de densidad, complementados con indicadores de forma (asimetría, curtosis y proporción de ceros), lo que permitió evaluar simetría, dispersión, unimodalidad y presencia de valores extremos. El procedimiento reproducible se documenta en \href{\urldistribucionvariables}{distribucion\_variables.html}.
     
-    \paragraph{Variables climáticas.} Los resultados evidencian que las variables meteorológicas presentan distribuciones heterogéneas. Las temperaturas (media, máxima y mínima) y la humedad relativa muestran comportamientos estables, aproximadamente unimodales y con asimetría cercana a cero (entre $-0{,}49$ y $-0{,}36$), coherentes con las curvas de densidad presentadas en la Figura~\ref{fig:densidad_clima_agrupada}. En contraste, la precipitación acumulada semanal presenta una marcada asimetría positiva (coeficiente de $30{,}6$ y curtosis de $1{.}623$), caracterizada por una alta frecuencia de semanas con valores bajos de lluvia (el $9{,}1$~\% registra $0$~mm) y un número reducido de observaciones con precipitaciones intensas. La Figura~\ref{fig:densidad_precipitacion_agrupada} contrasta la distribución en escala original y en escala $\log(1+x)$: la transformación logarítmica aproxima la distribución a una forma simétrica, lo que anticipa su utilidad en la Etapa~4.
+    \paragraph{Variables climáticas.} Los resultados evidencian que las variables meteorológicas presentan distribuciones heterogéneas. Las temperaturas (media, máxima y mínima) y la humedad relativa muestran comportamientos estables, aproximadamente unimodales y con asimetría cercana a cero (entre $-0{.}49$ y $-0{.}36$), coherentes con las curvas de densidad presentadas en la Figura~\ref{fig:densidad_clima_agrupada}. En contraste, la precipitación acumulada semanal presenta una marcada asimetría positiva (coeficiente de $30{.}6$ y curtosis de $1{.}623$), caracterizada por una alta frecuencia de semanas con valores bajos de lluvia (el $9{.}1$~\% registra $0$~mm) y un número reducido de observaciones con precipitaciones intensas. La Figura~\ref{fig:densidad_precipitacion_agrupada} contrasta la distribución en escala original y en escala $\log(1+x)$: la transformación logarítmica aproxima la distribución a una forma simétrica, lo que anticipa su utilidad en la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1104,7 +1101,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:densidad_precipitacion_agrupada}
     \end{figure}
     
-    \paragraph{Variables de severidad y continuidad.} Las variables asociadas a interrupciones del servicio (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total} y \texttt{n\_eventos}) muestran distribuciones altamente sesgadas hacia cero: la proporción de filas con valor $0$ se ubica entre el $72{,}5$~\% (\texttt{duracion\_total}) y el $74{,}9$~\% (resto de variables), como ilustra la Figura~\ref{fig:pct_ceros_evento_agrupada}. Este comportamiento es esperado, dado que la mayor parte de las semanas-cuadrante no registra fallas. Sin embargo, condicionando a la ocurrencia de eventos ($\text{valor} > 0$), las distribuciones presentan colas derechas largas ---con asimetrías entre $8{,}2$ y $20{,}6$ y curtosis entre $139$ y $643$--- que reflejan la existencia de incidentes de alta severidad con impacto significativo sobre la continuidad del servicio, según se aprecia en las densidades en escala $\log(1+x)$ de la Figura~\ref{fig:densidad_evento_agrupada}.
+    \paragraph{Variables de severidad y continuidad.} Las variables asociadas a interrupciones del servicio (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total} y \texttt{n\_eventos}) muestran distribuciones altamente sesgadas hacia cero: la proporción de filas con valor $0$ se ubica entre el $72{.}5$~\% (\texttt{duracion\_total}) y el $74{.}9$~\% (resto de variables), como ilustra la Figura~\ref{fig:pct_ceros_evento_agrupada}. Este comportamiento es esperado, dado que la mayor parte de las semanas-cuadrante no registra fallas. Sin embargo, condicionando a la ocurrencia de eventos ($\text{valor} > 0$), las distribuciones presentan colas derechas largas ---con asimetrías entre $8{.}2$ y $20{.}6$ y curtosis entre $139$ y $643$--- que reflejan la existencia de incidentes de alta severidad con impacto significativo sobre la continuidad del servicio, según se aprecia en las densidades en escala $\log(1+x)$ de la Figura~\ref{fig:densidad_evento_agrupada}.
     
     \begin{figure}[!htbp]
         \centering
@@ -1117,7 +1114,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
 \subsection{Análisis temporal de eventos}
 \label{sec:analisis_temporal_eventos}
-    Para caracterizar la dinámica temporal de las interrupciones se construyó, a partir de la tabla agregada \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), la serie territorial semanal que consolida el total de \texttt{n\_eventos} de todos los cuadrantes en cada semana calendario. La serie cubre $262$ semanas del horizonte 2021--2025, con una mediana de $124{,}5$ eventos por semana (media $188{,}5$; máximo $648$). El procedimiento reproducible se documenta en \href{\urlanalisistemporal}{analisis\_temporal\_eventos.html}.
+    Para caracterizar la dinámica temporal de las interrupciones se construyó, a partir de la tabla agregada \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), la serie territorial semanal que consolida el total de \texttt{n\_eventos} de todos los cuadrantes en cada semana calendario. La serie cubre $262$ semanas del horizonte 2021--2025, con una mediana de $124{.}5$ eventos por semana (media $188{.}5$; máximo $648$). El procedimiento reproducible se documenta en \href{\urlanalisistemporal}{analisis\_temporal\_eventos.html}.
     
     \paragraph{Evolución de la serie semanal.} La Figura~\ref{fig:serie_semanal_eventos} presenta la serie semanal con su tendencia suavizada (LOESS) sobre el horizonte exploratorio 2021--2025 ($D_{\mathrm{EDA}}$). Se distinguen dos regímenes visuales: entre 2021 y 2023 la actividad se mantiene en un nivel bajo y relativamente estable, mientras que a partir de 2024 se observa un incremento sostenido del nivel de la serie. La agregación anual (Figura~\ref{fig:eventos_por_anio}) cuantifica este cambio: de $5{.}167$ eventos en 2021 y $4{.}934$ en 2022, se pasa a $15{.}211$ en 2024 y $18{.}199$ en 2025; en términos de intensidad, el promedio asciende de $\approx 99$ a $\approx 350$ eventos por semana entre 2021 y 2025. La reinterpretación de este salto a la luz de la cobertura de integración se desarrolla en el párrafo siguiente (Sección~\ref{sec:delimitacion_temporal_modelado}).
     
@@ -1142,7 +1139,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     En la operación de la red coexisten dos identificadores para un mismo punto de conexión: (i)~el \textbf{código de sitio} (ubicación), estable en el tiempo y empleado por el inventario GIS como \texttt{ELEMENTO}; y (ii)~el \textbf{código de activo}, asociado al equipo instalado y \textbf{sujeto a cambio} cuando el activo se repone por mantenimiento o renovación, mientras el código de sitio permanece invariante. El panel consolidado y la agregación cuadrante~$\times$~semana se construyen sobre el código de sitio. No obstante, en el sistema histórico OMS-SPARD (Sección~5.1.4) el elemento fallado (\texttt{BREAKER} $\rightarrow$ \texttt{COMPONENTE\_FALLADO}) se registraba con frecuencia mediante el \textbf{código del activo} y no el del sitio. Ello impide el seguimiento histórico del punto de desconexión ---unidad espacial central para el pronóstico territorial de $SAIDI$ y $SAIFI$ en esta tesis---, pues el cruce \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} no encuentra coincidencia en el inventario y el evento no genera \texttt{FRECUENCIA} en el panel activo~$\times$~día.
     
-    El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{,}5$~\% (2021), $30{,}9$~\% (2022) y $31{,}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{,}1$~\%, $28{,}1$~\% y $29{,}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~5.1.5), la coincidencia asciende al $79{,}8$~\% (2024) y al $95{,}0$~\% (2025), acompañada por coberturas del panel del $77{,}7$~\% y $92{,}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textbf{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
+    El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{.}5$~\% (2021), $30{.}9$~\% (2022) y $31{.}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{.}1$~\%, $28{.}1$~\% y $29{.}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~5.1.5), la coincidencia asciende al $79{.}8$~\% (2024) y al $95{.}0$~\% (2025), acompañada por coberturas del panel del $77{.}7$~\% y $92{.}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textbf{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
     
     El procedimiento reproducible se documenta en \href{\urlemparejamientoeventos}{emparejamiento\_eventos.html}. Con base en este hallazgo ---emergido en el presente análisis temporal--- se define el \textbf{dataset de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36{.}120$ filas cuadrante~$\times$~semana, $105$ semanas y $33{.}410$ eventos georreferenciados en total ($15{.}211$ en 2024 y $18{.}199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~5.3.1--5.3.5, pero \textbf{no} se empleará para estimar el modelo predictivo de la Etapa~4.
     
@@ -1156,11 +1153,11 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Año} & \textbf{Eventos BRAE} & \textbf{En inventario (\%)} & \textbf{Panel espacial} & \textbf{Cobertura (\%)} \\
     \midrule
-    2021 & 18{.}398 & 30,5 & 5{.}167  & 28,1 \\
-    2022 & 17{.}542 & 30,9 & 4{.}934  & 28,1 \\
-    2023 & 20{.}068 & 31,7 & 5{.}845  & 29,1 \\
-    2024 & 19{.}583 & 79,8 & 15{.}211 & 77,7 \\
-    2025 & 19{.}689 & 95,0 & 18{.}199 & 92,4 \\
+    2021 & 18{.}398 & 30.5 & 5{.}167  & 28.1 \\
+    2022 & 17{.}542 & 30.9 & 4{.}934  & 28.1 \\
+    2023 & 20{.}068 & 31.7 & 5{.}845  & 29.1 \\
+    2024 & 19{.}583 & 79.8 & 15{.}211 & 77.7 \\
+    2025 & 19{.}689 & 95.0 & 18{.}199 & 92.4 \\
     \bottomrule
     \end{tabular}
     
@@ -1183,7 +1180,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:estacionalidad_mensual}
     \end{figure}
     
-    \paragraph{Autocorrelación temporal.} Las funciones de autocorrelación simple y parcial de la serie semanal (Figura~\ref{fig:acf_serie_semanal}) evidencian fuerte persistencia: la autocorrelación es $0{,}92$ en el rezago de una semana y decae lentamente ($0{,}60$ a $12$ semanas; $0{,}38$ a $26$), manteniéndose significativa frente al intervalo de confianza del $95$~\% bajo ruido blanco ($\pm 0{,}12$). Adicionalmente, el rezago de $52$ semanas conserva una autocorrelación de $0{,}43$, indicativa de un componente estacional anual. Esta estructura justifica la incorporación de rezagos y términos estacionales como variables predictoras en la Etapa~4.
+    \paragraph{Autocorrelación temporal.} Las funciones de autocorrelación simple y parcial de la serie semanal (Figura~\ref{fig:acf_serie_semanal}) evidencian fuerte persistencia: la autocorrelación es $0{.}92$ en el rezago de una semana y decae lentamente ($0{.}60$ a $12$ semanas; $0{.}38$ a $26$), manteniéndose significativa frente al intervalo de confianza del $95$~\% bajo ruido blanco ($\pm 0{.}12$). Adicionalmente, el rezago de $52$ semanas conserva una autocorrelación de $0{.}43$, indicativa de un componente estacional anual. Esta estructura justifica la incorporación de rezagos y términos estacionales como variables predictoras en la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1216,7 +1213,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \label{sec:identificacion_patrones_tendencias}
     Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{.}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{.}410$ eventos en 2024--2025). En esta misma subsección se integra la \textbf{visualización exploratoria} sobre $D_{\mathrm{mod}}$: series de tiempo, diagramas de dispersión y mapas temáticos que complementan el análisis cuantitativo de patrones. El procedimiento reproducible se documenta en \href{\urlidentificacionpatrones}{identificacion\_patrones.html}.
     
-    \paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. Aunque las etiquetas del eje horizontal se muestran cada 3 meses para facilitar la lectura, cada tramo de la linea corresponde a observaciones semanales consecutivas. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma mayor actividad y dispersión en los meses asociados al régimen de lluvias, coherente con el análisis de §5.3.5 sobre $D_{\mathrm{EDA}}$. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{,}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
+    \paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. Aunque las etiquetas del eje horizontal se muestran cada 3 meses para facilitar la lectura, cada tramo de la linea corresponde a observaciones semanales consecutivas. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma mayor actividad y dispersión en los meses asociados al régimen de lluvias, coherente con el análisis de §5.3.5 sobre $D_{\mathrm{EDA}}$. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{.}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1239,7 +1236,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:acf_patrones_mod}
     \end{figure}
     
-    \paragraph{Patrones espaciales.} El ranking de cuadrantes por total de \texttt{n\_eventos} (Figura~\ref{fig:ranking_cuadrantes_mod}) y el mapa de intensidad territorial (Figura~\ref{fig:mapa_intensidad_mod}) evidencian heterogeneidad espacial: los diez cuadrantes más activos concentran el $20{,}5$~\% de los eventos del periodo, mientras el $14{,}2$~\% de los cuadrantes ($49$ de $344$) se clasifica en nivel de actividad \emph{alta} (Figura~\ref{fig:segmentacion_mod}). La actividad no se distribuye de forma uniforme sobre la malla de $800$ cuadrantes, sino que se agrupa en zonas de mayor exposición operativa.
+    \paragraph{Patrones espaciales.} El ranking de cuadrantes por total de \texttt{n\_eventos} (Figura~\ref{fig:ranking_cuadrantes_mod}) y el mapa de intensidad territorial (Figura~\ref{fig:mapa_intensidad_mod}) evidencian heterogeneidad espacial: los diez cuadrantes más activos concentran el $20{.}5$~\% de los eventos del periodo, mientras el $14{.}2$~\% de los cuadrantes ($49$ de $344$) se clasifica en nivel de actividad \emph{alta} (Figura~\ref{fig:segmentacion_mod}). La actividad no se distribuye de forma uniforme sobre la malla de $800$ cuadrantes, sino que se agrupa en zonas de mayor exposición operativa.
     
     \begin{figure}[!htbp]
         \centering
@@ -1264,10 +1261,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:mapa_intensidad_mod}
     \end{figure}
     
-    \paragraph{Patrones clima--evento.} Mediante correlación de Spearman a nivel cuadrante~$\times$~semana, la precipitación acumulada semanal (\texttt{precip\_total\_semana}) exhibe la asociación positiva más fuerte con \texttt{n\_eventos} ($\rho = 0{,}41$; $p < 0{.}001$), seguida de variables de viento ($\rho \approx 0{,}14$). La Figura~\ref{fig:dispersion_precip_mod} ilustra la relación no lineal entre precipitación y frecuencia de eventos. Las temperaturas presentan asociaciones débiles y negativas ($|\rho| < 0{,}05$).
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % Debe ser estimación de correlación y ponerle gorrito a rho.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    \paragraph{Patrones clima--evento.} Mediante la estimación de la correlación de Spearman a nivel cuadrante~$\times$~semana, la precipitación acumulada semanal (\texttt{precip total semana}) exhibe la asociación positiva más fuerte con \texttt{n\_eventos} ($\hat{\rho} = 0{.}41$; $p < 0{.}001$), seguida de variables de viento ($\hat{\rho} \approx 0{.}14$). La Figura~\ref{fig:dispersion_precip_mod} ilustra la relación no lineal entre precipitación y frecuencia de eventos. Las temperaturas presentan asociaciones débiles y negativas ($|\hat{\rho}| < 0{.}05$).
 
     
     \begin{figure}[!htbp]
@@ -1290,7 +1284,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \label{sec:analisis_correlacion_asociacion}
     Con fundamento en los patrones preliminares de la Sección~\ref{sec:identificacion_patrones_tendencias}, se realizó un análisis sistemático de asociación pareada sobre \texttt{data\_agrupada\_mod.csv} ($D_{\mathrm{mod}}$; $36{.}120$ filas cuadrante~$\times$~semana). Dado el carácter asimétrico, cero-inflado y de colas pesadas de las variables operativas (Sección~\ref{sec:distribucion_variables}), se empleó el coeficiente de correlación de \textbf{Spearman} en lugar de Pearson. El procedimiento reproducible se documenta en \href{\urlanalisisCorrelacion}{analisis\_correlacion.html}.
     
-    \paragraph{Matriz de asociación global.} Se calcularon las correlaciones de Spearman entre las variables operativas (\texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total}), las siete variables climáticas semanales y las coordenadas geográficas (\texttt{altitud}, \texttt{latitud}, \texttt{longitud}). La Figura~\ref{fig:heatmap_cor_clima_operativo} resume la submatriz clima--operativo. Los pares con mayor asociación absoluta del panel completo concentran redundancia operativa: \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho = 0{,}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho = 0{,}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho = 0{,}97$), coherentes con la co-ocurrencia de afectación y frecuencia en semanas con interrupción.
+    \paragraph{Matriz de asociación global.} Se calcularon las correlaciones de Spearman entre las variables operativas (\texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total}), las siete variables climáticas semanales y las coordenadas geográficas (\texttt{altitud}, \texttt{latitud}, \texttt{longitud}). La Figura~\ref{fig:heatmap_cor_clima_operativo} resume la submatriz clima--operativo. Los pares con mayor asociación absoluta del panel completo concentran redundancia operativa: \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho = 0{.}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho = 0{.}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho = 0{.}97$), coherentes con la co-ocurrencia de afectación y frecuencia en semanas con interrupción.
     
     \begin{figure}[!htbp]
         \centering
@@ -1299,7 +1293,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_clima_operativo}
     \end{figure}
     
-    \paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textbf{nueve} pares con $|\rho| \geq 0{,}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{,}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{,}91$) y entre componentes de viento ($\rho = 0{,}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{,}80$) y con el viento ($\rho \approx -0{,}72$ a $-0{,}81$). Estos resultados anticipan \textbf{multicolinealidad} entre covariables climáticas y orientan la depuración de variables en la Etapa~4.
+    \paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textbf{nueve} pares con $|\rho| \geq 0{.}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{.}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{.}91$) y entre componentes de viento ($\rho = 0{.}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{.}80$) y con el viento ($\rho \approx -0{.}72$ a $-0{.}81$). Estos resultados anticipan \textbf{multicolinealidad} entre covariables climáticas y orientan la depuración de variables en la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1308,7 +1302,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_clima}
     \end{figure}
     
-    \paragraph{Bloque operativo.} La Figura~\ref{fig:heatmap_cor_operativo} muestra que las cuatro métricas de continuidad y severidad están fuertemente correlacionadas entre sí ($\rho$ entre $0{,}83$ y $0{,}99$), aunque \texttt{duracion\_total} exhibe una asociación algo menor con \texttt{n\_eventos} ($\rho = 0{,}86$) que con las variables de afectación. Ello sugiere que frecuencia, alcance (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) y magnitud temporal (\texttt{duracion\_total}) capturan dimensiones parcialmente distintas del impacto operativo.
+    \paragraph{Bloque operativo.} La Figura~\ref{fig:heatmap_cor_operativo} muestra que las cuatro métricas de continuidad y severidad están fuertemente correlacionadas entre sí ($\rho$ entre $0{.}83$ y $0{.}99$), aunque \texttt{duracion\_total} exhibe una asociación algo menor con \texttt{n\_eventos} ($\rho = 0{.}86$) que con las variables de afectación. Ello sugiere que frecuencia, alcance (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) y magnitud temporal (\texttt{duracion\_total}) capturan dimensiones parcialmente distintas del impacto operativo.
     
     \begin{figure}[!htbp]
         \centering
@@ -1317,7 +1311,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_operativo}
     \end{figure}
     
-    \paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. La \texttt{precip\_total\_semana} presenta la relación positiva más fuerte con \texttt{n\_eventos} ($\rho = 0{,}41$; $p < 0{.}001$), seguida de asociaciones del mismo orden con \texttt{usuarios\_afectados} ($\rho = 0{,}41$), \texttt{elementos\_afectados} ($\rho = 0{,}40$) y \texttt{duracion\_total} ($\rho = 0{,}38$). Las variables de viento muestran asociaciones positivas débiles ($\rho \approx 0{,}12$--$0{,}14$), mientras las temperaturas y la humedad registran correlaciones cercanas a cero o ligeramente negativas ($|\rho| < 0{,}05$), en línea con el análisis exploratorio de la Sección~\ref{sec:identificacion_patrones_tendencias}.
+    \paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. La \texttt{precip\_total\_semana} presenta la relación positiva más fuerte con \texttt{n\_eventos} ($\rho = 0{.}41$; $p < 0{.}001$), seguida de asociaciones del mismo orden con \texttt{usuarios\_afectados} ($\rho = 0{.}41$), \texttt{elementos\_afectados} ($\rho = 0{.}40$) y \texttt{duracion\_total} ($\rho = 0{.}38$). Las variables de viento muestran asociaciones positivas débiles ($\rho \approx 0{.}12$--$0{.}14$), mientras las temperaturas y la humedad registran correlaciones cercanas a cero o ligeramente negativas ($|\rho| < 0{.}05$), en línea con el análisis exploratorio de la Sección~\ref{sec:identificacion_patrones_tendencias}.
     
     \begin{figure}[!htbp]
         \centering
@@ -1335,16 +1329,16 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Par de variables} & \textbf{Spearman $\rho$} & \textbf{$p$-valor} \\
     \midrule
-    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0,414 & $< 0{.}001$ \\
-    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{usuarios\_afectados}  & 0,406 & $< 0{.}001$ \\
-    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{elementos\_afectados} & 0,399 & $< 0{.}001$ \\
-    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{duracion\_total}      & 0,383 & $< 0{.}001$ \\
-    \texttt{viento\_medio\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0,135 & $< 0{.}001$ \\
+    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0.414 & $< 0{.}001$ \\
+    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{usuarios\_afectados}  & 0.406 & $< 0{.}001$ \\
+    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{elementos\_afectados} & 0.399 & $< 0{.}001$ \\
+    \texttt{precip\_total\_semana} $\leftrightarrow$ \texttt{duracion\_total}      & 0.383 & $< 0{.}001$ \\
+    \texttt{viento\_medio\_semana} $\leftrightarrow$ \texttt{n\_eventos}           & 0.135 & $< 0{.}001$ \\
     \bottomrule
     \end{tabular}
     \end{table}
     
-    \paragraph{Análisis condicionado.} Dado que el $63$~\% de las filas cuadrante~$\times$~semana registra \texttt{n\_eventos} $= 0$, se repitió el análisis sobre el subconjunto con al menos un evento ($13{.}351$ filas; $37$~\% del panel). En este régimen, la asociación precipitación--\texttt{n\_eventos} se atenúa ($\rho = 0{,}29$), lo que indica que parte de la señal climática se concentra en la transición entre semanas sin y con interrupción, y no solo en la intensidad condicional de los eventos. La Figura~\ref{fig:heatmap_cor_condicionado} resume las correlaciones en este subconjunto.
+    \paragraph{Análisis condicionado.} Dado que el $63$~\% de las filas cuadrante~$\times$~semana registra \texttt{n\_eventos} $= 0$, se repitió el análisis sobre el subconjunto con al menos un evento ($13{.}351$ filas; $37$~\% del panel). En este régimen, la asociación precipitación--\texttt{n\_eventos} se atenúa ($\rho = 0{.}29$), lo que indica que parte de la señal climática se concentra en la transición entre semanas sin y con interrupción, y no solo en la intensidad condicional de los eventos. La Figura~\ref{fig:heatmap_cor_condicionado} resume las correlaciones en este subconjunto.
     
     \begin{figure}[!htbp]
         \centering
@@ -1359,7 +1353,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \label{sec:evaluacion_multivariada}
     Con fundamento en las redundancias bivariadas identificadas en la Sección~\ref{sec:analisis_correlacion_asociacion}, se evaluaron las relaciones \textbf{simultáneas} entre covariables sobre $D_{\mathrm{mod}}$ mediante VIF, PCA exploratorio, agrupamiento jerárquico de variables climáticas, correlación parcial y un GLM Poisson de diagnóstico. El procedimiento reproducible se documenta en \href{\urlanalisisMultivariado}{analisis\_multivariado.html}.
     
-    \paragraph{Multicolinealidad climática (VIF).} Se estimó un modelo auxiliar lineal \texttt{n\_eventos $\sim$} bloque climático completo para calcular el factor de inflación de la varianza (VIF) de cada covariable. La Figura~\ref{fig:vif_clima_multivariado} muestra VIF elevados en \texttt{temp\_media\_semana} ($42{,}99$), \texttt{viento\_medio\_semana} ($19{,}63$), \texttt{viento\_max\_semana} ($17{,}87$), \texttt{temp\_max\_semana} ($17{,}17$) y \texttt{temp\_min\_semana} ($13{,}92$), mientras \texttt{precip\_total\_semana} ($1{,}05$) y \texttt{humedad\_media\_semana} ($4{,}56$) presentan inflación baja. Al restringir el bloque a \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, los VIF descienden a valores aceptables (máximo $6{,}94$ en temperatura media; Tabla~\ref{tab:vif_reducido}).
+    \paragraph{Multicolinealidad climática (VIF).} Se estimó un modelo auxiliar lineal \texttt{n\_eventos $\sim$} bloque climático completo para calcular el factor de inflación de la varianza (VIF) de cada covariable. La Figura~\ref{fig:vif_clima_multivariado} muestra VIF elevados en \texttt{temp\_media\_semana} ($42{.}99$), \texttt{viento\_medio\_semana} ($19{.}63$), \texttt{viento\_max\_semana} ($17{.}87$), \texttt{temp\_max\_semana} ($17{.}17$) y \texttt{temp\_min\_semana} ($13{.}92$), mientras \texttt{precip\_total\_semana} ($1{.}05$) y \texttt{humedad\_media\_semana} ($4{.}56$) presentan inflación baja. Al restringir el bloque a \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, los VIF descienden a valores aceptables (máximo $6{.}94$ en temperatura media; Tabla~\ref{tab:vif_reducido}).
     
     \begin{figure}[!htbp]
         \centering
@@ -1377,18 +1371,54 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \toprule
     \textbf{Variable} & \textbf{VIF} \\
     \midrule
-    \texttt{temp\_media\_semana}     & 6,94 \\
-    \texttt{humedad\_media\_semana}  & 3,44 \\
-    \texttt{viento\_medio\_semana}   & 3,33 \\
-    \texttt{precip\_total\_semana}   & 1,04 \\
+    \texttt{temp\_media\_semana}     & 6.94 \\
+    \texttt{humedad\_media\_semana}  & 3.44 \\
+    \texttt{viento\_medio\_semana}   & 3.33 \\
+    \texttt{precip\_total\_semana}   & 1.04 \\
     \bottomrule
     \end{tabular}
     \end{table}
     
-    \paragraph{PCA exploratorio del bloque climático.} El análisis de componentes principales (Figuras~\ref{fig:pca_scree_clima} y~\ref{fig:pca_loadings_clima}) condensa el $81{,}3$~\% de la varianza en las dos primeras componentes: PC1 explica el $66{,}5$~\% (eje temperatura--humedad--viento) y PC2 el $14{,}8$~\%. La precipitación aporta carga relativamente independiente en PC2--PC3, coherente con su bajo VIF y su rol como predictor no redundante.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % Qué variables ingresan como input al PCA? cumplen las condciones las variables para un PCA? Qué variables quedan por componente? Qué peso tienen? Cuáles son más importantes por componente?
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    \paragraph{PCA exploratorio del bloque climático.} Como insumo del PCA se emplearon las siete variables climáticas semanales de $D_{\mathrm{mod}}$:  \\
+    
+    \texttt{temp\_media\_semana}
+
+    \texttt{temp\_max\_semana}
+    
+    \texttt{temp\_min\_semana}
+    
+    \texttt{humedad\_media\_semana}
+    
+    \texttt{viento\_medio\_semana}
+    
+    \texttt{viento\_max\_semana}
+    
+    \texttt{precip\_total\_semana}. \\
+
+    
+    Todas son cuantitativas continuas, se homogenizaron mediante estandarización ($z$-scores; media~$0$ y desviación~$1$) y se excluyeron filas con valores faltantes, de modo que el análisis cumple las condiciones básicas de un PCA exploratorio cuando las variables tienen distintas unidades físicas. El procedimiento se ejecuta con \texttt{prcomp} sobre la matriz estandarizada (Figuras~\ref{fig:pca_scree_clima} y~\ref{fig:pca_loadings_clima}; Tabla~\ref{tab:pca_loadings_clima}).
+    
+    Las dos primeras componentes condensan el $81{.}3$~\% de la varianza (PC1: $66{.}5$~\%; PC2: $14{.}8$~\%) y PC3 aporta un $13{.}8$~\% adicional (acumulado $95{.}1$~\%). En PC1 dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_min\_semana} $0{.}44$, \texttt{temp\_max\_semana} $0{.}43$), con cargas negativas de viento y humedad (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$, \texttt{humedad\_media\_semana} $-0{.}32$), definiendo un eje térmico--viento. En PC2 la variable más importante es \texttt{precip\_total\_semana} ($0{.}77$), seguida de \texttt{humedad\_media\_semana} ($0{.}47$). En PC3 contrastan precipitación ($-0{.}62$) y humedad ($0{.}48$), con contribuciones negativas adicionales del viento. La precipitación aporta carga cercana a cero en PC1 ($-0{.}02$) y concentra su peso en PC2--PC3, coherente con su bajo VIF y su rol como predictor no redundante.
+    
+    \begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Cargas (loadings) del PCA del bloque climático sobre $D_{\mathrm{mod}}$ (componentes PC1--PC3)}
+    \label{tab:pca_loadings_clima}
+    \begin{tabular}{@{}l r r r@{}}
+    \toprule
+    \textbf{Variable} & \textbf{PC1} & \textbf{PC2} & \textbf{PC3} \\
+    \midrule
+    \texttt{temp\_media\_semana}    &  0.45 & $-0.08$ & $-0.16$ \\
+    \texttt{temp\_max\_semana}      &  0.43 & $-0.13$ & $-0.22$ \\
+    \texttt{temp\_min\_semana}      &  0.44 &  0.09  &  0.00  \\
+    \texttt{humedad\_media\_semana} & $-0.32$ &  0.47  &  0.48  \\
+    \texttt{viento\_medio\_semana}  & $-0.40$ & $-0.27$ & $-0.38$ \\
+    \texttt{viento\_max\_semana}    & $-0.39$ & $-0.28$ & $-0.40$ \\
+    \texttt{precip\_total\_semana}  & $-0.02$ &  0.77  & $-0.62$ \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
 
     
     \begin{figure}[!htbp]
@@ -1414,7 +1444,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:dendrograma_clima}
     \end{figure}
     
-    \paragraph{Asociación multivariada clima $\rightarrow$ \texttt{n\_eventos}.} La correlación parcial de Spearman entre precipitación y \texttt{n\_eventos}, controlando \texttt{temp\_media\_semana} y \texttt{viento\_medio\_semana}, es $\rho = 0{,}43$ (frente a $\rho = 0{,}41$ bivariado), lo que indica que la señal de lluvia persiste al aislar temperatura y viento. Un GLM Poisson exploratorio con subconjunto reducido (Figura~\ref{fig:glm_coef_multivariado}) confirma coeficientes positivos y significativos para \texttt{log(1+precip)} ($\hat{\beta} = 0{,}55$; $p < 0{.}001$) y viento medio estandarizado ($\hat{\beta} = 0{,}30$; $p < 0{.}001$), mientras temperatura y humedad aportan efectos marginales débiles en presencia conjunta de las demás covariables.
+    \paragraph{Asociación multivariada clima $\rightarrow$ \texttt{n\_eventos}.} La correlación parcial de Spearman entre precipitación y \texttt{n\_eventos}, controlando \texttt{temp\_media\_semana} y \texttt{viento\_medio\_semana}, es $\rho = 0{.}43$ (frente a $\rho = 0{.}41$ bivariado), lo que indica que la señal de lluvia persiste al aislar temperatura y viento. Un GLM Poisson exploratorio con subconjunto reducido (Figura~\ref{fig:glm_coef_multivariado}) confirma coeficientes positivos y significativos para \texttt{log(1+precip)} ($\hat{\beta} = 0{.}55$; $p < 0{.}001$) y viento medio estandarizado ($\hat{\beta} = 0{.}30$; $p < 0{.}001$), mientras temperatura y humedad aportan efectos marginales débiles en presencia conjunta de las demás covariables.
     
     \begin{figure}[!htbp]
         \centering
@@ -1423,7 +1453,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:glm_coef_multivariado}
     \end{figure}
     
-    \paragraph{Dimensiones del bloque operativo.} El PCA sobre \texttt{log(1+}$x$\texttt{)} del bloque operativo (Figura~\ref{fig:pca_loadings_operativo}) concentra el $83{,}8$~\% de la varianza en PC1, con cargas elevadas y del mismo signo en \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total}. PC2 ($11{,}9$~\%) contrasta frecuencia/afectación frente a duración. Ello respalda definir \textbf{una} métrica de respuesta principal por objetivo: \texttt{n\_eventos} como proxy de \textbf{$SAIFI$} (frecuencia) y \texttt{duracion\_total} como proxy de \textbf{$SAIDI$} (continuidad), sin emplear simultáneamente las cuatro variables operativas como respuestas o predictoras.
+    \paragraph{Dimensiones del bloque operativo.} El PCA sobre \texttt{log(1+}$x$\texttt{)} del bloque operativo (Figura~\ref{fig:pca_loadings_operativo}) concentra el $83{.}8$~\% de la varianza en PC1, con cargas elevadas y del mismo signo en \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total}. PC2 ($11{.}9$~\%) contrasta frecuencia/afectación frente a duración. Ello respalda definir \textbf{una} métrica de respuesta principal por objetivo: \texttt{n\_eventos} como proxy de \textbf{$SAIFI$} (frecuencia) y \texttt{duracion\_total} como proxy de \textbf{$SAIDI$} (continuidad), sin emplear simultáneamente las cuatro variables operativas como respuestas o predictoras.
     
     \begin{figure}[!htbp]
         \centering
@@ -1438,7 +1468,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \label{sec:segmentacion_exploratoria}
     Con fundamento en la segmentación territorial introducida en la Sección~\ref{sec:identificacion_patrones_tendencias}, se profundizó la heterogeneidad de $D_{\mathrm{mod}}$ mediante perfiles comparativos por nivel de actividad, evolución 2024--2025, estratificación por régimen de precipitación semanal y clustering multivariado de cuadrantes. El procedimiento reproducible se documenta en \href{\urlsegmentacionexploratoria}{segmentacion\_exploratoria.html}.
     
-    \paragraph{Perfiles por nivel de actividad.} Sobre los $344$ cuadrantes del periodo, la clasificación Baja/Media/Alta (cuantiles P50 y P85 entre cuadrantes con eventos) arroja: $162$ cuadrantes baja ($47{,}1$~\%), $113$ media ($32{,}8$~\%) y $49$ alta ($14{,}2$~\%); $20$ cuadrantes ($5{,}8$~\%) no registraron eventos. Los perfiles acumulados (Tabla implícita en Figura~\ref{fig:heatmap_perfiles_segmentacion}) muestran escalamiento marcado: media de $22$ eventos por cuadrante en nivel baja frente a $114{,}6$ en media y $344{,}7$ en alta; usuarios afectados medios de $1{.}587$ a $88{.}534$ y precipitación media acumulada de $1{.}005$~mm a $6{.}907$~mm. La Figura~\ref{fig:boxplot_nivel_segmentacion} confirma que la dispersión semanal de \texttt{n\_eventos} crece con el estrato territorial.
+    \paragraph{Perfiles por nivel de actividad.} Sobre los $344$ cuadrantes del periodo, la clasificación Baja/Media/Alta (cuantiles P50 y P85 entre cuadrantes con eventos) arroja: $162$ cuadrantes baja ($47{.}1$~\%), $113$ media ($32{.}8$~\%) y $49$ alta ($14{.}2$~\%); $20$ cuadrantes ($5{.}8$~\%) no registraron eventos. Los perfiles acumulados (Tabla implícita en Figura~\ref{fig:heatmap_perfiles_segmentacion}) muestran escalamiento marcado: media de $22$ eventos por cuadrante en nivel baja frente a $114{.}6$ en media y $344{.}7$ en alta; usuarios afectados medios de $1{.}587$ a $88{.}534$ y precipitación media acumulada de $1{.}005$~mm a $6{.}907$~mm. La Figura~\ref{fig:boxplot_nivel_segmentacion} confirma que la dispersión semanal de \texttt{n\_eventos} crece con el estrato territorial.
     
     \begin{figure}[!htbp]
         \centering
@@ -1454,7 +1484,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_perfiles_segmentacion}
     \end{figure}
     
-    \paragraph{Evolución 2024 vs 2025 por estrato.} El total territorial ascendió de $15{.}211$ eventos en 2024 ($287$/semana) a $18{.}199$ en 2025 ($350$/semana). Al desagregar por nivel fijado en el periodo completo, el ratio medio 2025/2024 es homogéneo: $1{,}24$ (baja), $1{,}26$ (media) y $1{,}24$ (alta), lo que indica incremento transversal sin reordenamiento fuerte de la jerarquía territorial (Figura~\ref{fig:barras_anio_nivel_segmentacion}). El crecimiento observado en 2024--2025 debe interpretarse en coherencia con la homogeneización de codificación activo/sitio bajo OMS-SP7 (Sección~\ref{sec:delimitacion_temporal_modelado}), no exclusivamente como deterioro operativo.
+    \paragraph{Evolución 2024 vs 2025 por estrato.} El total territorial ascendió de $15{.}211$ eventos en 2024 ($287$/semana) a $18{.}199$ en 2025 ($350$/semana). Al desagregar por nivel fijado en el periodo completo, el ratio medio 2025/2024 es homogéneo: $1{.}24$ (baja), $1{.}26$ (media) y $1{.}24$ (alta), lo que indica incremento transversal sin reordenamiento fuerte de la jerarquía territorial (Figura~\ref{fig:barras_anio_nivel_segmentacion}). El crecimiento observado en 2024--2025 debe interpretarse en coherencia con la homogeneización de codificación activo/sitio bajo OMS-SP7 (Sección~\ref{sec:delimitacion_temporal_modelado}), no exclusivamente como deterioro operativo.
     
     \begin{figure}[!htbp]
         \centering
@@ -1463,7 +1493,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:barras_anio_nivel_segmentacion}
     \end{figure}
     
-    \paragraph{Régimen climático semanal.} Semanas con precipitación en o por encima del percentil 75 ($25$~\% de las filas; $9{.}030$ observaciones) presentan media de \texttt{n\_eventos} de $2{,}01$, frente a $0{,}56$ en semanas secas ($75$~\%; $27{.}090$ filas), con $61{,}8$~\% vs.\ $28{,}7$~\% de semanas con al menos un evento. La prueba de Wilcoxon confirma diferencia significativa ($p < 0{.}001$; Figura~\ref{fig:boxplot_regimen_segmentacion}), coherente con la señal de precipitación de las Secciones~\ref{sec:analisis_correlacion_asociacion} y~\ref{sec:evaluacion_multivariada}.
+    \paragraph{Régimen climático semanal.} Semanas con precipitación en o por encima del percentil 75 ($25$~\% de las filas; $9{.}030$ observaciones) presentan media de \texttt{n\_eventos} de $2{.}01$, frente a $0{.}56$ en semanas secas ($75$~\%; $27{.}090$ filas), con $61{.}8$~\% vs.\ $28{.}7$~\% de semanas con al menos un evento. La prueba de Wilcoxon confirma diferencia significativa ($p < 0{.}001$; Figura~\ref{fig:boxplot_regimen_segmentacion}), coherente con la señal de precipitación de las Secciones~\ref{sec:analisis_correlacion_asociacion} y~\ref{sec:evaluacion_multivariada}.
     
     \begin{figure}[!htbp]
         \centering
@@ -1488,7 +1518,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cluster_segmentacion}
     \end{figure}
     
-    \noindent En síntesis, la segmentación exploratoria sobre $D_{\mathrm{mod}}$ evidencia: (i)~heterogeneidad territorial persistente (14{,}2~\% de cuadrantes en nivel alta concentran actividad desproporcionada); (ii)~incremento homogéneo 2024$\rightarrow$2025 en todos los estratos; (iii)~mayor frecuencia de interrupciones en semanas lluviosas; y (iv)~cuatro perfiles espaciales distinguibles por clustering. Estos criterios orientan la estratificación territorial y la partición entrenamiento/prueba de la Etapa~4.
+    \noindent En síntesis, la segmentación exploratoria sobre $D_{\mathrm{mod}}$ evidencia: (i)~heterogeneidad territorial persistente (14{.}2~\% de cuadrantes en nivel alta concentran actividad desproporcionada); (ii)~incremento homogéneo 2024$\rightarrow$2025 en todos los estratos; (iii)~mayor frecuencia de interrupciones en semanas lluviosas; y (iv)~cuatro perfiles espaciales distinguibles por clustering. Estos criterios orientan la estratificación territorial y la partición entrenamiento/prueba de la Etapa~4.
     
 \subsection{Resultados y entregables de la etapa}
 \label{sec:resultados_eda}
@@ -1525,7 +1555,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \subsection{Generación de ventanas temporales}
 
 \subsection{Partición de datos en entrenamiento y prueba}
-    Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante~$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{,}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{,}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio.
+    Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante~$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{.}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{.}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio.
 
 \subsection{Construcción de matrices de diseño}
 
