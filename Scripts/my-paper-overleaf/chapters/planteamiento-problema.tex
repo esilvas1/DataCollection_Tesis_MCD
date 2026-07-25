@@ -10,17 +10,10 @@ Aunque el título y el marco regulatorio del proyecto se refieren a SAIDI y SAIF
 Los principales obstáculos identificados son los siguientes:
 
 \begin{itemize}
-    \item \textbf{Fragmentación de las fuentes de información}: La operación del sistema requiere el uso de múltiples registros provenientes de plataformas heterogéneas como SCADA, OMS, GIS, CIS, bases de mantenimiento y fuentes meteorológicas externas. Estos datos se encuentran en distintos formatos, con estructuras disímiles y, en algunos casos, con ausencia de metadatos completos, lo que dificulta su integración sin pérdida de trazabilidad \cite{ref5,ref6}.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % Estas siglas se deben explicar la 1era vez que las mencioanen. por lo menos en un
-    % pie de página.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    \item \textbf{Fragmentación de las fuentes de información}: La operación del sistema requiere el uso de múltiples registros provenientes de plataformas heterogéneas como SCADA, OMS, GIS, CIS,\footnote{SCADA (\textit{Supervisory Control and Data Acquisition}): sistema de supervisión y adquisición de datos de la operación de la red. OMS (\textit{Outage Management System}): sistema de gestión de interrupciones. GIS (\textit{Geographic Information System}): sistema de información geográfica de activos. CIS (\textit{Customer Information System}): sistema de información de clientes.} bases de mantenimiento y fuentes meteorológicas externas. Estos datos se encuentran en distintos formatos, con estructuras disímiles y, en algunos casos, con ausencia de metadatos completos, lo que dificulta su integración sin pérdida de trazabilidad \cite{ref5,ref6}.
 
     \item \textbf{Problemas de sincronización temporal}: Los sistemas operativos no presentan una alineación temporal uniforme. Mientras algunos registran información en intervalos horarios, otros lo hacen en escalas de minutos o presentan series discontinuas. Esta falta de sincronización genera inconsistencias que afectan la estimación precisa de la duración de las interrupciones y de los tiempos de reposición del servicio \cite{ref5,ref7}.
-    \item \textbf{Eventos extremos y ruido en los datos}: Los registros contienen alta variabilidad, errores de captura, información incompleta y eventos atípicos, como fenómenos climáticos extremos o fallas excepcionales, que suelen ser excluidos del análisis. Esta situación dificulta la identificación de patrones robustos tanto a nivel agregado como local \cite{ref1,ref8}.
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    % ¿Los registros de qué?
-    %-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    \item \textbf{Eventos extremos y ruido en los datos}: Los registros operativos de interrupciones eléctricas ---provenientes de las plataformas mencionadas--- contienen alta variabilidad, errores de captura, información incompleta y eventos atípicos, como fenómenos climáticos extremos o fallas excepcionales, que suelen ser excluidos del análisis. Esta situación dificulta la identificación de patrones robustos tanto a nivel agregado como local \cite{ref1,ref8}.
 
     
     \item \textbf{Pérdida de detalle por agregación}: El uso de indicadores promediados en escalas anuales o geográficas amplias oculta el comportamiento específico de circuitos o zonas particulares, lo que limita la identificación de causas operativamente accionables \cite{ref4,ref7}.
