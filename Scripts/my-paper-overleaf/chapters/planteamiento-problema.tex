@@ -3,11 +3,9 @@
 \section{Planteamiento del problema}
 
 
-%-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-% En esta parte hablan de “pronóstico de los indicadores SAIDI y SAIFI en una empresa de distribución de energía que opera en el departamento de Norte de Santander” y esto “pronosticar la frecuencia y el tiempo de duración de interrupciones eléctricas”  como lo mismo.
-% Si es asi, hay que indicarlo claramente poruqe no es obvio. Un párrafo que indique que se usa indistintamente para lo mismo y en qué escaneraios sería suficiente.
-%XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 Los indicadores de continuidad del servicio SAIDI (Índice de Duración Promedio de Interrupción del Sistema) y SAIFI (Índice de Frecuencia Promedio de Interrupción del Sistema) en la empresa de distribución objeto de estudio presentan dificultades estructurales para su mejora sostenida. Si bien existen técnicas estadísticas y de aprendizaje automático ampliamente documentadas para el análisis de interrupciones en sistemas eléctricos, la principal limitación no radica en la ausencia de metodologías analíticas, sino en la calidad, estructura e interpretación de los datos disponibles, lo que dificulta el entrenamiento de modelos predictivos que sean simultáneamente confiables y explicativos \cite{ref1,ref4,ref3}. En particular, resulta complejo detectar, cuantificar y explicar no solo las causas de las interrupciones, sino también su duración y los tiempos de restauración del servicio.
+
+Aunque el título y el marco regulatorio del proyecto se refieren a SAIDI y SAIFI, en este trabajo no se predicen dichos indicadores en su forma regulatoria estricta. Lo que se modela es la frecuencia y la duración de las interrupciones eléctricas a escala de circuito o zona ---variables proxy asociadas a SAIFI y SAIDI, respectivamente---, coherente con la formulación del problema, los objetivos y la metodología. Este enfoque es suficiente para anticipar el comportamiento de la continuidad del servicio, priorizar mantenimiento y apoyar decisiones operativas; la estimación formal de SAIDI y SAIFI según las fórmulas de la CREG, con ponderación por usuarios afectados, queda fuera del alcance predictivo de este estudio.
 
 Los principales obstáculos identificados son los siguientes:
 
