@@ -281,53 +281,40 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     \small
     \caption{Resumen metodológico de extracción e integración de bases de datos}
     \label{tab:data_lineage}
-    \begin{tabular}{p{3.5cm} p{3cm} p{3cm} p{3cm}}
-    \hline
-    \textbf{Fuente} & \textbf{Variables principales} & \textbf{Proceso aplicado} & \textbf{Resultado} \\
-    \hline
-    
-    BRAE (QA\_TFDDREGISTRO) 
-    & Id evento, fecha desconexión, fecha conexión 
-    & Filtrado temporal (2021–2025), exclusión de registros no válidos, eliminación de duplicados 
-    & 95.280 eventos de interrupción \\
-    
-    \hdashline
-    
-    BRAE + QA\_TTC1 
-    & Cantidad usuarios, elementos de conexión 
-    & JOIN por elemento y periodo, agregación por evento 
-    & Base de severidad por evento (usuarios) \\
-    
-    \hdashline
-    
-    OMS SPARD (histórico) 
-    & Código maniobra, elemento fallado, elemento causante 
-    & Filtrado de registros desde 2021, exclusión de pruebas 
-    & Base histórica de causa de falla \\
-    
-    \hdashline
-    
-    OMS SP7 (actual) 
-    & Maniobra apertura, tipo elemento, cantidad elementos fallados, elemento falla 
-    & Lectura CSV, limpieza de columnas, eliminación de duplicados 
-    & Base actualizada de elementos causantes \\
-    
-    \hdashline
-    
-    GIS (GTECH) 
-    & Elemento, latitud, longitud, altitud, tipo 
-    & Extracción desde sistema georreferenciado corporativo 
-    & Inventario espacial de la red \\
-    
-    \hdashline
-    
-    NASA POWER 
-    & PRECTOT, T2M, T2M\_MAX, T2M\_MIN, RH2M, WS2M 
-    & Extracción diaria (2021–2025) por variables climáticas 
-    & 83.5 millones de registros meteorológicos \\
-    
-    \hline
-    \end{tabular}
+    \begin{tblr}{
+      width=\textwidth,
+      colspec={X[l,h] X[l,h] X[l,h] X[l,h]},
+      row{1}={font=\bfseries},
+      hline{1,2,Z}={solid,0.4pt},
+      hline{3-Y}={dotted,0.4pt},
+      rowsep=4pt
+    }
+    Fuente & Variables principales & Proceso aplicado & Resultado \\
+    BRAE (QA\_TFDDREGISTRO)
+      & Id evento, fecha desconexión, fecha conexión
+      & Filtrado temporal (2021–2025), exclusión de registros no válidos, eliminación de duplicados
+      & 95.280 eventos de interrupción \\
+    BRAE + QA\_TTC1
+      & Cantidad usuarios, elementos de conexión
+      & JOIN por elemento y periodo, agregación por evento
+      & Base de severidad por evento (usuarios) \\
+    OMS SPARD (histórico)
+      & Código maniobra, elemento fallado, elemento causante
+      & Filtrado de registros desde 2021, exclusión de pruebas
+      & Base histórica de causa de falla \\
+    OMS SP7 (actual)
+      & Maniobra apertura, tipo elemento, cantidad elementos fallados, elemento falla
+      & Lectura CSV, limpieza de columnas, eliminación de duplicados
+      & Base actualizada de elementos causantes \\
+    GIS (GTECH)
+      & Elemento, latitud, longitud, altitud, tipo
+      & Extracción desde sistema georreferenciado corporativo
+      & Inventario espacial de la red \\
+    NASA POWER
+      & PRECTOT, T2M, T2M\_MAX, T2M\_MIN, RH2M, WS2M
+      & Extracción diaria (2021–2025) por variables climáticas
+      & 83.5 millones de registros meteorológicos \\
+    \end{tblr}
     \end{table}
     
     Lógica de in La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integración desarrollado en la Etapa~1. En conjunto, se consolidaron seis fuentes complementarias: BRAE como base transaccional de eventos de interrupción; BRAE + QA\_TTC1 para cuantificar la severidad operativa (usuarios afectados); OMS SPARD y OMS SP7 para identificar el elemento causante y fallado en los periodos pre y post migración del sistema; GIS (GTECH) para incorporar la georreferenciación de activos de red; y NASA POWER para enriquecer el análisis con variables climáticas diarias. Cada fuente fue sometida a reglas explícitas de filtrado, homologación y depuración, lo que permitió obtener bases consistentes y trazables que constituyen el insumo inicial para la integración del panel descrita en la Etapa~2.
