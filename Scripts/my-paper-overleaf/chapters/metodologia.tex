@@ -53,7 +53,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Posteriormente, se aplicaron criterios de depuración y filtrado. En primer lugar, se restringió la muestra al periodo comprendido entre los años 2021 y 2025, garantizando consistencia temporal del análisis. En segundo lugar, se excluyeron aquellos registros marcados como no relevantes mediante la variable \texttt{FDD\_EXCLUSION}, conservando únicamente los eventos clasificados como \texttt{NO EXCLUIDA}. En tercer lugar, se eliminaron eventos asociados a causas no válidas según la regulación (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}), así como aquellos registros sin fecha de finalización (\texttt{FDD\_FFINAL IS NOT NULL}), los cuales no permiten calcular la duración del evento.
     
-    Finalmente, se utilizó la instrucción \texttt{DISTINCT} para garantizar la eliminación de duplicados en el identificador de evento, obteniéndose una base depurada y consistente a nivel de evento de interrupción. Como resultado de este proceso de extracción y limpieza, se obtuvo un total de 95{.}280 registros válidos de eventos de desconexión para el periodo de análisis. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_brae} (Apéndice~\ref{app:codigo}).
+    Finalmente, se utilizó la instrucción \texttt{DISTINCT} para garantizar la eliminación de duplicados en el identificador de evento, obteniéndose una base depurada y consistente a nivel de evento de interrupción. Como resultado de este proceso de extracción y limpieza, se obtuvo un total de 95{.}280 registros válidos de eventos de desconexión para el periodo de análisis. La Tabla~\ref{tab:muestra_eventos_brae} presenta una muestra de la estructura resultante. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_brae} (Apéndice~\ref{app:codigo}).
 
     
     \begin{table}[!htpb]
@@ -89,7 +89,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Posteriormente, se aplicaron los mismos criterios de depuración utilizados en la etapa anterior, restringiendo el análisis al periodo 2021–2025, excluyendo eventos marcados como no relevantes (\texttt{FDD\_EXCLUSION = 'NO EXCLUIDA'}), eliminando causas no válidas según la clasificación regulatoria (\texttt{FDD\_CAUSA\_SSPD NOT IN (1)}) y conservando únicamente registros con fecha de finalización válida (\texttt{FDD\_FFINAL IS NOT NULL}).
     
-    Finalmente, los datos se agregaron a nivel de evento (\texttt{FDD\_CODIGOEVENTO}) utilizando la función \texttt{GROUP BY}, obteniendo como resultado dos indicadores clave: el número de elementos fallados por evento y el total de usuarios afectados. El procedimiento permitió consolidar una base consistente de 95{.}280 registros, alineada con la estructura del conjunto de eventos previamente depurado. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_afectacion} (Apéndice~\ref{app:codigo}).
+    Finalmente, los datos se agregaron a nivel de evento (\texttt{FDD\_CODIGOEVENTO}) utilizando la función \texttt{GROUP BY}, obteniendo como resultado dos indicadores clave: el número de elementos fallados por evento y el total de usuarios afectados. El procedimiento permitió consolidar una base consistente de 95{.}280 registros, alineada con la estructura del conjunto de eventos previamente depurado. La Tabla~\ref{tab:muestra_afectacion_evento} ilustra una muestra de esta agregación. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_afectacion} (Apéndice~\ref{app:codigo}).
     
     \begin{table}[!htbp]
     \centering
@@ -124,7 +124,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Adicionalmente, se aplicaron criterios de filtrado temporal y de calidad de datos. En primer lugar, se restringió la información a registros con fecha igual o posterior al año 2021, garantizando la consistencia histórica del análisis. En segundo lugar, se excluyeron aquellos eventos clasificados como pruebas operativas mediante la condición \texttt{CAUSA != 'PRUEBA'}, con el fin de conservar únicamente eventos reales de operación del sistema.
     
-    Como resultado de este proceso de extracción y depuración, se obtuvo una base de datos estructurada a nivel de maniobra, la cual permite complementar la trazabilidad entre eventos de interrupción y los elementos físicos de la red asociados a su ocurrencia. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_oms_historico} (Apéndice~\ref{app:codigo}).
+    Como resultado de este proceso de extracción y depuración, se obtuvo una base de datos estructurada a nivel de maniobra, la cual permite complementar la trazabilidad entre eventos de interrupción y los elementos físicos de la red asociados a su ocurrencia. La Tabla~\ref{tab:muestra_elemento_causante_historico} muestra un extracto de esta relación maniobra--elemento. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_oms_historico} (Apéndice~\ref{app:codigo}).
     
     \begin{table}[!htpb]
     \centering
@@ -155,7 +155,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     A continuación, se seleccionaron únicamente las variables relevantes para el análisis: \texttt{Maniobra Apertura}, \texttt{Tipo Elemento} y \texttt{Elemento\_Falla}. Esta selección permitió homogenizar la estructura de la base con la información histórica previamente construida. Finalmente, se eliminaron los registros duplicados mediante la función \texttt{drop\_duplicates}, garantizando la unicidad de las observaciones a nivel de combinación de variables relevantes.
     
-    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final. El fragmento Python correspondiente se presenta en el Listado~\ref{lst:py_oms_sp7} (Apéndice~\ref{app:codigo}).
+    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final. La Tabla~\ref{tab:muestra_elemento_causante_actual} presenta una muestra de los registros resultantes. El fragmento Python correspondiente se presenta en el Listado~\ref{lst:py_oms_sp7} (Apéndice~\ref{app:codigo}).
 
     \begin{table}[!htbp]
     \centering
@@ -191,7 +191,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformador}, con el fin de estandarizar la clasificación dentro del conjunto de datos integrado. Esta homogenización resulta clave para la posterior vinculación con los eventos de interrupción y la construcción del panel activo–día.
     
-    Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_gis} (Apéndice~\ref{app:codigo}); la consulta se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
+    Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado. La Tabla~\ref{tab:muestra_inventario_gis} ilustra la estructura de este inventario. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_gis} (Apéndice~\ref{app:codigo}); la consulta se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
     
     \begin{table}[!htbp]
     \centering
@@ -238,7 +238,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
 \subsection{Extracción de variables meteorológicas}
     Con el objetivo de incorporar condiciones climáticas como variables explicativas en el análisis de interrupciones del sistema eléctrico, se realizó la extracción de información meteorológica a partir de la plataforma NASA POWER~\textcite{ref48}. Esta fuente proporciona series temporales diarias de variables climáticas relevantes, las cuales permiten capturar la influencia del entorno atmosférico sobre la ocurrencia y duración de eventos en la red.
     
-    El proceso de extracción se centró en un conjunto de variables meteorológicas seleccionadas por su relevancia en el análisis de confiabilidad del sistema eléctrico. En particular, se consideraron las variables de precipitación total (\texttt{PRECTOT}), temperatura media (\texttt{T2M}), temperatura máxima (\texttt{T2M\_MAX}), temperatura mínima (\texttt{T2M\_MIN}), humedad relativa (\texttt{RH2M}) y velocidad del viento (\texttt{WS2M}). La definición de estos parámetros en el código de extracción se presenta en el Listado~\ref{lst:py_nasa} (Apéndice~\ref{app:codigo}).
+    El proceso de extracción se centró en un conjunto de variables meteorológicas seleccionadas por su relevancia en el análisis de confiabilidad del sistema eléctrico. En particular, se consideraron las variables de precipitación total (\texttt{PRECTOT}), temperatura media (\texttt{T2M}), temperatura máxima (\texttt{T2M\_MAX}), temperatura mínima (\texttt{T2M\_MIN}), humedad relativa (\texttt{RH2M}) y velocidad del viento (\texttt{WS2M}). La Tabla~\ref{tab:muestra_nasa_power_1} presenta una muestra de estas series. La definición de estos parámetros en el código de extracción se presenta en el Listado~\ref{lst:py_nasa} (Apéndice~\ref{app:codigo}).
 
     \begin{table}[!htbp]
     \centering
@@ -409,7 +409,7 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     
 \subsection{Diagrama de flujo de la secuencia de integración}
-    Este diagrama de flujo resume visualmente la secuencia de integración y la estructura del panel final, como guía para el lector, especificando las relaciones entre las tablas y las operaciones aplicadas en cada paso.
+    La Figura~\ref{fig:panel_activo_dia} resume visualmente la secuencia de integración y la estructura del panel final, como guía para el lector, especificando las relaciones entre las tablas y las operaciones aplicadas en cada paso.
     
     \begin{figure}[!htbp]
         \centering
@@ -784,7 +784,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~5.2.1.6. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{.}401{.}838$ valores faltantes cada una, equivalente al $3{.}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{.}868$ faltantes ($0{.}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel---identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION}, \texttt{FRECUENCIA})---no presentan \texttt{NA}, dado que los pasos~5.2.1.5 y~5.2.1.7 asignan $0$ en días sin evento.
     
-    A nivel de fila, $83{.}576{.}020$ observaciones ($96{.}06$~\%) están completas; $3{.}431{.}054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} resume el porcentaje de faltantes por variable, ordenado de mayor a menor.
+    A nivel de fila, $83{.}576{.}020$ observaciones ($96{.}06$~\%) están completas; $3{.}431{.}054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} y la Tabla~\ref{tab:resumen_datos_faltantes} resumen el porcentaje de faltantes por variable, ordenado de mayor a menor.
     
     \begin{figure}[!htbp]
         \centering
@@ -1029,7 +1029,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:densidad_clima_agrupada}
     \end{figure}
     
-    \paragraph{Variables de severidad y continuidad.} Las cuatro variables operativas están dominadas por ceros: la mediana de \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{n\_eventos} y \texttt{duracion\_total} es $0$ en el $74{.}9$~\% de las semanas-cuadrante sin eventos registrados (Tabla~\ref{tab:frecuencias_actividad_agrupada}). Cuando ocurre al menos un evento, las distribuciones son fuertemente leptocúrticas y con cola derecha pesada: \texttt{usuarios\_afectados} alcanza un máximo de $69{.}928$ usuarios (media $156{.}1$; CV $= 7{.}81$); \texttt{duracion\_total} un máximo de $2{.}227$~horas acumuladas en la semana (media $13{.}7$~h; CV $= 3{.}67$). La Tabla~\ref{tab:desc_evento_agrupada} resume las medidas principales; la Figura~\ref{fig:densidad_evento_agrupada} presenta las densidades en escala $\log(1+x)$ para semanas con evento.
+    \paragraph{Variables de severidad y continuidad.} Las cuatro variables operativas están dominadas por ceros: la mediana de \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{n\_eventos} y \texttt{duracion\_total} es $0$ en el $74{.}9$~\% de las semanas-cuadrante sin eventos registrados (Tabla~\ref{tab:frecuencias_actividad_agrupada}; Figuras~\ref{fig:barras_actividad_agrupada} y~\ref{fig:pastel_actividad_agrupada}). Cuando ocurre al menos un evento, las distribuciones son fuertemente leptocúrticas y con cola derecha pesada: \texttt{usuarios\_afectados} alcanza un máximo de $69{.}928$ usuarios (media $156{.}1$; CV $= 7{.}81$); \texttt{duracion\_total} un máximo de $2{.}227$~horas acumuladas en la semana (media $13{.}7$~h; CV $= 3{.}67$). La Tabla~\ref{tab:desc_evento_agrupada} resume las medidas principales; la Figura~\ref{fig:densidad_evento_agrupada} presenta las densidades en escala $\log(1+x)$ para semanas con evento.
     
     \begin{table}[!htbp]
     \centering
