@@ -113,6 +113,7 @@
      \end{enumerate}
 
 \subsection{Métodos y modelos}
+\label{sec:metodos-modelos}
 
 En este trabajo, la unidad de análisis del modelado es el par \textbf{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). La \textbf{variable respuesta} principal es $Y = \texttt{n\_eventos}$ (proxy de frecuencia de interrupciones, asociada conceptualmente a SAIFI) y, de forma complementaria, $Y' = \texttt{duracion\_total}$ (proxy de duración acumulada, asociada a SAIDI). El vector de \textbf{predictoras climáticas} propuesto es
 \begin{equation}
@@ -138,14 +139,18 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \[
     x \notin \bigl[Q_1 - k\cdot\mathrm{IQR},\; Q_3 + k\cdot\mathrm{IQR}\bigr]
     \]
-    (p.\,ej.\ $k=1{.}5$ o $k=3$), complementados con percentiles altos (P95, P99) sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
+    con factor $k=1{.}5$ (regla de Tukey) y, de forma complementaria, $k=3{.}0$ (extremos más severos). Estas reglas se contrastan con el criterio de percentiles P1--P99 sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
 
     \item \textbf{Transformaciones de variables:}
     Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de \textcite{ref51},
     \[
     T(x)=\log(1+x),\qquad x\geq 0,
     \]
-    aplicada en particular a \texttt{precip\_total\_semana} y al bloque operativo (\texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) cuando se requieren densidades o PCA más estables.
+    aplicada en particular a \texttt{precip\_total\_semana} y al bloque operativo (\texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) cuando se requieren densidades o PCA más estables. Para homogenizar variables con distintas unidades (p.\,ej.\ antes del PCA o del clustering), se emplea la estandarización por $z$-scores,
+    \[
+    z=\frac{x-\bar{x}}{s},
+    \]
+    que sitúa cada variable en media~$0$ y desviación típica~$1$.
 
     \item \textbf{Series de tiempo y sus características:}
     Sea $E_t$ el total semanal territorial de eventos. La función de autocorrelación (ACF) en el rezago $h$ es
@@ -160,7 +165,7 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \rho_S(X,Y)=1-\frac{6\sum_{i=1}^{n}d_i^{2}}{n(n^{2}-1)},
     \]
     donde $d_i$ es la diferencia de rangos. El par de mayor interés es
-    $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, con $\rho_S\approx 0{.}41$ en $D_{\mathrm{mod}}$.
+    $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, con $\rho_S\approx 0{.}41$ en $D_{\mathrm{mod}}$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\textcite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
 
     \item \textbf{Datos de entrenamiento y prueba:}
     La partición es temporal (no aleatoria):
