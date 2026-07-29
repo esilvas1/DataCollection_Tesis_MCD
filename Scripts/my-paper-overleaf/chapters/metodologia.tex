@@ -1,8 +1,8 @@
 
-Nuestra metodología está organizada por etapas que se alinean con los objetivos específicos del proyecto. El enfoque general consiste en integrar datos, limpiarlos, analizarlos y construir modelos para predecir los indicadores $SAIDI$ y $SAIFI$ de la empresa de distribución eléctrica en Norte de Santander.
+Nuestra metodología está organizada por etapas alineadas con los objetivos específicos del proyecto (Capítulo~\ref{sec:objetivos}). El enfoque general consiste en integrar datos, limpiarlos, analizarlos y construir modelos para predecir los indicadores $SAIDI$ y $SAIFI$ de la empresa de distribución eléctrica en Norte de Santander. La correspondencia entre etapas y objetivos se resume al final de este capítulo en la Tabla~\ref{tab:etapas_objetivos}.
 
 
-Se decidió utilizar CRISP-DM (Cross-Industry Standard Process for Data Mining) como marco de referencia por ser un estándar reconocido en la industria para proyectos de ciencia de datos~\textcite{ref45}, el cual fue adaptado al contexto específico del sector eléctrico regulado. Las fases de CRISP-DM se implementaron de la siguiente manera: el entendimiento del negocio (Business Understanding) se desarrolla en las Secciones\ref{sec:metodología-etapa1} a \ref{sec:metodología-etapa4}, donde se describen el problema, los objetivos y la justificación. Las fases de entendimiento y preparación de datos (Data Understanding y Data Preparation) corresponden a las Etapas  1 a 4, en Secciones \ref{sec:metodología-etapa1}, \ref{sec:metodología-etapa2}, \ref{sec:metodología-etapa3} y \ref{sec:metodología-etapa4}, en las que se integran, depuran, exploran los datos y se construyen las variables analíticas. La fase de modelado y evaluación (Modeling y Evaluation) se desarrolla en la Etapa5, en la Sección \ref{sec:metodología-etapa5}, donde se construyen y validan los modelos predictivos. Finalmente, el despliegue (Deployment) corresponde a la Etapa 6 en la Sección \ref{sec:metodología-etapa6}, en la cual se consolidan los resultados, se documenta el proceso y se entrega código reproducible.
+Se decidió utilizar CRISP-DM (Cross-Industry Standard Process for Data Mining) como marco de referencia por ser un estándar reconocido en la industria para proyectos de ciencia de datos~\textcite{ref45}, el cual fue adaptado al contexto específico del sector eléctrico regulado. Las fases de CRISP-DM se implementaron de la siguiente manera: el entendimiento del negocio (Business Understanding) se desarrolla en las Secciones~\ref{sec:metodología-etapa1} a~\ref{sec:metodología-etapa4}. Las fases de entendimiento y preparación de datos (Data Understanding y Data Preparation) corresponden a las Etapas~1 a~4, en Secciones~\ref{sec:metodología-etapa1}, \ref{sec:metodología-etapa2}, \ref{sec:metodología-etapa3} y~\ref{sec:metodología-etapa4}, en las que se integran, depuran y exploran los datos y se construyen las variables analíticas. La fase de modelado y evaluación (Modeling y Evaluation) se desarrolla en la Etapa~5, en la Sección~\ref{sec:metodología-etapa5}, donde se construyen y validan los modelos predictivos. Finalmente, el despliegue (Deployment) corresponde a la Etapa~6 en la Sección~\ref{sec:metodología-etapa6}, en la cual se consolidan los resultados, se documenta el proceso y se entrega código reproducible.
 
 Esta adaptación de CRISP-DM considera los requisitos específicos del regulador (CREG, SSPD), las métricas propias del sector eléctrico ($SAIDI$, $SAIFI$) y la necesidad de que los modelos sean interpretables para su uso en la toma de decisiones.
 
@@ -12,11 +12,7 @@ Esta adaptación de CRISP-DM considera los requisitos específicos del regulador
 \section{Etapa 1 – Extracción de datos}
 \label{sec:metodología-etapa1}
 
-\textbf{Objetivo específico asociado: OE1}
-
 Esta etapa comprende la recolección, integración y estandarización de las fuentes de datos internas (SCADA, OMS, GIS, CIS, registros de fallas y mantenimiento) y externas (NASA, CREG, SSPD). Incluye la creación de un repositorio analítico unificado y la elaboración de un catálogo de datos que documenta metadatos, alcances, limitaciones y métricas de integridad.
-
-\textbf{Entregable:} Informe de consolidación de datos y catálogo de calidad e integridad.
 
 \subsubsection{Fuentes de informacion}
     A partir del año $2023$, la Electrificadora de Norte de Santander realizó una migración de su sistema de gestión de interrupciones. Como resultado, la recopilación de información de interrupciones eléctricas se llevó a cabo a partir de dos bases de datos provenientes de sistemas distintos:
@@ -537,8 +533,6 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
     
     
     
-    \textbf{Objetivo específico asociado: OE1}
-    
     Una vez construido el panel consolidado (pasos de integración~\ref{paso:int-4}--\ref{paso:int-8}), se deriva la tabla agregada por cuadrante y semana (Sección~\ref{sec:agrupacion_cuadrante_semana}). La Etapa~2 cierra con la evidencia institucional de calidad de las fuentes (Sección~\ref{sec:evidencia_calidad_fuentes}). El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
     
     \subsection{Agrupación de data consolidada por semana y cuadrante}
@@ -752,10 +746,6 @@ Esta etapa comprende la recolección, integración y estandarización de las fue
 
 \section{Etapa 3 – Análisis descriptivo y exploratorio de datos (EDA)}
 \label{sec:metodología-etapa3}
-
-\textbf{Objetivo específico asociado: OE2}
-
-\textbf{Objetivo:} comprender el comportamiento de los datos e identificar patrones, relaciones y comportamientos relevantes que orienten las decisiones de modelado.
 
 Una vez completadas las etapas de extracción e integración (Etapas~1 y~2), se desarrolla un análisis exploratorio orientado a caracterizar las distribuciones de las variables, diagnosticar la calidad del panel (valores faltantes y extremos), identificar patrones temporales y espaciales, y evaluar las relaciones entre covariables que podrían explicar la variación de $SAIDI$ y $SAIFI$. Esta etapa se concibe como un análisis diagnóstico previo al modelamiento, orientado a garantizar la estabilidad e interpretabilidad de los resultados y a fundamentar las decisiones de imputación y transformación de la Etapa~4.
 
@@ -1519,10 +1509,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \section{Etapa 4 – Ingeniería de variables y preparación del modelo}
 \label{sec:metodología-etapa4}
 
-\textbf{Objetivo específico asociado: OE2}
-
-\textbf{Objetivo:} construir las variables analíticas necesarias para el entrenamiento de modelos predictivos, asegurando un dataset consistente, balanceado y estadísticamente apto para la modelación.
-
 A partir de los hallazgos del EDA, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. Esto incluye la definición formal de la variable respuesta, la construcción de variables predictoras informadas por el comportamiento observado, la depuración y codificación de covariables, la estandarización de variables continuas y la definición de las particiones temporales de entrenamiento y prueba. El preprocesamiento orientado al modelado ---incluida la selección de variables con base en los análisis de asociación del EDA--- se concentra en esta etapa, en coherencia con criterios de estabilidad numérica, identificabilidad del modelo y validez de supuestos.
 
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
@@ -1567,11 +1553,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \section{Etapa 5 – Modelado predictivo y evaluativo}
 \label{sec:metodología-etapa5}
 
-\textbf{Objetivo específico asociado: OE2 y OE3}
-
-\textbf{Objetivo:} entrenar, validar y evaluar modelos predictivos utilizando métricas de desempeño que permitan estimar $SAIDI$ y $SAIFI$ por circuito o área.
-
-En esta etapa se desarrollan y evalúan diversos modelos estadísticos y de aprendizaje automático. La selección del enfoque (supervisado, no supervisado o híbrido) se determina según los hallazgos del análisis exploratorio, la naturaleza de los datos disponibles y los requerimientos de interpretabilidad. La evaluación comparativa considera métricas de error como $RMSE$, $MAE$ y $MAPE$, así como la estabilidad del modelo y la validez de supuestos. Adicionalmente, se realiza un análisis de importancia de variables mediante técnicas interpretables, con el objetivo de identificar los factores operativos, técnicos o climáticos que influyen de manera significativa en la calidad del servicio.
+En esta etapa se desarrollan y evalúan diversos modelos estadísticos y de aprendizaje automático. La selección del enfoque (supervisado, no supervisado o híbrido) se determina según los hallazgos del análisis exploratorio, la naturaleza de los datos disponibles y los requerimientos de interpretabilidad. La evaluación comparativa considera métricas de error como $RMSE$, $MAE$ y $MAPE$, así como la estabilidad del modelo y la validez de supuestos. Adicionalmente, se realiza un análisis de importancia de variables mediante técnicas interpretables, para identificar los factores operativos, técnicos o climáticos que influyen de manera significativa en la calidad del servicio.
 
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
@@ -1593,17 +1575,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 
 \textbf{Resultado:} modelo predictivo validado y evaluado técnicamente.
 
-\textbf{Entregables:} Informe de evaluación comparativa de modelos predictivos (OE3) y reporte técnico de importancia de variables (OE2).
+\textbf{Entregables:} Informe de evaluación comparativa de modelos predictivos y reporte técnico de importancia de variables.
 
 
 
 
 \section{Etapa 6 – Cierre metodológico, documentación y reportes}
 \label{sec:metodología-etapa6}
-
-\textbf{Objetivo específico asociado: OE1–OE2–OE3}
-
-\textbf{Objetivo:} presentar los resultados obtenidos y documentar el proceso metodológico desarrollado, asegurando la reproducibilidad y la trazabilidad de los hallazgos.
 
 En la etapa final se consolidan los resultados del proyecto y se documentan de forma integral las técnicas aplicadas, las transformaciones realizadas y el código reproducible (en R o Python). El capítulo incluye apéndices técnicos, tablas de validación, bibliografía y lineamientos de reproducibilidad, así como una discusión orientada a interpretar los hallazgos en términos técnicos y operativos para la toma de decisiones del operador de red.
 
@@ -1628,6 +1606,53 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \textbf{Resultado:} documentación final del proyecto y resultados consolidados.
 
 \textbf{Entregables:} Compendio de documentación del proyecto (informe final, informe descriptivo, informe de evaluación de modelos y reporte técnico de variables relevantes), código reproducible y documentación detallada de procesos y transformaciones.
-   
 
-    
+
+\section{Relación entre etapas metodológicas y objetivos específicos}
+\label{sec:etapas_objetivos}
+
+La Tabla~\ref{tab:etapas_objetivos} sintetiza cómo cada etapa de la metodología contribuye a los objetivos específicos formulados en el Capítulo~\ref{sec:objetivos}. Los objetivos no se reformulan aquí: se indica únicamente su correspondencia con las etapas, de modo que la trazabilidad entre el diseño metodológico y el alcance del proyecto quede explícita.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Correspondencia entre etapas de la metodología y objetivos específicos}
+\label{tab:etapas_objetivos}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm} >{\centering\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{7.6cm}@{}}
+\toprule
+\textbf{Etapa} & \textbf{Objetivo(s)} & \textbf{Aporte metodológico} \\
+\midrule
+Etapa~1 -- Extracción de datos
+  (Sección~\ref{sec:metodología-etapa1})
+  & OE1
+  & Recolección e integración de fuentes internas y externas; repositorio analítico unificado y catálogo de calidad. \\
+\addlinespace
+Etapa~2 -- Integración y depuración
+  (Sección~\ref{sec:metodología-etapa2})
+  & OE1
+  & Construcción del panel activo~$\times$~día, agregación cuadrante~$\times$~semana y trazabilidad entre sistemas. \\
+\addlinespace
+Etapa~3 -- EDA
+  (Sección~\ref{sec:metodología-etapa3})
+  & OE2
+  & Diagnóstico de faltantes y extremos; patrones temporales, espaciales y estacionales; correlación y segmentación exploratoria. \\
+\addlinespace
+Etapa~4 -- Ingeniería de variables
+  (Sección~\ref{sec:metodología-etapa4})
+  & OE2
+  & Definición de respuesta y predictoras, depuración, transformaciones y partición temporal de entrenamiento y prueba. \\
+\addlinespace
+Etapa~5 -- Modelado predictivo
+  (Sección~\ref{sec:metodología-etapa5})
+  & OE2, OE3
+  & Entrenamiento, validación y comparación de modelos; análisis de importancia de variables. \\
+\addlinespace
+Etapa~6 -- Cierre y documentación
+  (Sección~\ref{sec:metodología-etapa6})
+  & OE4
+  & Documentación reproducible, reportes técnicos y artefactos orientados al uso operativo y regulatorio. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent En síntesis, las Etapas~1 y~2 materializan el OE1; las Etapas~3 y~4 sustentan el OE2; la Etapa~5 concentra el OE3 (con apoyo interpretativo al OE2); y la Etapa~6 cierra el ciclo con el OE4.
