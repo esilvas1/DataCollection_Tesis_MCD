@@ -186,11 +186,11 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     Cuando se ajusten hiperparámetros en $\mathcal{D}_{\mathrm{train}}$, se prioriza validación \emph{forward-chaining} (bloques temporales sucesivos) en lugar de $k$-fold aleatorio, para no romper la dependencia temporal de \texttt{n\_eventos}~\textcite{ref56}.
 
     \item \textbf{Análisis de componentes principales (PCA):}
-    Dado el bloque climático estandarizado $\mathbf{Z}$, el PCA~\textcite{ref58} resuelve
+    El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\textcite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Dado el bloque climático estandarizado $\mathbf{Z}$, se resuelve
     \[
     \mathbf{Z}^{\mathsf{T}}\mathbf{Z}\,\mathbf{v}_{\ell}=\lambda_{\ell}\mathbf{v}_{\ell},
     \]
-    y las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen redundancias (temperaturas/vientos). En el EDA, PC1--PC2 explican $\approx 81\%$ de la varianza climática; la precipitación aporta carga relativamente independiente. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
+    y las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen ejes de covarianza (temperaturas/vientos frente a precipitación). La importancia de cada variable en la componente $\ell$ se lee mediante las cargas (loadings) $v_{\ell j}$; en el EDA se interpretan como relevantes aquellas con $|v_{\ell j}|\geq 0{.}40$. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
 
     \item \textbf{Métodos de agrupación:}
     Los cuadrantes se segmentan por actividad (cuantiles de $\sum_t \texttt{n\_eventos}$) y, de forma multivariada, por clustering (p.\,ej.\ jerárquico~\textcite{ref60} o $k$-means~\textcite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.

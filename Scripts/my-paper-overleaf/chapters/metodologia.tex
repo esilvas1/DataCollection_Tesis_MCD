@@ -1340,31 +1340,26 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
     \end{table}
     
-    \paragraph{PCA exploratorio del bloque climático.} Como insumo del PCA se emplearon las siete variables climáticas semanales de $D_{\mathrm{mod}}$:  \\
+    \paragraph{PCA exploratorio del bloque climático.}
+    El PCA se aplica aquí como diagnóstico de redundancia entre covariables climáticas ---no como fuente de predictoras finales---, conforme a lo formalizado en la Sección~\ref{sec:metodos-modelos}.
     
-    \texttt{temp\_media\_semana}
-
-    \texttt{temp\_max\_semana}
+    \subparagraph{Variables de entrada.} Ingresan las siete variables climáticas semanales de $D_{\mathrm{mod}}$ ($n = 36{.}120$ filas cuadrante~$\times$~semana; $p = 7$):
+    \texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana} y \texttt{precip\_total\_semana}.
     
-    \texttt{temp\_min\_semana}
+    \subparagraph{Condiciones de aplicación.} Las siete son cuantitativas continuas; $n\gg p$; no hay faltantes en $D_{\mathrm{mod}}$; y se homogenizan mediante estandarización ($z$-scores; Sección~\ref{sec:metodos-modelos}) porque tienen distintas unidades (\textdegree C, \%, m/s, mm). El PCA se ejecuta sobre la matriz de correlaciones implícita en la estandarización (\texttt{prcomp} sobre la matriz centrada y escalada). La asociación previa entre variables (Sección~\ref{sec:analisis_correlacion_asociacion}) justifica el análisis: temperaturas y vientos están fuertemente intercorrelacionados, mientras la precipitación es relativamente independiente. Se reconoce que \texttt{precip\_total\_semana} es asimétrica; el ejercicio permanece exploratorio y se interpreta junto con VIF y el dendrograma.
     
-    \texttt{humedad\_media\_semana}
-    
-    \texttt{viento\_medio\_semana}
-    
-    \texttt{viento\_max\_semana}
-    
-    \texttt{precip\_total\_semana}. \\
-
-    
-    Todas son cuantitativas continuas, se homogenizaron mediante estandarización (Sección~\ref{sec:metodos-modelos}) y se excluyeron filas con valores faltantes, de modo que el análisis cumple las condiciones básicas de un PCA exploratorio cuando las variables tienen distintas unidades físicas. El procedimiento se ejecuta con \texttt{prcomp} sobre la matriz estandarizada (Figuras~\ref{fig:pca_scree_clima} y~\ref{fig:pca_loadings_clima}; Tabla~\ref{tab:pca_loadings_clima}).
-    
-    Las dos primeras componentes condensan el $81{.}3$~\% de la varianza (PC1: $66{.}5$~\%; PC2: $14{.}8$~\%) y PC3 aporta un $13{.}8$~\% adicional (acumulado $95{.}1$~\%). En PC1 dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_min\_semana} $0{.}44$, \texttt{temp\_max\_semana} $0{.}43$), con cargas negativas de viento y humedad (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$, \texttt{humedad\_media\_semana} $-0{.}32$), definiendo un eje térmico--viento. En PC2 la variable más importante es \texttt{precip\_total\_semana} ($0{.}77$), seguida de \texttt{humedad\_media\_semana} ($0{.}47$). En PC3 contrastan precipitación ($-0{.}62$) y humedad ($0{.}48$), con contribuciones negativas adicionales del viento. La precipitación aporta carga cercana a cero en PC1 ($-0{.}02$) y concentra su peso en PC2--PC3, coherente con su bajo VIF y su rol como predictor no redundante.
+    \subparagraph{Varianza retenida y pesos (loadings).} Las dos primeras componentes condensan el $81{.}3$~\% de la varianza (PC1: $66{.}5$~\%; PC2: $14{.}8$~\%) y PC3 aporta un $13{.}8$~\% adicional (acumulado $95{.}1$~\%; Figura~\ref{fig:pca_scree_clima}). La Tabla~\ref{tab:pca_loadings_clima} y la Figura~\ref{fig:pca_loadings_clima} reportan las cargas; se interpretan como variables relevantes en cada componente aquellas con $|loading|\geq 0{.}40$ (Sección~\ref{sec:metodos-modelos}):
+    \begin{itemize}
+        \item \textbf{PC1 (eje térmico--viento):} dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_min\_semana} $0{.}44$, \texttt{temp\_max\_semana} $0{.}43$), con cargas negativas de viento (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$). La precipitación es irrelevante en este eje ($-0{.}02$).
+        \item \textbf{PC2:} la variable más importante es \texttt{precip\_total\_semana} ($0{.}77$), seguida de \texttt{humedad\_media\_semana} ($0{.}47$).
+        \item \textbf{PC3:} contrastan precipitación ($-0{.}62$) y humedad ($0{.}48$), con contribuciones adicionales del viento ($|loading|\approx 0{.}38$--$0{.}40$).
+    \end{itemize}
+    En síntesis, las temperaturas (y, en sentido opuesto, el viento) concentran el peso en PC1, mientras la precipitación ---variable de mayor interés operativo--- concentra su importancia en PC2--PC3. Ello respalda conservar precipitación como predictora no redundante y depurar temperaturas/vientos extremos del conjunto reducido.
     
     \begin{table}[!htbp]
     \centering
     \small
-    \caption{Contribución de las variables climáticas a las primeras componentes principales ($D_{\mathrm{mod}}$; PC1--PC3)}
+    \caption{Cargas (loadings) del PCA climático: peso de cada variable por componente ($D_{\mathrm{mod}}$; PC1--PC3)}
     \label{tab:pca_loadings_clima}
     \begin{tabular}{@{}l r r r@{}}
     \toprule
@@ -1379,6 +1374,8 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \texttt{precip\_total\_semana}  & $-0.02$ &  0.77  & $-0.62$ \\
     \bottomrule
     \end{tabular}
+    
+    \noindent\textit{Nota:} se destacan como relevantes en la interpretación las cargas con valor absoluto $\geq 0{.}40$.
     \end{table}
 
     
@@ -1392,7 +1389,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \begin{figure}[!htbp]
         \centering
         \includegraphics[width=0.95\textwidth]{img/pca_loadings_clima_multivariado_mod.png}
-        \caption{Contribución de las variables climáticas a las tres primeras componentes principales.}
+        \caption{Peso (loadings) de las variables climáticas en las tres primeras componentes principales.}
         \label{fig:pca_loadings_clima}
     \end{figure}
     
@@ -1414,16 +1411,40 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:glm_coef_multivariado}
     \end{figure}
     
-    \paragraph{Dimensiones del bloque operativo.} El PCA sobre el bloque operativo en escala logarítmica desplazada (Figura~\ref{fig:pca_loadings_operativo}; Sección~\ref{sec:metodos-modelos}) concentra el $83{.}8$~\% de la varianza en PC1, con cargas elevadas y del mismo signo en \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total}. PC2 ($11{.}9$~\%) contrasta frecuencia/afectación frente a duración. Ello respalda definir \textbf{una} métrica de respuesta principal por objetivo: \texttt{n\_eventos} como proxy de \textbf{$SAIFI$} (frecuencia) y \texttt{duracion\_total} como proxy de \textbf{$SAIDI$} (continuidad), sin emplear simultáneamente las cuatro variables operativas como respuestas o predictoras.
+    \paragraph{Dimensiones del bloque operativo.}
+    De forma análoga, se aplica un PCA exploratorio al bloque operativo de $D_{\mathrm{mod}}$ para delimitar dimensiones de impacto ---no para construir predictoras.
+    
+    \subparagraph{Variables de entrada y condiciones.} Ingresan las cuatro métricas \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total} ($n = 36{.}120$; $p = 4$), tras transformación logarítmica desplazada y estandarización (Sección~\ref{sec:metodos-modelos}), dadas la cero-inflación, la asimetría y las distintas escalas. Son cuantitativas, $n\gg p$ y no presentan faltantes.
+    
+    \subparagraph{Pesos e interpretación.} PC1 concentra el $83{.}8$~\% de la varianza, con cargas elevadas y del mismo signo en las cuatro variables (Tabla~\ref{tab:pca_loadings_operativo}; Figura~\ref{fig:pca_loadings_operativo}): las más importantes son \texttt{usuarios\_afectados} ($0{.}53$) y \texttt{n\_eventos} ($0{.}52$), seguidas de \texttt{elementos\_afectados} ($0{.}50$) y \texttt{duracion\_total} ($0{.}45$). PC2 ($11{.}9$~\%; acumulado $95{.}7$~\%) contrasta duración ($0{.}81$) frente a afectación (\texttt{elementos\_afectados} $-0{.}48$; \texttt{usuarios\_afectados} $-0{.}33$). Ello respalda definir \textbf{una} métrica de respuesta principal por objetivo: \texttt{n\_eventos} como proxy de \textbf{$SAIFI$} (frecuencia) y \texttt{duracion\_total} como proxy de \textbf{$SAIDI$} (continuidad), sin emplear simultáneamente las cuatro variables operativas como respuestas o predictoras.
+    
+    \begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Cargas (loadings) del PCA operativo en escala logarítmica desplazada ($D_{\mathrm{mod}}$; PC1--PC2)}
+    \label{tab:pca_loadings_operativo}
+    \begin{tabular}{@{}l r r@{}}
+    \toprule
+    \textbf{Variable} & \textbf{PC1} & \textbf{PC2} \\
+    \midrule
+    \texttt{n\_eventos}            & 0.52 &  0.09 \\
+    \texttt{usuarios\_afectados}  & 0.53 & $-0.33$ \\
+    \texttt{elementos\_afectados} & 0.50 & $-0.48$ \\
+    \texttt{duracion\_total}      & 0.45 &  0.81 \\
+    \bottomrule
+    \end{tabular}
+    
+    \noindent\textit{Nota:} se interpretan como relevantes las cargas con valor absoluto $\geq 0{.}40$.
+    \end{table}
     
     \begin{figure}[!htbp]
         \centering
         \includegraphics[width=0.82\textwidth]{img/pca_loadings_operativo_multivariado_mod.png}
-        \caption{Estructura común de frecuencia, afectación y duración (bloque operativo, escala logarítmica desplazada).}
+        \caption{Peso (loadings) de frecuencia, afectación y duración en las dos primeras componentes del bloque operativo.}
         \label{fig:pca_loadings_operativo}
     \end{figure}
     
-    \noindent En síntesis, la evaluación multivariada sobre $D_{\mathrm{mod}}$ recomienda: (i)~predictoras climáticas \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}; (ii)~\texttt{n\_eventos} como variable respuesta de frecuencia para el modelado de $SAIFI$; y (iii) exclusión de temperaturas extremas y viento máximo por redundancia simultánea. Estos criterios se operacionalizan en la depuración cuantitativa y la construcción de matrices de diseño de la Etapa~4.
+    \noindent En síntesis, la evaluación multivariada sobre $D_{\mathrm{mod}}$ recomienda: (i)~predictoras climáticas \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, justificadas por loadings, VIF y dendrograma (el PCA no se usa como modelo predictivo, sino como diagnóstico de redundancia); (ii)~\texttt{n\_eventos} como variable respuesta de frecuencia para el modelado de $SAIFI$; y (iii)~exclusión de temperaturas extremas y viento máximo por redundancia simultánea. Estos criterios se operacionalizan en la depuración cuantitativa y la construcción de matrices de diseño de la Etapa~4.
     
 \subsection{Segmentación exploratoria}
 \label{sec:segmentacion_exploratoria}
