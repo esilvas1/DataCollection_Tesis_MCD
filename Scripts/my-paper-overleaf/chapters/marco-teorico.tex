@@ -134,6 +134,13 @@ eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratifi
     \]
     En el panel activo~$\times$~día, los \texttt{NA} se concentran en el bloque climático y en \texttt{ALTITUD}; en la tabla agregada cuadrante~$\times$~semana ($D_{\mathrm{EDA}}$, $D_{\mathrm{mod}}$) no se observan faltantes. Las reglas de imputación o exclusión se aplican en la Etapa~4 solo donde $p_j^{\mathrm{NA}}>0$ en el grano de origen, conforme a los criterios de tratamiento de datos incompletos de \textcite{ref49}.
 
+    \item \textbf{Dispersión relativa (coeficiente de variación):}
+    Para comparar la variabilidad de variables cuantitativas con distintas unidades o escalas, se emplea el coeficiente de variación
+    \[
+    \mathrm{CV}(X)=\frac{s_X}{\bar{x}},\qquad \bar{x}\neq 0,
+    \]
+    donde $s_X$ es la desviación estándar muestral y $\bar{x}$ la media. Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
+
     \item \textbf{Análisis de atípicos y extremos:}
     Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por \textcite{ref50}. Con $Q_1$ y $Q_3$ los cuartiles e $\mathrm{IQR}=Q_3-Q_1$, se marcan como extremos candidatos los valores
     \[
