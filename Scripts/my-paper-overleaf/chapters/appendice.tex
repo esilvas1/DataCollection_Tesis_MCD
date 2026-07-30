@@ -117,3 +117,83 @@ df = df[columnas_necesarias].drop_duplicates()
 \begin{lstlisting}[style=thesiscode,language=Python,caption={Definición de parámetros meteorológicos extraídos de NASA POWER},label={lst:py_nasa}]
 parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
 \end{lstlisting}
+
+\section{Informes reproducibles (HTML)}
+\label{app:informes-html}
+
+Los procedimientos de extracción, integración y análisis exploratorio descritos en la metodología se documentan de forma reproducible en informes HTML publicados en el repositorio del proyecto (GitHub Pages). En el cuerpo del documento se cita el apartado correspondiente de este apéndice; los hipervínculos a cada informe se concentran aquí.
+
+\subsection{Consolidación del panel activo--día}
+\label{app:html-consolidada}
+Informe \texttt{Consolidada.html}: detalle de los pasos~\ref{paso:int-4} a~\ref{paso:int-8} de integración hacia el panel consolidado.
+\href{\urlconsolidada}{Abrir informe}.
+
+\subsection{Agrupación cuadrante $\times$ semana}
+\label{app:html-agrupacion}
+Informe \texttt{data\_agrupacion.html}: construcción de la tabla de análisis a grano cuadrante~$\times$~semana.
+\href{\urlagrupacion}{Abrir informe}.
+
+\subsection{Datos faltantes (tabla agrupada)}
+\label{app:html-faltantes-agrupada}
+Informe \texttt{missing\_values\_grouped.html}: diagnóstico de valores faltantes en \texttt{data\_agrupada.csv}.
+\href{\urlfaltantesagrupada}{Abrir informe}.
+
+\subsection{Valores extremos (panel consolidado)}
+\label{app:html-outliers}
+Informe \texttt{detection\_outliers.html}: identificación de valores extremos en el panel activo~$\times$~día.
+\href{\urldetectionoutliers}{Abrir informe}.
+
+\subsection{Valores extremos (tabla agrupada)}
+\label{app:html-outliers-agrupada}
+Informe \texttt{outliers\_gruped.html}: identificación de valores extremos en la tabla cuadrante~$\times$~semana.
+\href{\urloutliersagrupada}{Abrir informe}.
+
+\subsection{Estadísticos descriptivos}
+\label{app:html-descriptivos}
+Informe \texttt{calculo\_estadistico\_descriptivo.html}: cálculo de estadísticos descriptivos sobre la tabla agrupada.
+\href{\urlestadisticosdescriptivos}{Abrir informe}.
+
+\subsection{Distribución de variables}
+\label{app:html-distribucion}
+Informe \texttt{distribucion\_variables.html}: análisis de la forma de las distribuciones (densidades, asimetría, curtosis y ceros).
+\href{\urldistribucionvariables}{Abrir informe}.
+
+\subsection{Análisis temporal de eventos}
+\label{app:html-temporal}
+Informe \texttt{analisis\_temporal\_eventos.html}: series semanales, estacionalidad y autocorrelación de eventos.
+\href{\urlanalisistemporal}{Abrir informe}.
+
+\subsection{Emparejamiento evento--elemento}
+\label{app:html-emparejamiento}
+Informe \texttt{emparejamiento\_eventos.html}: cobertura anual de la trazabilidad entre eventos BRAE e inventario GIS.
+\href{\urlemparejamientoeventos}{Abrir informe}.
+
+\subsection{Materialización de $D_{\mathrm{mod}}$}
+\label{app:html-datamod}
+Informe \texttt{consolidado\_data\_mod.html}: filtro y exportación del dataset de modelado 2024--2025.
+\href{\urlconsolidadodatamod}{Abrir informe}.
+
+\subsection{Identificación de patrones}
+\label{app:html-patrones}
+Informe \texttt{identificacion\_patrones.html}: patrones temporales, espaciales y clima--evento sobre $D_{\mathrm{mod}}$.
+\href{\urlidentificacionpatrones}{Abrir informe}.
+
+\subsection{Análisis de correlación}
+\label{app:html-correlacion}
+Informe \texttt{analisis\_correlacion.html}: asociaciones de Spearman entre variables climáticas y operativas.
+\href{\urlanalisisCorrelacion}{Abrir informe}.
+
+\subsection{Análisis multivariado}
+\label{app:html-multivariado}
+Informe \texttt{analisis\_multivariado.html}: VIF, PCA, agrupamiento jerárquico y GLM Poisson exploratorio.
+\href{\urlanalisisMultivariado}{Abrir informe}.
+
+\subsection{Segmentación exploratoria}
+\label{app:html-segmentacion}
+Informe \texttt{segmentacion\_exploratoria.html}: perfiles por nivel de actividad, régimen de lluvia y clustering de cuadrantes.
+\href{\urlsegmentacionexploratoria}{Abrir informe}.
+
+\subsection{EDA consolidado}
+\label{app:html-eda}
+Informe \texttt{EDA.html}: síntesis ejecutiva del análisis exploratorio (Etapa~3) con hallazgos y lineamientos para la Etapa~4.
+\href{\urlEDA}{Abrir informe}.
