@@ -31,9 +31,9 @@ La construcción del conjunto de datos sigue la siguiente lógica:
 Las variables de eventos se definen así:
 
 \begin{itemize}
-    \item \textbf{Duracion (minutos):} duración total del evento de interrupción, expresada en minutos, asignada al día de \texttt{Fecha\_Desconexion} (sin prorrateo entre días). En días sin falla, el valor es $0$.
+    \item \textbf{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo en el día de observación, prorrateados según la intersección de \texttt{[Fecha\_Desconexion, Fecha\_Conexion]} con ese día calendario. Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman. No se asigna la duración total del evento solo al día de desconexión. En días sin falla, el valor es $0$.
     
-    \item \textbf{Frecuencia:} número de interrupciones cuyo inicio (\texttt{Fecha\_Desconexion}) ocurre en el día.
+    \item \textbf{Frecuencia} (\texttt{FRECUENCIA}): número de interrupciones cuyo inicio (\texttt{Fecha\_Desconexion}) ocurre en el día (sin prorrateo de la frecuencia).
 \end{itemize}
 
 \subsection{Estructura del dataset consolidado}
@@ -82,8 +82,8 @@ Variables climáticas &
 \end{minipage} \\
 Variables objetivo &
 \begin{minipage}[t]{\linewidth}
-\texttt{Duracion}\\[0.1em]
-\texttt{Frecuencia}
+\texttt{DURACION\_min}\\[0.1em]
+\texttt{FRECUENCIA}
 \end{minipage} \\
 \bottomrule
 \end{tabular}
