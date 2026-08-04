@@ -1,7 +1,7 @@
 ---
 title: "Documento de Análisis Descriptivo y Exploratorio (EDA)"
 subtitle: "Etapa 3 — Entregable ejecutivo consolidado"
-author: "Edwin Silva Salas, Edwin Henao Ochoa & Cindy Lugo Rozo"
+author: "Edwin Silva Salas & Edwin Henao Ochoa"
 date: "`r format(Sys.Date(), '%d de %B de %Y', locale = Sys.locale())`"
 header-includes:
   - \usepackage{float}
@@ -53,7 +53,7 @@ mostrar_fig <- function(archivo, caption = NULL, width = "95%") {
 autores_portada <- function() {
   autor_yaml <- rmarkdown::metadata$author
   if (is.null(autor_yaml) || !nzchar(autor_yaml)) {
-    return(c("Edwin Silva Salas", "Edwin Henao Ochoa", "Cindy Lugo Rozo"))
+    return(c("Edwin Silva Salas", "Edwin Henao Ochoa"))
   }
   trimws(unlist(strsplit(autor_yaml, "\\s*&\\s*|,\\s*")))
 }
