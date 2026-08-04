@@ -109,12 +109,21 @@ tabla_base_consolidada <- tabla_base_consolidada %>%
 ```{r}
 sum(is.na(tabla_base_consolidada$id_cuadrante))
 ```
+Las variables climáticas describen un **campo espacial**: en un mismo día, todos los
+activos de un cuadrante comparten (casi) el mismo valor de NASA POWER. Por ello el clima
+se agrega en **dos etapas**: primero se colapsa a (cuadrante, día) y luego se resume la
+semana. Si se sumara la precipitación directamente sobre las filas activo–día, el
+acumulado semanal quedaría multiplicado por el número de activos del cuadrante.
+
+Las variables operativas (usuarios, elementos, eventos y duración) sí son propias de cada
+activo, por lo que se suman sobre las filas activo–día.
+
 ```{r}
 
 library(dplyr)
 library(lubridate)
- 
-eventos_cuadrante_semana <- tabla_base_consolidada %>%
+
+panel_semana <- tabla_base_consolidada %>%
  mutate(
    semana = floor_date(
      FECHA_DIA,
@@ -122,69 +131,75 @@ eventos_cuadrante_semana <- tabla_base_consolidada %>%
      week_start = 1
    ),
    duracion_horas = DURACION_min / 60
- ) %>%
+ )
+
+# Etapa 1 (clima): un registro por cuadrante y día
+clima_cuadrante_dia <- panel_semana %>%
+ group_by(id_cuadrante, semana, FECHA_DIA) %>%
+ summarise(
+   temp_media_dia = mean(temperatura_media_c, na.rm = TRUE),
+   temp_max_dia = max(temperatura_maxima_c, na.rm = TRUE),
+   temp_min_dia = min(temperatura_minima_c, na.rm = TRUE),
+   humedad_media_dia = mean(humedad_relativa_pct, na.rm = TRUE),
+   viento_medio_dia = mean(velocidad_viento_ms, na.rm = TRUE),
+   viento_max_dia = max(velocidad_viento_ms, na.rm = TRUE),
+   precip_dia = mean(precipitacion_total_mm, na.rm = TRUE),
+   .groups = "drop"
+ )
+
+# Etapa 2 (clima): resumen semanal sobre la serie diaria del cuadrante
+clima_cuadrante_semana <- clima_cuadrante_dia %>%
  group_by(id_cuadrante, semana) %>%
  summarise(
- 
+   temp_media_semana = mean(temp_media_dia, na.rm = TRUE),
+   temp_max_semana = max(temp_max_dia, na.rm = TRUE),
+   temp_min_semana = min(temp_min_dia, na.rm = TRUE),
+   humedad_media_semana = mean(humedad_media_dia, na.rm = TRUE),
+   viento_medio_semana = mean(viento_medio_dia, na.rm = TRUE),
+   viento_max_semana = max(viento_max_dia, na.rm = TRUE),
+   precip_total_semana = sum(precip_dia, na.rm = TRUE),
+   .groups = "drop"
+ )
+
+# Variables operativas: suma sobre filas activo-día
+operativo_cuadrante_semana <- panel_semana %>%
+ group_by(id_cuadrante, semana) %>%
+ summarise(
+
    # Coordenadas del cuadrante
    latitud = first(LATITUD),
    longitud = first(LONGITUD),
    altitud = first(ALTITUD),
- 
+
    usuarios_afectados = sum(
      CANTIDAD_USUARIOS,
      na.rm = TRUE
    ),
- 
+
    elementos_afectados = sum(
      CANTIDAD_ELEMENTOS,
      na.rm = TRUE
    ),
 
-      # Variables climáticas semanales
-   temp_media_semana = mean(
-     temperatura_media_c,
-     na.rm = TRUE
-   ),
- 
-   temp_max_semana = max(
-     temperatura_maxima_c,
-     na.rm = TRUE
-   ),
- 
-   temp_min_semana = min(
-     temperatura_minima_c,
-     na.rm = TRUE
-   ),
- 
-   humedad_media_semana = mean(
-     humedad_relativa_pct,
-     na.rm = TRUE
-   ),
- 
-   viento_medio_semana = mean(
-     velocidad_viento_ms,
-     na.rm = TRUE
-   ),
- 
-   viento_max_semana = max(
-     velocidad_viento_ms,
-     na.rm = TRUE
-   ),
- 
-   precip_total_semana = sum(
-     precipitacion_total_mm,
-     na.rm = TRUE
-   ),
-# Variables de fallas
    n_eventos = sum(FRECUENCIA, na.rm = TRUE),
- 
+
    duracion_total = sum(
      duracion_horas,
      na.rm = TRUE
    ),
 
    .groups = "drop"
+ )
+
+eventos_cuadrante_semana <- operativo_cuadrante_semana %>%
+ left_join(clima_cuadrante_semana, by = c("id_cuadrante", "semana")) %>%
+ select(
+   id_cuadrante, semana, latitud, longitud, altitud,
+   usuarios_afectados, elementos_afectados,
+   temp_media_semana, temp_max_semana, temp_min_semana,
+   humedad_media_semana, viento_medio_semana, viento_max_semana,
+   precip_total_semana,
+   n_eventos, duracion_total
  )
 
 ```

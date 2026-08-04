@@ -239,7 +239,7 @@ En variables con **exceso de ceros** (semanas sin interrupción), $Q_1 = Q_3 = 0
 **Bloque climático semanal**
 
 - Temperaturas, humedad y viento: extremos **escasos** bajo Tukey (0 %–0,03 %); distribuciones casi simétricas.
-- `precip_total_semana`: **excepción** por acumulado semanal muy asimétrico — Tukey 1,5 marca el **8,98 %** de las semanas y el 3,0 el **4,51 %**; percentiles P1–P99 solo el **1,00 %**. Corresponde a **semanas de lluvia intensa plausibles**, no a errores de medición.
+- `precip_total_semana`: **excepción** por acumulado semanal asimétrico a la derecha — Tukey 1,5 marca el **6,21 %** de las semanas y el 3,0 el **1,79 %**; percentiles P1–P99 solo el **0,99 %**. Corresponde a **semanas de lluvia intensa plausibles** (máximo 198,1 mm), no a errores de medición.
 
 **Bloque operativo (semanas con evento)**
 
@@ -253,9 +253,9 @@ mostrar_fig("boxplot_valores_extremos_clima_agrupada.png")
 
  Cada "caja" resume cómo se comporta una variable climática: la caja contiene la mitad central de los valores habituales, y los puntos que quedan por fuera son los **casos fuera de lo normal**. Es la forma visual de detectar qué tan dispersos o atípicos son los datos.
 
- Temperatura, humedad y viento se comportan de forma **estable y predecible** (cajas compactas, pocos puntos fuera). La **precipitación** es la excepción: tiene una larga cola de valores altos, que corresponden a **semanas de lluvia intensa reales**, no a errores. Estos picos de lluvia son precisamente los que coinciden con mayor número de interrupciones.
+ Temperatura, humedad y viento se comportan de forma **estable y predecible** (cajas compactas, pocos puntos fuera). La **precipitación** es la excepción: tiene una cola de valores altos, que corresponden a **semanas de lluvia intensa reales** (hasta 198 mm acumulados), no a errores.
 
- El gráfico señala que el principal factor climático de riesgo es la **lluvia extrema**, y que esos episodios son identificables con anticipación. El hallazgo no evidente es que la empresa puede **anticipar semanas de alto riesgo** mirando el pronóstico de precipitación, en lugar de reaccionar solo cuando las fallas ya ocurrieron.
+ El gráfico delimita qué es un valor climático inusual y qué no, insumo directo para las reglas de tratamiento de la Etapa 4. El hallazgo no evidente es que ninguna variable climática presenta valores imposibles: la calidad del bloque meteorológico es alta y no requiere depuración.
 
 ### Qué hacer en un caso real cuando un valor sale de lo normal
 
@@ -287,7 +287,7 @@ En esta **Etapa 3** no se excluyeron ni transformaron observaciones: el objetivo
 
 Sobre `data_agrupada.csv` ($N_{\mathrm{agr}} = 90\,128$):
 
-**Clima semanal:** distribuciones casi simétricas (CV 0,16–0,81), excepto `precip_total_semana` (mediana 618,8 mm; CV = 3,47; asimetría 30,6).
+**Clima semanal:** distribuciones casi simétricas (CV 0,16–0,81), excepto `precip_total_semana` (mediana 9,8 mm; media 16,0 mm; CV = 1,17; asimetría 1,98; máximo 198,1 mm).
 
 **Operativo:** mediana 0 en las cuatro métricas; **74,9 %** de semanas-cuadrante sin eventos. Con evento: `usuarios_afectados` hasta 69 928; `n_eventos` hasta 58 por semana-cuadrante.
 
@@ -316,9 +316,9 @@ mostrar_fig("distribucion_densidad_precipitacion_agrupada.png")
 
  La forma de la distribución de la lluvia semanal: a la izquierda en su escala natural, a la derecha transformada para hacerla más legible. Indica si los valores se agrupan de forma equilibrada o si hay muchos casos pequeños y pocos muy grandes.
 
- La lluvia tiene un patrón **muy desbalanceado**: muchísimas semanas con precipitación baja y unas pocas con valores extremadamente altos. Esos pocos episodios intensos son los que tienen mayor poder explicativo sobre las fallas.
+ La lluvia tiene un patrón **desbalanceado**: muchas semanas con precipitación baja o nula (9,1 % con 0 mm) y unas pocas con acumulados altos.
 
- Confirma que **no todas las lluvias importan por igual**: el riesgo se dispara en los episodios excepcionales. El hallazgo no evidente es que basta con vigilar un número reducido de semanas críticas de lluvia para cubrir buena parte del riesgo operativo del año.
+ Confirma que la variable requiere transformación antes de entrar a un modelo lineal. El hallazgo no evidente es que la escala logarítmica desplazada la vuelve casi simétrica, de modo que el desbalance no es un obstáculo técnico para el modelado.
 
 ```{r fig-ceros, fig.cap="Proporción de ceros en variables operativas (§5.3.4).", out.width='80%'}
 mostrar_fig("distribucion_pct_ceros_evento_agrupada.png")
@@ -391,11 +391,11 @@ mostrar_fig("cobertura_emparejamiento_por_anio.png")
 
 Análisis restringido a 2024–2025 con cobertura homogénea.
 
-**Temporal:** media ≈ 318 eventos/semana; 287 (2024) → 350 (2025); ACF rezago 1 = 0,80; estacionalidad en meses lluviosos.
+**Temporal:** media ≈ 318 eventos/semana; 287 (2024) → 350 (2025); ACF rezago 1 = 0,80; estacionalidad marcada entre meses.
 
 **Espacial:** top 10 cuadrantes concentran 20,5 % de eventos; 49 cuadrantes (14,2 %) en nivel *Alta*.
 
-**Clima–evento:** asociación positiva precipitación–`n_eventos` visible en dispersión y correlaciones.
+**Clima–evento:** asociaciones positivas pero **débiles**; el viento encabeza ($\rho \approx 0{,}14$) y la precipitación le sigue ($\rho \approx 0{,}07$).
 
 ```{r fig-patrones-1, fig.cap="Serie semanal de eventos en el dataset de modelado (Seccion 5.3.6).", out.width='95%'}
 mostrar_fig("serie_semanal_patrones_mod.png")
@@ -403,7 +403,7 @@ mostrar_fig("serie_semanal_patrones_mod.png")
 
  La evolución semanal de las interrupciones ya en el periodo confiable (2024–2025).
 
- La actividad pasa de un promedio de **287 eventos semanales en 2024 a 350 en 2025**, con picos que coinciden con las temporadas de lluvia. La tendencia es de aumento sostenido.
+ La actividad pasa de un promedio de **287 eventos semanales en 2024 a 350 en 2025**, con picos recurrentes. La tendencia es de aumento sostenido.
 
  Aun con datos limpios y comparables, **la carga de eventos crece**. El hallazgo no evidente es que la presión sobre la operación va en aumento, lo que justifica invertir en capacidad predictiva y preventiva antes de que el crecimiento impacte los indicadores regulatorios.
 
@@ -413,19 +413,19 @@ mostrar_fig("estacionalidad_mensual_patrones_mod.png")
 
  Cómo se distribuyen las fallas a lo largo de los meses del año.
 
- Hay meses claramente más críticos que otros, concentrados en las **temporadas de lluvia**. La diferencia entre meses tranquilos y meses pico es sustancial.
+ Hay meses claramente más críticos que otros. La diferencia entre meses tranquilos y meses pico es sustancial, aunque —como se ve más adelante— el acumulado semanal de lluvia **no** explica ese patrón.
 
- Permite **planificar el año por temporadas**: reforzar cuadrillas, inventarios y disponibilidad en los meses de mayor riesgo, y optimizar costos en los meses tranquilos. El hallazgo no evidente es que la estacionalidad es lo bastante marcada como para construir un **calendario operativo basado en datos**.
+ Permite **planificar el año por temporadas**: reforzar cuadrillas, inventarios y disponibilidad en los meses de mayor riesgo, y optimizar costos en los meses tranquilos. El hallazgo no evidente es que la estacionalidad es lo bastante marcada como para construir un **calendario operativo basado en datos**, incluso sin un predictor climático fuerte.
 
 ```{r fig-patrones-3, fig.cap="Dispersion precipitacion semanal vs frecuencia de eventos (Seccion 5.3.6).", out.width='85%'}
 mostrar_fig("dispersion_precip_eventos_patrones_mod.png")
 ```
 
- Cada punto es una semana-zona; se cruza cuánta lluvia cayó (eje horizontal, hasta 200.000 mm) contra cuántas fallas hubo (eje vertical). El límite del eje concentra la vista en el rango donde se acumula la mayoría de las observaciones.
+ Cada punto es una semana-zona; se cruza cuánta lluvia cayó (eje horizontal, en mm acumulados de la semana) contra cuántas fallas hubo (eje vertical).
 
- La nube de puntos tiene una **inclinación ascendente**: a mayor precipitación, tiende a haber más eventos. La relación no es perfecta (hay otros factores), pero es consistente y estadísticamente sólida.
+ La nube de puntos tiene una **inclinación ascendente muy leve**: a mayor precipitación tiende a haber algo más de eventos, pero la dispersión domina y la relación es débil.
 
- Cuantifica, con datos propios, algo que operativamente se intuía: **la lluvia es el principal disparador climático de fallas**. El hallazgo no evidente es que esta relación es lo bastante fuerte como para usar el pronóstico de lluvia como **alerta temprana** de semanas de alta exigencia.
+ Corrige una intuición operativa extendida: con el acumulado semanal de lluvia **no** se puede anticipar de forma útil una semana crítica. El hallazgo no evidente es que un indicador de riesgo basado solo en el pronóstico de lluvia semanal tendría poca capacidad de discriminación; haría falta trabajar con intensidad diaria o coincidencia horaria del episodio.
 
 ```{r fig-patrones-4, fig.cap="Mapa de intensidad territorial y segmentación por actividad (§5.3.6).", out.width='80%'}
 mostrar_fig("segmentacion_cuadrantes_patrones_mod.png")
@@ -445,18 +445,19 @@ Método: **Spearman** (datos asimétricos y cero-inflados). Universo: $D_{\mathr
 
 **Redundancia operativa:** $\rho$ hasta 0,99 (`usuarios_afectados`–`elementos_afectados`).
 
-**Redundancia climática:** 9 pares con $|\rho| \geq 0{,}70$ (temperaturas y vientos).
+**Redundancia climática:** 10 pares con $|\rho| \geq 0{,}70$ (temperaturas y vientos); la precipitación no participa en ninguno.
 
 **Clima → operativo:**
 
 | Par | $\rho$ | $p$ |
 |-----|--------|-----|
-| precip ↔ `n_eventos` | 0,414 | < 0,001 |
-| precip ↔ `usuarios_afectados` | 0,406 | < 0,001 |
-| precip ↔ `duracion_total` | 0,383 | < 0,001 |
+| `viento_max` ↔ `n_eventos` | 0,139 | < 0,001 |
 | `viento_medio` ↔ `n_eventos` | 0,135 | < 0,001 |
+| precip ↔ `duracion_total` | 0,069 | < 0,001 |
+| precip ↔ `n_eventos` | 0,065 | < 0,001 |
+| precip ↔ `usuarios_afectados` | 0,053 | < 0,001 |
 
-**Condicionado** (`n_eventos > 0`; $n = 13\,351$): precip ↔ `n_eventos` se atenúa a $\rho = 0{,}29$ — parte de la señal está en la transición cero/no-cero.
+**Condicionado** (`n_eventos > 0`; $n = 13\,351$): precip ↔ `n_eventos` se atenúa a $\rho = 0{,}029$ — la escasa señal está en la transición cero/no-cero, no en la intensidad del evento.
 
 ```{r fig-cor-1, fig.cap="Mapa de calor clima–operativo (§5.3.7).", out.width='92%'}
 mostrar_fig("heatmap_correlacion_clima_operativo_mod.png")
@@ -464,7 +465,7 @@ mostrar_fig("heatmap_correlacion_clima_operativo_mod.png")
 
  Un "mapa de calor" donde cada celda indica qué tan relacionadas están dos variables: colores intensos significan relación fuerte; colores tenues, relación débil.
 
- Dos cosas. Primero, varias variables operativas miden prácticamente **lo mismo** (relación cercana a 1), igual que varias climáticas entre sí. Segundo, la **precipitación** es la variable climática mejor relacionada con las fallas.
+ Dos cosas. Primero, varias variables operativas miden prácticamente **lo mismo** (relación cercana a 1), igual que varias climáticas entre sí. Segundo, ninguna variable climática muestra una relación fuerte con las fallas: la más destacada es el **viento**, y aun así de magnitud modesta.
 
  El hallazgo no evidente es que **se está midiendo información redundante**: no se necesitan decenas de variables para entender el fenómeno, sino unas pocas bien elegidas. Esto simplifica tableros, reportes y modelos, y reduce el costo de gestionar datos que no aportan información nueva.
 
@@ -474,30 +475,30 @@ mostrar_fig("barras_correlacion_clima_operativo_mod.png")
 
  Un ranking de qué factores climáticos influyen más sobre las interrupciones, ordenados de mayor a menor.
 
- La **precipitación encabeza el ranking** con clara ventaja; el viento aporta de forma secundaria; temperatura y humedad tienen un papel menor.
+ El **viento encabeza el ranking**, la precipitación queda en segundo lugar con la mitad de la magnitud, y temperatura y humedad son prácticamente irrelevantes. Todas las barras son pequeñas en términos absolutos.
 
- Prioriza dónde poner el foco: **vigilar la lluvia** es la palanca de mayor retorno para anticipar fallas. El hallazgo no evidente es que se puede construir un indicador de riesgo climático sencillo, centrado en precipitación, sin depender de modelos meteorológicos complejos.
+ Prioriza dónde poner el foco y, sobre todo, **acota expectativas**: el clima contemporáneo medido a escala semanal no basta para anticipar fallas. El hallazgo no evidente es que la capacidad predictiva habrá que buscarla en el historial de la propia zona (rezagos y estacionalidad) más que en el pronóstico meteorológico.
 
 ---
 
 # 7. Relaciones multivariadas (§5.3.8)
 
-**VIF (bloque climático completo):** inflación crítica en temperaturas y vientos; `precip_total_semana` con VIF ≈ 1,05.
+**VIF (bloque climático completo):** inflación crítica en temperaturas y vientos (hasta 43,92); `precip_total_semana` con VIF ≈ 1,50.
 
 **Subconjunto propuesto para modelado:**
 
 | Variable | VIF |
 |----------|-----|
-| `temp_media_semana` | 6,94 |
-| `humedad_media_semana` | 3,44 |
-| `viento_medio_semana` | 3,33 |
-| `precip_total_semana` | 1,04 |
+| `temp_media_semana` | 7,21 |
+| `humedad_media_semana` | 4,47 |
+| `viento_medio_semana` | 3,27 |
+| `precip_total_semana` | 1,49 |
 
-**PCA clima:** 81,3 % varianza en PC1–PC2; precipitación relativamente independiente.
+**PCA clima:** 87,3 % varianza en PC1–PC2; precipitación relativamente independiente (concentra su peso en PC2).
 
-**Correlación parcial** precip ↔ `n_eventos` (controlando temp y viento): $\rho = 0{,}43$.
+**Correlación parcial** precip ↔ `n_eventos` (controlando temp y viento): $\rho = 0{,}114$, frente a 0,065 bivariado.
 
-**GLM Poisson exploratorio:** `log(1+precip)` y viento medio significativos ($p < 0{,}001$).
+**GLM Poisson exploratorio:** las cuatro covariables resultan significativas ($p < 0{,}001$), con temperatura media ($\hat{\beta} = 0{,}81$) y viento medio ($\hat{\beta} = 0{,}73$) por delante de humedad (0,35) y `log(1+precip)` (0,13). Dada la multicolinealidad, los coeficientes no admiten lectura causal individual.
 
 **PCA operativo:** PC1 concentra 83,8 % — justifica **una** respuesta principal: `n_eventos` (proxy de frecuencia, asociada a SAIFI) o `duracion_total` (proxy de duración, asociada a SAIDI). Estas proxies **no** equivalen al cálculo regulatorio ponderado por usuarios.
 
@@ -527,9 +528,9 @@ mostrar_fig("glm_coef_clima_multivariado_mod.png")
 
  Un primer modelo exploratorio que estima el efecto de cada factor climático sobre el número de fallas: barras hacia la derecha aumentan el riesgo, hacia la izquierda lo reducen.
 
- La **precipitación y el viento** salen como factores significativos que **incrementan** la cantidad esperada de eventos.
+ Las cuatro variables salen significativas y con efecto positivo, encabezadas por **temperatura media y viento**; la lluvia queda en último lugar.
 
- Es la primera evidencia cuantitativa de que **el clima puede traducirse en una estimación de fallas esperadas**. El hallazgo no evidente es que ya existe una base estadística para pasar de "intuición operativa" a **predicción medible**, antesala del modelo definitivo de la siguiente etapa.
+ Es un primer diagnóstico cuantitativo del aporte conjunto del clima. El hallazgo no evidente es que el orden de importancia cambia respecto al análisis variable por variable: las temperaturas, irrelevantes por separado, ganan peso al combinarse, señal típica de variables que comparten información y advertencia de que estos coeficientes son exploratorios, no conclusiones causales.
 
 
 ---
@@ -547,9 +548,9 @@ mostrar_fig("glm_coef_clima_multivariado_mod.png")
 
 **2024 vs 2025:** ratio medio eventos 2025/2024 ≈ 1,24–1,26 en todos los estratos.
 
-**Régimen lluvioso (P75):** media `n_eventos` 2,01 vs 0,56 en semanas secas (Wilcoxon $p < 0{,}001$).
+**Régimen lluvioso (P75 = 24,7 mm):** media `n_eventos` 0,918 vs 0,927 en semanas secas — **sin diferencia significativa** (Wilcoxon $p = 0{,}175$).
 
-**Clustering k-means ($k=4$):** hub extremo (C1, 1 cuadrante), cluster de alta severidad (C2, 41 cuadrantes), perfiles intermedios (C3–C4).
+**Clustering k-means ($k=4$):** hub extremo (C3, 1 cuadrante), cluster de mayor severidad (C1, 139 cuadrantes), cluster de altitud alta (C4, 126) y cluster más lluvioso pero de menor actividad (C2, 58).
 
 ```{r fig-seg-1, fig.cap="Frecuencia de eventos por nivel de actividad del cuadrante (Seccion 5.3.9).", out.width='95%'}
 mostrar_fig("boxplot_eventos_por_nivel_segmentacion_mod.png")
@@ -557,7 +558,7 @@ mostrar_fig("boxplot_eventos_por_nivel_segmentacion_mod.png")
 
  Clasifica las zonas en niveles (baja, media, alta actividad) y compara cuántas fallas concentra cada grupo.
 
- Un **14,2 % de las zonas** está en nivel "alta" y concentra una porción desproporcionada de los eventos, mientras casi la mitad tiene actividad baja. Además, las semanas lluviosas multiplican la frecuencia de fallas (2,01 vs 0,56 eventos en promedio frente a semanas secas).
+ Un **14,2 % de las zonas** está en nivel "alta" y concentra una porción desproporcionada de los eventos, mientras casi la mitad tiene actividad baja. En contraste, clasificar las semanas por régimen de lluvia no separa nada: las semanas lluviosas registran 0,918 eventos en promedio frente a 0,927 en las secas.
 
  Ofrece un criterio objetivo para **priorizar inversión y mantenimiento** en las zonas que más lo necesitan. El hallazgo no evidente es que un plan focalizado en ese 14 % de zonas críticas podría mejorar los indicadores globales de continuidad de forma más rentable que cualquier acción generalizada.
 
@@ -567,7 +568,7 @@ mostrar_fig("mapa_clusters_cuadrantes_segmentacion_mod.png")
 
  Agrupa las zonas en perfiles con comportamiento similar (frecuencia y severidad de fallas) y los ubica en el mapa.
 
- Surgen perfiles bien diferenciados: desde un **"punto crítico" extremo** (una zona excepcional), pasando por un grupo de **alta severidad** (41 zonas), hasta perfiles intermedios. No todas las zonas problemáticas lo son por la misma razón.
+ Surgen perfiles bien diferenciados: desde un **"punto crítico" extremo** (una zona excepcional), pasando por un grupo de **alta severidad** (139 zonas de baja altitud), hasta un grupo de zonas altas (126) y otro de zonas lluviosas con menor actividad (58). No todas las zonas problemáticas lo son por la misma razón, y las más lluviosas no son las más críticas.
 
  Permite diseñar **estrategias diferenciadas por tipo de zona** en lugar de una sola receta. El hallazgo no evidente es que existe un caso atípico que merece atención individual, y un bloque de zonas severas que justifican un programa específico de intervención.
 
@@ -581,8 +582,8 @@ Más allá del detalle técnico, este análisis pone sobre la mesa cinco mensaje
 
 1. **El dato operativo es confiable y la trazabilidad mejoró drásticamente desde 2024.** Esto habilita analítica avanzada sin grandes inversiones previas en limpieza, y obliga a leer con cuidado las comparaciones históricas de indicadores.
 2. **Las fallas se concentran en pocas zonas y pocas semanas.** Focalizar recursos en los "puntos calientes" rinde mucho más que actuar sobre toda la red por igual.
-3. **La lluvia es el principal disparador climático de interrupciones.** El pronóstico de precipitación puede convertirse en una **alerta temprana** de semanas de alto riesgo.
-4. **El comportamiento de las fallas es predecible** (memoria semanal y estacionalidad clara), lo que permite planear cuadrillas, materiales y mantenimiento con anticipación.
+3. **El clima semanal explica poco por sí solo.** Ninguna variable meteorológica muestra una relación fuerte con las fallas; el viento encabeza con margen estrecho y la lluvia acumulada de la semana resulta un predictor débil. Un tablero de riesgo basado únicamente en el pronóstico de lluvia no sería confiable.
+4. **El comportamiento de las fallas es predecible, pero por su propia historia** (memoria semanal y estacionalidad clara), lo que permite planear cuadrillas, materiales y mantenimiento con anticipación sin depender del pronóstico meteorológico.
 5. **La carga de eventos está creciendo**, lo que da urgencia a pasar de un enfoque reactivo a uno **preventivo y predictivo**.
 
 En conjunto, los gráficos no solo describen el pasado: revelan **dónde, cuándo y bajo qué condiciones** es más probable que el servicio se vea afectado, información que puede traducirse en mejor anticipación operativa de la frecuencia y la duración de interrupciones (proxies asociadas a SAIDI/SAIFI) y en una asignación más eficiente del presupuesto.
@@ -594,7 +595,7 @@ El análisis exploratorio sobre el panel cuadrante × semana permitió:
 1. **Validar calidad** del insumo agregado y acotar el horizonte de modelado a periodos con trazabilidad GIS homogénea.
 2. **Caracterizar distribuciones** que exigen transformaciones y modelos para conteos y exceso de ceros.
 3. **Identificar persistencia temporal** y estacionalidad que respaldan rezagos y partición cronológica.
-4. **Cuantificar la señal climática** de la precipitación sobre la frecuencia de interrupciones.
+4. **Cuantificar la señal climática** disponible en el grano semanal y establecer que es débil, lo que traslada el peso predictivo a la historia de la serie y al territorio.
 5. **Depurar redundancias** multivariadas y proponer un conjunto mínimo de predictoras.
 6. **Documentar heterogeneidad territorial** para eventual estratificación o efectos espaciales.
 
@@ -610,7 +611,8 @@ El análisis exploratorio sobre el panel cuadrante × semana permitió:
 | Predictoras climáticas | `precip_total_semana`, `temp_media_semana`, `humedad_media_semana`, `viento_medio_semana` |
 | Excluir por redundancia | `temp_max/min`, `viento_max` |
 | Transformaciones | `log(1+x)` en precipitación y bloque operativo según distribución |
-| Rezagos / estacionalidad | Incorporar por ACF elevada (rezago 1 ≈ 0,80–0,92) |
+| Rezagos / estacionalidad | Incorporar por ACF elevada (rezago 1 ≈ 0,80–0,92); principal fuente de señal predictiva |
+| Clima a explorar | Indicadores de intensidad diaria y días de lluvia por semana, ante la debilidad del acumulado semanal |
 | Estratificación opcional | Nivel *Alta* o clusters C1–C2 para modelos por zona |
 
 ## 9.3 Limitaciones reconocidas
@@ -630,11 +632,11 @@ El análisis descriptivo y exploratorio desarrollado en la Etapa 3 cumplió su p
 
 2. **Las interrupciones son un fenómeno concentrado, no generalizado.** En cerca del 75 % de las semanas-zona no ocurre ninguna falla, y un grupo reducido de zonas (14,2 % en nivel *Alta*; el top 10 concentra el 20,5 % de los eventos) explica una porción desproporcionada de la afectación. Esto abre la puerta a una **gestión focalizada** de mucho mayor retorno que las acciones distribuidas en toda la red.
 
-3. **El clima —y en particular la lluvia— es el principal disparador externo de fallas.** La precipitación encabeza de forma consistente la relación con el número de eventos, su severidad y su duración. El pronóstico de lluvia puede convertirse en una **alerta temprana** de semanas de alta exigencia operativa.
+3. **El clima medido a escala semanal no es el disparador dominante que suele suponerse.** Las asociaciones entre variables meteorológicas y fallas son positivas pero débiles: el viento encabeza el bloque ($\rho \approx 0{,}14$) y la lluvia acumulada le sigue ($\rho \approx 0{,}07$), sin que la clasificación de semanas en lluviosas y secas produzca diferencias significativas en la frecuencia de eventos. Esto no niega el efecto físico de la lluvia sobre la red, pero sí indica que el acumulado semanal por zona es un descriptor demasiado grueso: promedia días secos con episodios de tormenta y no captura la intensidad ni la coincidencia horaria del evento. Explorar indicadores de intensidad diaria o de número de días de lluvia queda como línea de trabajo para la Etapa 4.
 
-4. **El comportamiento de las fallas es predecible.** La fuerte memoria semanal (correlación de 0,92 con la semana previa) y la estacionalidad marcada por las temporadas de lluvia permiten **planificar con anticipación** cuadrillas, materiales y mantenimiento, pasando de un esquema reactivo a uno preventivo.
+4. **El comportamiento de las fallas es predecible por su propia dinámica.** La fuerte memoria semanal (correlación de 0,92 con la semana previa), la estacionalidad entre meses y la concentración territorial permiten **planificar con anticipación** cuadrillas, materiales y mantenimiento, pasando de un esquema reactivo a uno preventivo, con la historia de la zona como insumo principal.
 
-5. **Menos variables, mejor información.** Buena parte de las variables disponibles aporta información redundante; un conjunto reducido (precipitación, temperatura media, humedad y viento medio) captura lo esencial, simplificando tableros, reportes y modelos y reduciendo el costo de gestión del dato.
+5. **Menos variables, mejor información.** Buena parte de las variables disponibles aporta información redundante; un conjunto reducido (precipitación, temperatura media, humedad y viento medio) captura lo esencial del bloque climático, simplificando tableros, reportes y modelos y reduciendo el costo de gestión del dato.
 
 6. **La carga de eventos está creciendo** (de ~287 a ~350 eventos semanales entre 2024 y 2025, ya con datos comparables), lo que aporta **urgencia** a la adopción de capacidades predictivas antes de que el incremento impacte los indicadores regulatorios.
 
