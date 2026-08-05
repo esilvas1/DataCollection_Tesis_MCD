@@ -115,7 +115,15 @@
 \subsection{Métodos y modelos}
 \label{sec:metodos-modelos}
 
-En este trabajo, la unidad de análisis del modelado es el par \textbf{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). La \textbf{variable respuesta} principal es $Y = \texttt{n\_eventos}$ (proxy de frecuencia de interrupciones, asociada conceptualmente a SAIFI) y, de forma complementaria, $Y' = \texttt{duracion\_total}$ (proxy de duración acumulada, asociada a SAIDI). El vector de \textbf{predictoras climáticas} propuesto es
+En este trabajo, la unidad de análisis del modelado es el par \textbf{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). Para evitar \textbf{fuga de información} en el pronóstico, las variables del panel se separan en tres grupos mutuamente excluyentes según su disponibilidad temporal respecto de la semana~$t$ a predecir:
+
+\begin{enumerate}
+    \item \textbf{Disponibles antes del periodo a pronosticar} (candidatas a predictoras): clima \emph{rezagado} ($t-1,\ldots,t-h$) o \emph{pronosticado} para~$t$ cuando exista un forecast operativo \emph{ex ante}; histórico de eventos del cuadrante (y vecinos, si aplica); características del cuadrante (altitud, tipología de zona, número de activos, usuarios totales del inventario); estacionalidad y calendario; rezagos de $Y$ o $Y'$. El clima contemporáneo de la semana~$t$ solo entra como predictora si está disponible \emph{antes} de observar los eventos de~$t$; en el EDA se usa como asociación descriptiva, no como garantía de usabilidad predictiva.
+    \item \textbf{Variables respuesta:} $Y = \texttt{n\_eventos}$ (proxy de frecuencia, asociada conceptualmente a SAIFI) y, de forma complementaria, $Y' = \texttt{duracion\_total}$ (proxy de duración acumulada, asociada a SAIDI). Los indicadores regulatorios SAIDI/SAIFI solo se emplean como $Y$ si se reconstruyen con la fórmula CREG; en este trabajo se modelan los proxies anteriores.
+    \item \textbf{Impacto posterior} (descriptivo / severidad): \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y, en general, métricas que solo se conocen al ocurrir o cerrar el evento. Sirven para describir severidad en el EDA y para perfiles territoriales; \textbf{no} se emplean como predictoras contemporáneas de $Y$ o $Y'$ en la misma semana~$t$. Análogamente, $\texttt{duracion\_total}_t$ es respuesta cuando se pronostica continuidad, pero constituye fuga si se incluye como covariable al modelar $\texttt{n\_eventos}_t$.
+\end{enumerate}
+
+El vector climático de referencia ---sujeto a la regla de disponibilidad del grupo~1--- es
 \begin{equation}
 \mathbf{x} = \bigl(
 \texttt{precip\_total\_semana},\;
@@ -124,7 +132,7 @@ En este trabajo, la unidad de análisis del modelado es el par \textbf{cuadrante
 \texttt{viento\_medio\_semana}
 \bigr),
 \end{equation}
-eventualmente enriquecido con rezagos temporales de $Y$ y términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación/modelado.
+eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación/modelado.
 
 \begin{enumerate}
     \item \textbf{Datos faltantes, tipos e imputación:}
