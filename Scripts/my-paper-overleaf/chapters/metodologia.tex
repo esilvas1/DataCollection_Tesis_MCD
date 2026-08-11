@@ -1539,9 +1539,33 @@ Se construyen únicamente variables del grupo \textbf{disponibles antes del peri
 La respuesta principal es $Y_t=\texttt{n\_eventos}_t$ (proxy de frecuencia / $SAIFI$) y, de forma complementaria o en un modelo paralelo, $Y'_t=\texttt{duracion\_total}_t$ (proxy de duración acumulada / $SAIDI$). Los indicadores regulatorios SAIDI/SAIFI solo se adoptarían como $Y$ si se reconstruyen con la fórmula CREG; en caso contrario se mantienen los proxies. Las métricas de afectación (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) \textbf{no} se definen como respuesta del modelo de pronóstico de continuidad en esta etapa: su uso queda restringido a la descripción de severidad.
 
 \subsection{Análisis de asociación y depuración de variables cuantitativas}
+\label{sec:asociacion_depuracion_cuanti}
+Se define el conjunto candidato \emph{ex ante} sobre $D_{\mathrm{mod}}$ (clima rezagado, histórico de eventos, rasgos del cuadrante, exposición y estacionalidad) y se excluyen, por diseño, el clima contemporáneo, la respuesta alterna contemporánea y el impacto posterior (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}). La depuración se estima solo con el entrenamiento (2024) y combina filtros de cobertura, varianza casi nula, asociación de Spearman con corrección FDR, agrupamiento por redundancia ($|\rho|\geq 0{.}70$) y eliminación iterativa por VIF (umbral~5). No se borran variables del panel: se depuran de la matriz de diseño.
+
+De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{fig:vif_cuanti_depurado}): precipitación rezagada y acumulada, humedad rezagada, viento máximo rezagado, rezagos de \texttt{n\_eventos}, estacionalidad armónica, altitud, longitud y $\log(\texttt{n\_activos}+1)$ como \emph{offset}. Las temperaturas y los promedios móviles del histórico se descartan por redundancia o multicolinealidad. Detalle reproducible en el Apéndice~\ref{app:html-asociacion-cuanti}.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.92\textwidth]{img/asociacion_candidatas_exante_mod.png}
+    \caption{Asociación de Spearman entre candidatas \emph{ex ante} y \texttt{n\_eventos} (entrenamiento 2024).}
+    \label{fig:asoc_exante_cuanti}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{img/dendrograma_candidatas_exante_mod.png}
+    \caption{Agrupamiento jerárquico de candidatas ($1-|\rho|$ Spearman); la línea punteada marca el umbral $|\rho|=0{.}70$.}
+    \label{fig:dendro_exante_cuanti}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.88\textwidth]{img/vif_cuanti_depurado_mod.png}
+    \caption{VIF del conjunto cuantitativo retenido tras la depuración iterativa (umbral~5).}
+    \label{fig:vif_cuanti_depurado}
+\end{figure}
 
 \subsection{Análisis de asociación y depuración de variables cualitativas}
-
 \subsection{Codificación de variables categóricas}
 
 \subsection{Estandarización de variables cuantitativas}
