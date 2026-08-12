@@ -1,0 +1,480 @@
+---
+title: "Segmentacion exploratoria (D_mod 2024-2025)"
+author: "Edwin Silva Salas & Edwin Henao Ochoa"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Segmentacion exploratoria (Seccion 5.3.9)
+
+Dataset **$D_{\mathrm{mod}}$**: `data_agrupada_mod.csv` (cuadrante × semana, 2024–2025).
+
+Profundiza la segmentacion territorial introducida en la Seccion 5.3.6: perfiles por nivel de
+actividad, comparacion temporal (2024 vs 2025), regimenes climaticos semanales y clustering
+multivariado de cuadrantes. Objetivo: evaluar heterogeneidad territorial y orientar estratificacion
+en la Etapa 4.
+
+Metodologia aplicada:
+
+1. **Perfiles por nivel de actividad** (Baja / Media / Alta).
+2. **Comparacion 2024 vs 2025** por estrato territorial.
+3. **Regimen climatico semanal** (seco vs lluvioso).
+4. **Clustering k-means** de cuadrantes (perfil operativo-climatico).
+5. **Mapa y heatmap** de perfiles por segmento.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+path_full <- file.path(UBICACION_DATA, "data_agrupada.csv")
+
+if (file.exists(path_mod)) {
+  path_agrupada <- path_mod
+  aplicar_filtro_anio <- FALSE
+} else if (file.exists(path_full)) {
+  path_agrupada <- path_full
+  aplicar_filtro_anio <- TRUE
+  warning("No se encontro data_agrupada_mod.csv; filtrando data_agrupada.csv a 2024-2025.")
+} else {
+  stop("No se encontro data_agrupada_mod.csv ni data_agrupada.csv.")
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+```{r lectura}
+message("Leyendo D_mod...")
+d_mod <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(d_mod) && !inherits(d_mod$semana, "Date")) {
+  d_mod <- d_mod %>% mutate(semana = as.Date(semana))
+}
+
+d_mod <- if (aplicar_filtro_anio) {
+  d_mod %>% filter(year(semana) %in% 2024:2025)
+} else {
+  d_mod
+}
+
+d_mod <- d_mod %>%
+  mutate(
+    anio = year(semana),
+    mes = month(semana, label = TRUE, abbr = TRUE)
+  )
+
+kable(
+  tibble(
+    metrica = c("Filas", "Cuadrantes", "Anios"),
+    valor = c(
+      nrow(d_mod),
+      n_distinct(d_mod$id_cuadrante),
+      paste(sort(unique(d_mod$anio)), collapse = ", ")
+    )
+  ),
+  col.names = c("Metrica", "Valor")
+)
+```
+
+## 1. Segmentacion territorial por nivel de actividad
+
+Misma regla que en `identificacion_patrones.Rmd` (Seccion 5.3.6), aplicada aqui para perfiles comparativos.
+
+```{r nivel-actividad}
+cuadrante_resumen <- d_mod %>%
+  group_by(id_cuadrante, latitud, longitud, altitud) %>%
+  summarise(
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    usuarios = sum(usuarios_afectados, na.rm = TRUE),
+    duracion_h = sum(duracion_total, na.rm = TRUE),
+    semanas_activas = sum(n_eventos > 0, na.rm = TRUE),
+    precip_media = mean(precip_total_semana, na.rm = TRUE),
+    temp_media = mean(temp_media_semana, na.rm = TRUE),
+    viento_medio = mean(viento_medio_semana, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+q_pos <- cuadrante_resumen$n_eventos[cuadrante_resumen$n_eventos > 0]
+
+cuadrante_resumen <- cuadrante_resumen %>%
+  mutate(
+    nivel = case_when(
+      n_eventos == 0 ~ "Sin eventos",
+      n_eventos <= quantile(q_pos, 0.50) ~ "Baja",
+      n_eventos <= quantile(q_pos, 0.85) ~ "Media",
+      TRUE ~ "Alta"
+    ),
+    nivel = factor(nivel, levels = c("Sin eventos", "Baja", "Media", "Alta"))
+  )
+
+tabla_niveles <- cuadrante_resumen %>%
+  count(nivel, name = "n_cuadrantes") %>%
+  mutate(pct = round(100 * n_cuadrantes / sum(n_cuadrantes), 1))
+
+kable(tabla_niveles, col.names = c("Nivel", "Cuadrantes", "%"))
+```
+
+### 1.1 Perfiles descriptivos por nivel
+
+```{r perfiles-nivel}
+perfiles_nivel <- cuadrante_resumen %>%
+  filter(nivel != "Sin eventos") %>%
+  group_by(nivel) %>%
+  summarise(
+    n_cuadrantes = n(),
+    eventos_medio = round(mean(n_eventos), 1),
+    usuarios_medio = round(mean(usuarios), 1),
+    duracion_media_h = round(mean(duracion_h), 1),
+    semanas_activas_media = round(mean(semanas_activas), 1),
+    precip_media_mm = round(mean(precip_media), 1),
+    temp_media_c = round(mean(temp_media), 1),
+    altitud_media_m = round(mean(altitud), 0),
+    .groups = "drop"
+  )
+
+kable(perfiles_nivel)
+```
+
+```{r boxplot-nivel, fig.width=10, fig.height=5.5}
+d_mod_nivel <- d_mod %>%
+  left_join(cuadrante_resumen %>% select(id_cuadrante, nivel), by = "id_cuadrante") %>%
+  filter(nivel %in% c("Baja", "Media", "Alta"))
+
+p_box_eventos <- ggplot(d_mod_nivel, aes(x = nivel, y = n_eventos, fill = nivel)) +
+  geom_boxplot(outlier.alpha = 0.25, show.legend = FALSE) +
+  scale_fill_manual(values = c("#74C69D", "#F4A261", "#E84855")) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Distribucion semanal de n_eventos por nivel de actividad del cuadrante",
+    x = "Nivel de actividad (acumulado 2024-2025)", y = "n_eventos por semana"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_box_eventos
+guardar_plot(p_box_eventos, "boxplot_eventos_por_nivel_segmentacion_mod.png", 10, 5.5)
+```
+
+```{r heatmap-perfiles, fig.width=9, fig.height=5}
+vars_perfil <- c(
+  "eventos_medio", "usuarios_medio", "duracion_media_h",
+  "semanas_activas_media", "precip_media_mm", "temp_media_c"
+)
+
+heatmap_df <- perfiles_nivel %>%
+  select(nivel, all_of(vars_perfil)) %>%
+  pivot_longer(-nivel, names_to = "variable", values_to = "valor") %>%
+  group_by(variable) %>%
+  mutate(valor_z = as.numeric(scale(valor))) %>%
+  ungroup() %>%
+  mutate(
+    etiqueta = case_when(
+      variable == "eventos_medio" ~ "Eventos",
+      variable == "usuarios_medio" ~ "Usuarios",
+      variable == "duracion_media_h" ~ "Duracion (h)",
+      variable == "semanas_activas_media" ~ "Sem. activas",
+      variable == "precip_media_mm" ~ "Precip. media",
+      variable == "temp_media_c" ~ "Temp. media",
+      TRUE ~ variable
+    )
+  )
+
+p_heatmap <- ggplot(heatmap_df, aes(x = etiqueta, y = nivel, fill = valor_z)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(valor, 1)), size = 3.5) +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0, name = "z-score") +
+  labs(
+    title = "Perfil normalizado por nivel de actividad del cuadrante",
+    x = NULL, y = "Nivel"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"), axis.text.x = element_text(angle = 30, hjust = 1))
+
+p_heatmap
+guardar_plot(p_heatmap, "heatmap_perfiles_nivel_segmentacion_mod.png", 9, 5)
+```
+
+## 2. Comparacion temporal 2024 vs 2025
+
+```{r comparacion-anio}
+resumen_anio <- d_mod %>%
+  group_by(anio) %>%
+  summarise(
+    n_filas = n(),
+    total_eventos = sum(n_eventos, na.rm = TRUE),
+    eventos_por_semana = round(total_eventos / n_distinct(semana), 1),
+    usuarios_total = sum(usuarios_afectados, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(resumen_anio)
+
+estabilidad_nivel <- cuadrante_resumen %>%
+  select(id_cuadrante, nivel) %>%
+  left_join(
+    d_mod %>%
+      group_by(id_cuadrante, anio) %>%
+      summarise(n_eventos_anio = sum(n_eventos), .groups = "drop"),
+    by = "id_cuadrante"
+  ) %>%
+  group_by(id_cuadrante, nivel, anio) %>%
+  summarise(n_eventos_anio = sum(n_eventos_anio), .groups = "drop") %>%
+  pivot_wider(names_from = anio, values_from = n_eventos_anio, values_fill = 0) %>%
+  mutate(
+    ratio_2025_2024 = if_else(`2024` > 0, round(`2025` / `2024`, 2), NA_real_)
+  )
+
+kable(
+  estabilidad_nivel %>%
+    group_by(nivel) %>%
+    summarise(
+      n_cuadrantes = n(),
+      media_2024 = round(mean(`2024`), 1),
+      media_2025 = round(mean(`2025`), 1),
+      ratio_promedio = round(mean(ratio_2025_2024, na.rm = TRUE), 2),
+      .groups = "drop"
+    ),
+  col.names = c("Nivel", "Cuadrantes", "Media eventos 2024", "Media eventos 2025", "Ratio 2025/2024")
+)
+```
+
+```{r barras-anio-nivel, fig.width=9, fig.height=5}
+por_anio_nivel <- d_mod %>%
+  left_join(cuadrante_resumen %>% select(id_cuadrante, nivel), by = "id_cuadrante") %>%
+  filter(nivel %in% c("Baja", "Media", "Alta")) %>%
+  group_by(anio, nivel) %>%
+  summarise(eventos = sum(n_eventos), .groups = "drop")
+
+p_anio_nivel <- ggplot(por_anio_nivel, aes(x = nivel, y = eventos, fill = factor(anio))) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.75) +
+  scale_fill_brewer(palette = "Set1", name = "Anio") +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Eventos acumulados por nivel de actividad y anio",
+    subtitle = "D_mod, cuadrantes con al menos un evento en el periodo",
+    x = "Nivel de actividad", y = "Total n_eventos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_anio_nivel
+guardar_plot(p_anio_nivel, "barras_eventos_anio_nivel_segmentacion_mod.png", 9, 5)
+```
+
+## 3. Regimen climatico semanal
+
+```{r regimen-clima}
+umbral_lluvia <- quantile(d_mod$precip_total_semana, 0.75, na.rm = TRUE)
+
+d_mod <- d_mod %>%
+  mutate(
+    regimen_lluvia = if_else(
+      precip_total_semana >= umbral_lluvia,
+      "Lluvioso (P75+)",
+      "Seco (<P75)"
+    ),
+    regimen_lluvia = factor(regimen_lluvia, levels = c("Seco (<P75)", "Lluvioso (P75+)"))
+  )
+
+tabla_regimen <- d_mod %>%
+  group_by(regimen_lluvia) %>%
+  summarise(
+    n_filas = n(),
+    pct_filas = round(100 * n() / nrow(d_mod), 1),
+    media_eventos = round(mean(n_eventos), 3),
+    mediana_eventos = round(median(n_eventos), 2),
+    pct_semanas_con_evento = round(100 * mean(n_eventos > 0), 1),
+    .groups = "drop"
+  )
+
+kable(tabla_regimen)
+
+if (requireNamespace("rstatix", quietly = TRUE)) {
+  test_regimen <- d_mod %>%
+    rstatix::wilcox_test(n_eventos ~ regimen_lluvia) %>%
+    mutate(p = signif(p, 3))
+  kable(test_regimen %>% select(.y., n1, n2, statistic, p),
+        col.names = c("Comparacion", "n1", "n2", "W", "p-valor"),
+        caption = "Wilcoxon: n_eventos semanas secas vs lluviosas")
+}
+```
+
+```{r boxplot-regimen, fig.width=8, fig.height=5}
+p_regimen <- ggplot(d_mod, aes(x = regimen_lluvia, y = n_eventos, fill = regimen_lluvia)) +
+  geom_boxplot(outlier.alpha = 0.15, show.legend = FALSE) +
+  scale_fill_manual(values = c("#F4D35E", "#4A90D9")) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "n_eventos segun regimen de precipitacion semanal",
+    subtitle = paste0("Umbral P75 = ", round(umbral_lluvia, 1), " mm"),
+    x = "Regimen", y = "n_eventos por cuadrante-semana"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_regimen
+guardar_plot(p_regimen, "boxplot_eventos_regimen_lluvia_segmentacion_mod.png", 8, 5)
+```
+
+## 4. Clustering multivariado de cuadrantes
+
+Variables estandarizadas: frecuencia, severidad, duracion, clima y altitud.
+
+```{r clustering}
+vars_cluster <- c(
+  "n_eventos", "usuarios", "duracion_h", "semanas_activas",
+  "precip_media", "temp_media", "viento_medio", "altitud"
+)
+
+cuadrantes_cluster <- cuadrante_resumen %>%
+  filter(n_eventos > 0) %>%
+  select(id_cuadrante, latitud, longitud, all_of(vars_cluster)) %>%
+  drop_na(all_of(vars_cluster))
+
+mat_raw <- cuadrantes_cluster %>%
+  select(all_of(vars_cluster))
+
+sd_cluster <- sapply(mat_raw, sd, na.rm = TRUE)
+vars_cluster_ok <- names(sd_cluster)[sd_cluster > 0 & !is.na(sd_cluster)]
+
+mat_cluster <- scale(mat_raw[, vars_cluster_ok, drop = FALSE])
+filas_ok <- complete.cases(mat_cluster)
+mat_cluster <- mat_cluster[filas_ok, , drop = FALSE]
+cuadrantes_cluster <- cuadrantes_cluster[filas_ok, ]
+
+set.seed(42)
+k_optimo <- min(4L, nrow(mat_cluster))
+km <- kmeans(mat_cluster, centers = k_optimo, nstart = 25)
+
+cuadrantes_cluster <- cuadrantes_cluster %>%
+  mutate(cluster = factor(km$cluster, labels = paste0("C", seq_len(k_optimo))))
+
+perfil_cluster <- cuadrantes_cluster %>%
+  group_by(cluster) %>%
+  summarise(
+    n_cuadrantes = n(),
+    eventos_medio = round(mean(n_eventos), 1),
+    usuarios_medio = round(mean(usuarios), 1),
+    duracion_media_h = round(mean(duracion_h), 1),
+    precip_media_mm = round(mean(precip_media), 1),
+    altitud_media_m = round(mean(altitud), 0),
+    .groups = "drop"
+  )
+
+kable(perfil_cluster)
+```
+
+```{r mapa-cluster, fig.width=10, fig.height=7}
+p_mapa_cluster <- ggplot(cuadrantes_cluster, aes(x = longitud, y = latitud)) +
+  geom_point(aes(color = cluster, size = n_eventos), alpha = 0.85) +
+  scale_size_continuous(range = c(2, 8), labels = comma) +
+  scale_color_brewer(palette = "Set1", name = "Cluster") +
+  labs(
+    title = "Clustering k-means de cuadrantes (k = 4)",
+    subtitle = "Tamano ~ total n_eventos 2024-2025; solo cuadrantes con eventos",
+    x = "Longitud", y = "Latitud"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_mapa_cluster
+guardar_plot(p_mapa_cluster, "mapa_clusters_cuadrantes_segmentacion_mod.png", 10, 7)
+```
+
+```{r heatmap-cluster, fig.width=9, fig.height=5}
+heatmap_cluster <- cuadrantes_cluster %>%
+  group_by(cluster) %>%
+  summarise(across(all_of(vars_cluster), mean), .groups = "drop") %>%
+  pivot_longer(-cluster, names_to = "variable", values_to = "valor") %>%
+  group_by(variable) %>%
+  mutate(valor_z = as.numeric(scale(valor))) %>%
+  ungroup()
+
+p_heatmap_cluster <- ggplot(heatmap_cluster, aes(x = variable, y = cluster, fill = valor_z)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(valor, 1)), size = 3) +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+  labs(
+    title = "Perfil medio por cluster de cuadrantes",
+    x = NULL, y = "Cluster", fill = "z-score"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"), axis.text.x = element_text(angle = 35, hjust = 1))
+
+p_heatmap_cluster
+guardar_plot(p_heatmap_cluster, "heatmap_perfiles_cluster_segmentacion_mod.png", 9, 5)
+```
+
+## 5. Sintesis y recomendaciones
+
+```{r sintesis}
+pct_alta <- tabla_niveles$pct[tabla_niveles$nivel == "Alta"]
+ratio_alta <- estabilidad_nivel %>%
+  group_by(nivel) %>%
+  summarise(ratio_promedio = round(mean(ratio_2025_2024, na.rm = TRUE), 2), .groups = "drop") %>%
+  filter(nivel == "Alta") %>%
+  pull(ratio_promedio)
+n_cluster_max <- perfil_cluster %>% slice_max(eventos_medio, n = 1)
+
+hallazgos <- tibble(
+  bloque = c("Territorial", "Temporal", "Climatico", "Clustering", "Modelado"),
+  hallazgo = c(
+    paste0("Cuadrantes nivel Alta: ", pct_alta, "% del total"),
+    paste0("Incremento 2024->2025 en estrato Alta: ratio ~", ratio_alta),
+    paste0(
+      "Media n_eventos lluvioso vs seco: ",
+      tabla_regimen$media_eventos[tabla_regimen$regimen_lluvia == "Lluvioso (P75+)"], " vs ",
+      tabla_regimen$media_eventos[tabla_regimen$regimen_lluvia == "Seco (<P75)"]
+    ),
+    paste0(
+      "Cluster mas activo (", n_cluster_max$cluster, "): ",
+      n_cluster_max$n_cuadrantes, " cuadrantes; media ", n_cluster_max$eventos_medio, " eventos"
+    ),
+    "Evaluar modelado global vs estratificado por cluster en Etapa 4"
+  )
+)
+
+kable(hallazgos, col.names = c("Bloque", "Hallazgo"))
+```
+
+La segmentacion exploratoria confirma heterogeneidad espacial y climatica en $D_{\mathrm{mod}}$,
+fundamentando la estratificacion territorial para el pronostico de SAIFI/SAIDI en la Etapa 4.

@@ -1,0 +1,296 @@
+---
+title: "Distribucion de variables en data agrupada"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Distribucion de variables en data agrupada (Sección 5.3.4)
+
+Tabla agregada **cuadrante × semana** (`data_agrupada.csv`).
+
+Es una etapa de exploracion de las variables en la tabla agrupada para entender su distribucion y comportamiento.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+if (!file.exists(path_agrupada)) {
+  stop("No se encontro: ", path_agrupada)
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r lectura}
+message("Leyendo tabla agrupada cuadrante x semana...")
+tabla_base_agrupada <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(tabla_base_agrupada) &&
+    !inherits(tabla_base_agrupada$semana, "Date")) {
+  tabla_base_agrupada <- tabla_base_agrupada %>%
+    mutate(semana = as.Date(semana))
+}
+
+N_panel <- nrow(tabla_base_agrupada)
+dim(tabla_base_agrupada)
+head(tabla_base_agrupada)
+```
+
+## Selección de variables
+
+Se analizan las variables climáticas, de severidad y de continuidad. Las llaves y
+coordenadas (`id_cuadrante`, `semana`, `latitud`, `longitud`, `altitud`) se excluyen.
+
+```{r seleccion-variables}
+vars_clima <- c(
+  "temp_media_semana", "temp_max_semana", "temp_min_semana",
+  "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+  "precip_total_semana"
+)
+
+vars_evento <- c(
+  "usuarios_afectados", "elementos_afectados", "n_eventos", "duracion_total"
+)
+
+vars_evaluar <- c(vars_clima, vars_evento)
+vars_evaluar
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+## Indicadores de forma por variable
+
+Asimetría, curtosis y proporción de ceros: soporte cuantitativo para interpretar
+las formas observadas en los diagramas de densidad.
+
+```{r forma-distribucion}
+asimetria <- function(x) {
+  x <- x[!is.na(x)]
+  m <- mean(x); s <- sd(x)
+  mean((x - m)^3) / s^3
+}
+
+curtosis <- function(x) {
+  x <- x[!is.na(x)]
+  m <- mean(x); s <- sd(x)
+  mean((x - m)^4) / s^4
+}
+
+n_modas <- function(x) {
+  x <- x[!is.na(x)]
+  d <- density(x)
+  # picos locales de la densidad estimada
+  sum(diff(sign(diff(d$y))) == -2)
+}
+
+tabla_distribucion <- map_dfr(vars_evaluar, function(v) {
+  x <- tabla_base_agrupada[[v]]
+  tibble(
+    variable   = v,
+    grupo      = ifelse(v %in% vars_clima, "clima", "evento"),
+    pct_ceros  = round(100 * mean(x == 0, na.rm = TRUE), 2),
+    asimetria  = round(asimetria(x), 3),
+    curtosis   = round(curtosis(x), 3),
+    n_modas    = n_modas(x)
+  )
+})
+
+tabla_distribucion
+
+write_csv(
+  tabla_distribucion,
+  file.path(UBICACION_DATA, "distribucion_forma_variables_agrupada.csv")
+)
+```
+
+## Distribución de variables climáticas
+
+Diagramas de densidad para evaluar asimetría, dispersión y unimodalidad.
+Las temperaturas y la humedad se esperan estables y aproximadamente unimodales.
+
+```{r densidad-clima, fig.width=11, fig.height=6}
+densidad_clima <- tabla_base_agrupada %>%
+  select(all_of(setdiff(vars_clima, "precip_total_semana"))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor)) %>%
+  ggplot(aes(x = valor)) +
+  geom_density(fill = "#90CAF9", alpha = 0.65, color = "#1565C0") +
+  facet_wrap(~ variable, scales = "free", ncol = 3) +
+  labs(
+    title = "Distribucion de variables climaticas semanales (sin precipitacion)",
+    subtitle = paste0("Data agrupada cuadrante x semana | N = ", format(N_panel, big.mark = ",")),
+    x = NULL, y = "Densidad"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"))
+
+densidad_clima
+
+guardar_plot(densidad_clima, "distribucion_densidad_clima_agrupada.png", 11, 6)
+```
+
+### Precipitación acumulada: asimetría positiva
+
+La precipitación semanal concentra muchas semanas con valores bajos o nulos y pocas
+observaciones extremas. Se muestra en escala original y en escala `log(1 + x)`.
+
+```{r densidad-precipitacion, fig.width=11, fig.height=4.5}
+precip_larga <- tabla_base_agrupada %>%
+  transmute(
+    `Escala original (mm)`  = precip_total_semana,
+    `Escala log(1 + x)`     = log1p(precip_total_semana)
+  ) %>%
+  pivot_longer(everything(), names_to = "escala", values_to = "valor")
+
+densidad_precip <- ggplot(precip_larga, aes(x = valor)) +
+  geom_density(fill = "#80DEEA", alpha = 0.65, color = "#00838F") +
+  facet_wrap(~ escala, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribucion de la precipitacion acumulada semanal",
+    subtitle = "Marcada asimetria positiva: alta frecuencia de valores bajos y pocas semanas de lluvia intensa",
+    x = NULL, y = "Densidad"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"))
+
+densidad_precip
+
+guardar_plot(densidad_precip, "distribucion_densidad_precipitacion_agrupada.png", 11, 4.5)
+```
+
+## Distribución de variables de severidad y continuidad
+
+### Concentración en cero
+
+La mayor parte de las semanas-cuadrante no registra fallas, por lo que estas
+variables están altamente sesgadas hacia cero.
+
+```{r barras-ceros, fig.width=9, fig.height=5}
+tabla_ceros <- tabla_distribucion %>%
+  filter(grupo == "evento") %>%
+  mutate(variable = fct_reorder(variable, pct_ceros, .desc = TRUE))
+
+grafico_ceros <- ggplot(tabla_ceros, aes(x = variable, y = pct_ceros, fill = variable)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = paste0(pct_ceros, "%")), vjust = -0.4, fontface = "bold", size = 3.6) +
+  scale_fill_manual(values = c("#EF9A9A", "#FFCC80", "#A5D6A7", "#90CAF9")) +
+  scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.08))) +
+  labs(
+    title = "Proporcion de ceros en variables de severidad y continuidad",
+    subtitle = "Sesgo hacia cero: la mayoria de semanas-cuadrante no registra fallas",
+    x = NULL, y = "% de filas con valor 0"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 20, hjust = 1)
+  )
+
+grafico_ceros
+
+guardar_plot(grafico_ceros, "distribucion_pct_ceros_evento_agrupada.png", 9, 5)
+```
+
+### Colas largas en semanas con evento
+
+Condicionando a `valor > 0`, las distribuciones muestran colas derechas largas que
+reflejan incidentes de alta severidad. Se grafica en escala `log(1 + x)`.
+
+```{r densidad-evento, fig.width=11, fig.height=5}
+densidad_evento <- tabla_base_agrupada %>%
+  select(all_of(vars_evento)) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor), valor > 0) %>%
+  ggplot(aes(x = log1p(valor))) +
+  geom_density(fill = "#FFAB91", alpha = 0.65, color = "#D84315") +
+  facet_wrap(~ variable, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribucion de severidad y continuidad en semanas con evento",
+    subtitle = "Escala log(1 + x): colas largas asociadas a incidentes de alta severidad",
+    x = "log(1 + valor)", y = "Densidad"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"))
+
+densidad_evento
+
+guardar_plot(densidad_evento, "distribucion_densidad_evento_agrupada.png", 11, 5)
+```
+
+## Síntesis
+
+```{r sintesis}
+tabla_distribucion %>%
+  mutate(
+    lectura = case_when(
+      grupo == "clima" & abs(asimetria) <= 0.5 ~ "estable, aprox. unimodal/simetrica",
+      grupo == "clima" & asimetria > 0.5       ~ "asimetria positiva marcada",
+      grupo == "evento"                        ~ "sesgada hacia cero, cola derecha larga",
+      TRUE                                     ~ "revisar"
+    )
+  ) %>%
+  select(variable, grupo, pct_ceros, asimetria, curtosis, lectura)
+```
+
+- Las variables de **temperatura y humedad** presentan distribuciones estables,
+  aproximadamente unimodales y con asimetría cercana a cero.
+- La **precipitación acumulada** exhibe marcada asimetría positiva: alta frecuencia
+  de semanas con poca o ninguna lluvia y pocas semanas de precipitación intensa.
+- Las variables de **severidad y continuidad** están altamente sesgadas hacia cero
+  (la mayoría de semanas-cuadrante sin fallas); condicionadas a la ocurrencia de
+  eventos, muestran colas largas que reflejan incidentes de alta severidad.
+
+```{r resumen-exportes}
+archivos <- c(
+  "distribucion_forma_variables_agrupada.csv",
+  "distribucion_densidad_clima_agrupada.png",
+  "distribucion_densidad_precipitacion_agrupada.png",
+  "distribucion_pct_ceros_evento_agrupada.png",
+  "distribucion_densidad_evento_agrupada.png"
+)
+
+tibble(
+  archivo = archivos,
+  existe  = file.exists(file.path(UBICACION_DATA, archivos))
+)
+
+message("Graficos de distribucion guardados en: ", UBICACION_DATA)
+```
+

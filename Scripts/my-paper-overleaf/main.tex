@@ -15,6 +15,7 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{array}
+\usepackage{tabularray} % líneas punteadas/discontinuas en tablas (compatible con xcolor)
 \usepackage[utf8]{inputenc}
 \usepackage{titlesec} % Paquete para controlar espaciado de títulos
 \usepackage{graphicx}
@@ -80,18 +81,18 @@
 
 
 
+\renewcommand{\lstlistingname}{Listado}
 \setlength{\cftbeforechapskip}{7pt}
 \setcounter{tocdepth}{4} % ToC depth
 
 
 % titles
-\title{Metodología Basada en Métodos de Ciencia de Datos para Predecir los Indicadores de Calidad del Servicio (SAIDI y SAIFI) en Redes de Distribución de una Empresa de Energía Eléctrica en el Norte de Santander}
+\title{Metodología Basada en Métodos de Ciencia de Datos para Pronosticar la Frecuencia y la Duración de Interrupciones Eléctricas (Variables Proxy Asociadas a SAIDI y SAIFI) en Redes de Distribución de una Empresa de Energía Eléctrica en el Norte de Santander}
 \thesisHeader{Pontificia Universidad Javeriana Cali \\Facultad de Ingeniería y Ciencias.\\MAESTRÍA EN CIENCIA DE DATOS}
 \academicYear{07-2024/11-2024}
 
 % student
 \author{Edwin Henao Ochoa\\
-Cindy Lugo Rozo\\
 Edwin Silva Salas}
 
 % supervisor(s)Zürich
@@ -104,7 +105,6 @@ Edwin Silva Salas}
 
 % dedication (comment to remove)
 \dedication{\textit{A nuestras familias y amigos \\ Edwin Henao Ochoa\\
-Cindy Lugo Rozo\\
 Edwin Silva Salas}}
 
 % custom symbols (optional)
@@ -115,7 +115,7 @@ Edwin Silva Salas}}
 
 \sisetup{
   output-decimal-marker = {.},
-  group-separator = {,},
+  group-separator = {.},
   detect-all = true
 }
 
@@ -126,6 +126,16 @@ Edwin Silva Salas}}
 \newcommand{\urlfaltantesagrupada}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/missing_values_grouped.html}
 \newcommand{\urldetectionoutliers}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/detection_outliers.html}
 \newcommand{\urloutliersagrupada}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/outliers_gruped.html}
+\newcommand{\urlestadisticosdescriptivos}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/calculo_estadistico_descriptivo.html}
+\newcommand{\urldistribucionvariables}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/distribucion_variables.html}
+\newcommand{\urlanalisistemporal}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/analisis_temporal_eventos.html}
+\newcommand{\urlemparejamientoeventos}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/emparejamiento_eventos.html}
+\newcommand{\urlconsolidadodatamod}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/consolidado_data_mod.html}
+\newcommand{\urlidentificacionpatrones}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/identificacion_patrones.html}
+\newcommand{\urlanalisisCorrelacion}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/analisis_correlacion.html}
+\newcommand{\urlanalisisMultivariado}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/analisis_multivariado.html}
+\newcommand{\urlsegmentacionexploratoria}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/segmentacion_exploratoria.html}
+\newcommand{\urlEDA}{https://esilvas1.github.io/DataCollection_Tesis_MCD/Scripts/Edwin/EDA.html}
 
 % Ajustes de espacio
 \titlespacing*{\subsection}{0pt}{10pt plus 2pt minus 2pt}{5pt}
@@ -142,13 +152,11 @@ Edwin Silva Salas}}
     \frontmatter
     % --------------------------
     \input{chapters/introduction}
-    \newpage
     % --------------------------
     \mainmatter
     % --------------------------
     \chapter{Definición del problema}
     \input{chapters/planteamiento-problema}
-    \newpage
     \input{chapters/formulacion-problema}
     % --------------------------
     \chapter{Objetivos del proyecto} % 
@@ -159,26 +167,25 @@ Edwin Silva Salas}}
     \input{chapters/marco-teorico}
     \input{chapters/antecedentes}
     % --------------------------
-    \chapter{Datos}
+    \chapter{Datos}\label{sec:datos}
         \input{chapters/datos}
     % --------------------------
-    \chapter{Metodología}
+    \chapter{Metodología}\label{sec:metodologia}
         \input{chapters/metodologia}
      % --------------------------
-     \chapter{Resultados}
+     \chapter{Resultados}\label{sec:resultados}
      \input{chapters/resultados}
     % --------------------------
-    \chapter{Discusión y trabajo futuro}
+    \chapter{Discusión y trabajo futuro}\label{sec:discusion}
     \input{chapters/discusion}
    % --------------------------
-    \chapter{Conclusiones}
+    \chapter{Conclusiones}\label{sec:conclusion}
     \input{chapters/conclusiones}
    % --------------------------
-    \clearpage
     \printbibliography
     % --------------------------
      \begin{appendices}
-    \chapter{Appendix}
+    \chapter{Anexos}
         \input{chapters/appendice}
     \end{appendices}
 \end{document}

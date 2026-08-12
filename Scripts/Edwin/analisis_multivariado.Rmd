@@ -1,0 +1,489 @@
+---
+title: "Evaluacion inicial de relaciones multivariadas (D_mod 2024-2025)"
+author: "Edwin Silva Salas & Edwin Henao Ochoa"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Evaluacion inicial de relaciones multivariadas (Seccion 5.3.8)
+
+Dataset **$D_{\mathrm{mod}}$**: `data_agrupada_mod.csv` (cuadrante × semana, 2024–2025).
+
+Complementa el analisis bivariado de la Seccion 5.3.7 evaluando **redundancia simultanea** entre
+covariables climaticas (VIF, PCA, agrupamiento jerarquico), asociacion parcial clima–respuesta y
+una regresion exploratoria de diagnostico. Objetivo: recomendar un subconjunto de predictoras y
+definir la variable respuesta para la Etapa 4.
+
+Metodologia aplicada:
+
+1. **VIF** del bloque climatico (multicolinealidad).
+2. **PCA exploratorio** del bloque climatico (scree + loadings).
+3. **Dendrograma** de variables climaticas por distancia de correlacion.
+4. **Correlacion parcial** precipitacion–`n_eventos` controlando temperatura y viento.
+5. **Regresion exploratoria** (diagnostico, no modelo final).
+6. **PCA del bloque operativo** para dimensiones de impacto (frecuencia vs. duracion).
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+path_full <- file.path(UBICACION_DATA, "data_agrupada.csv")
+
+if (file.exists(path_mod)) {
+  path_agrupada <- path_mod
+  aplicar_filtro_anio <- FALSE
+} else if (file.exists(path_full)) {
+  path_agrupada <- path_full
+  aplicar_filtro_anio <- TRUE
+  warning("No se encontro data_agrupada_mod.csv; filtrando data_agrupada.csv a 2024-2025.")
+} else {
+  stop("No se encontro data_agrupada_mod.csv ni data_agrupada.csv.")
+}
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+```{r variables}
+vars_operativo <- c(
+  "n_eventos", "usuarios_afectados", "elementos_afectados", "duracion_total"
+)
+
+vars_clima <- c(
+  "temp_media_semana", "temp_max_semana", "temp_min_semana",
+  "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+  "precip_total_semana"
+)
+
+etiquetas_vars <- c(
+  temp_media_semana = "temp_media",
+  temp_max_semana = "temp_max",
+  temp_min_semana = "temp_min",
+  humedad_media_semana = "humedad",
+  viento_medio_semana = "viento_medio",
+  viento_max_semana = "viento_max",
+  precip_total_semana = "precip_total",
+  n_eventos = "n_eventos",
+  usuarios_afectados = "usuarios_afectados",
+  elementos_afectados = "elementos_afectados",
+  duracion_total = "duracion_total"
+)
+
+calcular_vif <- function(data, variables, response = "n_eventos") {
+  vars_ok <- variables[variables %in% names(data)]
+  fmla <- as.formula(
+    paste(response, "~", paste(vars_ok, collapse = " + "))
+  )
+  modelo <- lm(fmla, data = data)
+  vif_vals <- car::vif(modelo)
+  if (is.matrix(vif_vals)) {
+    vif_vals <- vif_vals[, 1]
+  }
+  tibble(
+    variable = names(vif_vals),
+    vif = round(as.numeric(vif_vals), 2)
+  ) %>%
+    arrange(desc(vif))
+}
+```
+
+```{r lectura}
+message("Leyendo D_mod...")
+d_mod <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(d_mod) && !inherits(d_mod$semana, "Date")) {
+  d_mod <- d_mod %>% mutate(semana = as.Date(semana))
+}
+
+d_mod <- if (aplicar_filtro_anio) {
+  d_mod %>% filter(year(semana) %in% 2024:2025)
+} else {
+  d_mod
+}
+
+d_evento <- d_mod %>% filter(n_eventos > 0)
+
+kable(
+  tibble(
+    metrica = c("Filas panel", "Filas con evento", "% con evento"),
+    valor = c(
+      nrow(d_mod),
+      nrow(d_evento),
+      paste0(round(100 * nrow(d_evento) / nrow(d_mod), 1), "%")
+    )
+  ),
+  col.names = c("Metrica", "Valor")
+)
+```
+
+## 1. Multicolinealidad climatica (VIF)
+
+Se ajusta un modelo lineal auxiliar `n_eventos ~ variables climaticas` para calcular el VIF
+de cada covariable (diagnostico de multicolinealidad en el contexto predictivo).
+
+```{r vif}
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car", repos = "https://cloud.r-project.org")
+}
+library(car)
+
+vif_clima <- calcular_vif(d_mod, vars_clima, response = "n_eventos")
+vif_clima <- vif_clima %>%
+  mutate(
+    etiqueta = etiquetas_vars[variable],
+    alerta = case_when(
+      vif >= 10 ~ "Alta (>=10)",
+      vif >= 5 ~ "Moderada (>=5)",
+      TRUE ~ "Baja (<5)"
+    )
+  )
+
+kable(
+  vif_clima %>% select(variable, vif, alerta),
+  col.names = c("Variable", "VIF", "Nivel"),
+  caption = "VIF del bloque climatico (modelo auxiliar n_eventos ~ clima)"
+)
+```
+
+```{r grafico-vif, fig.width=9, fig.height=5.5}
+p_vif <- ggplot(vif_clima, aes(x = reorder(etiqueta, vif), y = vif, fill = alerta)) +
+  geom_col(width = 0.7, show.legend = TRUE) +
+  geom_hline(yintercept = 5, linetype = "dashed", color = "#E84855", linewidth = 0.7) +
+  geom_hline(yintercept = 10, linetype = "dashed", color = "#9B2226", linewidth = 0.7) +
+  coord_flip() +
+  scale_fill_manual(values = c(
+    "Baja (<5)" = "#74C69D",
+    "Moderada (>=5)" = "#F4A261",
+    "Alta (>=10)" = "#E84855"
+  )) +
+  labs(
+    title = "VIF del bloque climatico — D_mod",
+    subtitle = "Lineas punteadas: umbrales 5 y 10",
+    x = NULL, y = "VIF", fill = "Nivel"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_vif
+guardar_plot(p_vif, "vif_clima_multivariado_mod.png", 9, 5.5)
+```
+
+### VIF con subconjunto reducido
+
+```{r vif-reducido}
+vars_clima_reducido <- c(
+  "precip_total_semana", "temp_media_semana",
+  "humedad_media_semana", "viento_medio_semana"
+)
+
+vif_reducido <- calcular_vif(d_mod, vars_clima_reducido, response = "n_eventos")
+kable(vif_reducido, col.names = c("Variable", "VIF"),
+      caption = "VIF con subconjunto climatico reducido propuesto")
+```
+
+## 2. PCA exploratorio del bloque climatico
+
+```{r pca-clima}
+clima_mat <- d_mod %>%
+  select(all_of(vars_clima)) %>%
+  drop_na() %>%
+  scale()
+
+pca_clima <- prcomp(clima_mat, center = FALSE, scale. = FALSE)
+
+var_explicada <- (pca_clima$sdev^2) / sum(pca_clima$sdev^2)
+tabla_pca <- tibble(
+  componente = paste0("PC", seq_along(var_explicada)),
+  varianza_pct = round(100 * var_explicada, 1),
+  varianza_acum_pct = round(100 * cumsum(var_explicada), 1)
+)
+
+kable(tabla_pca, col.names = c("Componente", "Varianza (%)", "Acumulada (%)"))
+
+loadings <- as.data.frame(pca_clima$rotation[, 1:3, drop = FALSE]) %>%
+  rownames_to_column("variable") %>%
+  pivot_longer(-variable, names_to = "componente", values_to = "loading") %>%
+  mutate(etiqueta = etiquetas_vars[variable])
+```
+
+```{r scree-clima, fig.width=8, fig.height=5}
+df_scree <- tabla_pca %>%
+  mutate(componente = factor(componente, levels = componente))
+
+p_scree <- ggplot(df_scree, aes(x = componente, y = varianza_pct)) +
+  geom_col(fill = "#4A90D9", alpha = 0.9) +
+  geom_line(aes(group = 1), linewidth = 0.8, color = "#E84855") +
+  geom_point(size = 2.5, color = "#E84855") +
+  labs(
+    title = "PCA del bloque climatico — varianza explicada",
+    subtitle = "D_mod, panel completo",
+    x = "Componente principal", y = "Varianza explicada (%)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_scree
+guardar_plot(p_scree, "pca_scree_clima_multivariado_mod.png", 8, 5)
+```
+
+```{r loadings-clima, fig.width=10, fig.height=6}
+p_loadings <- ggplot(loadings, aes(x = componente, y = etiqueta, fill = loading)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", loading)), size = 3.2) +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+  labs(
+    title = "Loadings PCA — bloque climatico",
+    x = "Componente", y = NULL, fill = "Loading"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_loadings
+guardar_plot(p_loadings, "pca_loadings_clima_multivariado_mod.png", 10, 6)
+```
+
+## 3. Agrupamiento jerarquico de variables climaticas
+
+```{r dendrograma}
+cor_clima <- cor(d_mod %>% select(all_of(vars_clima)), method = "spearman", use = "pairwise.complete.obs")
+dist_clima <- as.dist(1 - abs(cor_clima))
+
+png(
+  file.path(UBICACION_DATA, "dendrograma_clima_multivariado_mod.png"),
+  width = 9, height = 5.5, units = "in", res = 300
+)
+hc <- hclust(dist_clima, method = "average")
+plot(
+  hc,
+  main = "Dendrograma de variables climaticas (distancia = 1 - |rho Spearman|)",
+  xlab = "", sub = "D_mod, 2024-2025",
+  labels = etiquetas_vars[hc$label]
+)
+dev.off()
+
+if (dir.exists(path_img_tesis)) {
+  file.copy(
+    file.path(UBICACION_DATA, "dendrograma_clima_multivariado_mod.png"),
+    file.path(path_img_tesis, "dendrograma_clima_multivariado_mod.png"),
+    overwrite = TRUE
+  )
+}
+
+knitr::include_graphics(file.path(path_img_tesis, "dendrograma_clima_multivariado_mod.png"))
+```
+
+## 4. Correlacion parcial y regresion exploratoria
+
+Correlacion parcial de Spearman entre `precip_total_semana` y `n_eventos`, controlando
+`temp_media_semana` y `viento_medio_semana` (residuos de rangos).
+
+```{r parcial}
+partial_spearman <- function(data, x, y, controls) {
+  rank_data <- data %>%
+    select(all_of(c(x, y, controls))) %>%
+    drop_na() %>%
+    mutate(across(everything(), rank))
+
+  resid_x <- lm(as.formula(paste(x, "~", paste(controls, collapse = " + "))), data = rank_data)$residuals
+  resid_y <- lm(as.formula(paste(y, "~", paste(controls, collapse = " + "))), data = rank_data)$residuals
+  cor(resid_x, resid_y, method = "pearson")
+}
+
+rho_parcial <- partial_spearman(
+  d_mod,
+  "precip_total_semana",
+  "n_eventos",
+  c("temp_media_semana", "viento_medio_semana")
+)
+
+rho_bivariado <- cor(
+  d_mod$precip_total_semana,
+  d_mod$n_eventos,
+  use = "complete.obs",
+  method = "spearman"
+)
+
+kable(
+  tibble(
+    tipo = c("Bivariado Spearman", "Parcial (control temp + viento)"),
+    rho = round(c(rho_bivariado, rho_parcial), 3)
+  ),
+  col.names = c("Tipo", "rho precip vs n_eventos")
+)
+```
+
+Regresion exploratoria Poisson (diagnostico) con subconjunto climatico reducido:
+
+```{r regresion-exploratoria}
+if (!requireNamespace("broom", quietly = TRUE)) {
+  install.packages("broom", repos = "https://cloud.r-project.org")
+}
+library(broom)
+
+d_reg <- d_mod %>%
+  mutate(
+    log_precip = log1p(precip_total_semana),
+    temp_media_z = as.numeric(scale(temp_media_semana)),
+    humedad_z = as.numeric(scale(humedad_media_semana)),
+    viento_z = as.numeric(scale(viento_medio_semana))
+  )
+
+mod_poisson <- glm(
+  n_eventos ~ log_precip + temp_media_z + humedad_z + viento_z,
+  family = poisson(),
+  data = d_reg
+)
+
+coef_tabla <- broom::tidy(mod_poisson) %>%
+  mutate(
+    estimate = round(estimate, 4),
+    std.error = round(std.error, 4),
+    p.value = signif(p.value, 3)
+  )
+
+kable(
+  coef_tabla %>% select(term, estimate, std.error, p.value),
+  col.names = c("Termino", "Coeficiente", "Error est.", "p-valor"),
+  caption = "GLM Poisson exploratorio: n_eventos ~ clima reducido"
+)
+```
+
+```{r coeficientes-regresion, fig.width=8, fig.height=5}
+coef_plot <- coef_tabla %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    term = case_when(
+      term == "log_precip" ~ "log(1+precip)",
+      term == "temp_media_z" ~ "temp_media (z)",
+      term == "humedad_z" ~ "humedad (z)",
+      term == "viento_z" ~ "viento_medio (z)",
+      TRUE ~ term
+    )
+  )
+
+p_coef <- ggplot(coef_plot, aes(x = reorder(term, estimate), y = estimate)) +
+  geom_col(fill = "#4A90D9", alpha = 0.9) +
+  geom_errorbar(aes(ymin = estimate - 1.96 * std.error, ymax = estimate + 1.96 * std.error), width = 0.2) +
+  coord_flip() +
+  labs(
+    title = "Coeficientes GLM Poisson exploratorio",
+    subtitle = "Respuesta: n_eventos; predictoras climaticas reducidas",
+    x = NULL, y = "Coeficiente (log-count)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_coef
+guardar_plot(p_coef, "glm_coef_clima_multivariado_mod.png", 8, 5)
+```
+
+## 5. PCA del bloque operativo (dimensiones de impacto)
+
+```{r pca-operativo}
+oper_mat <- d_mod %>%
+  select(all_of(vars_operativo)) %>%
+  mutate(across(everything(), ~ log1p(.))) %>%
+  scale()
+
+pca_oper <- prcomp(oper_mat, center = FALSE, scale. = FALSE)
+var_oper <- (pca_oper$sdev^2) / sum(pca_oper$sdev^2)
+
+tabla_pca_oper <- tibble(
+  componente = paste0("PC", seq_along(var_oper)),
+  varianza_pct = round(100 * var_oper, 1),
+  varianza_acum_pct = round(100 * cumsum(var_oper), 1)
+)
+
+kable(tabla_pca_oper, col.names = c("Componente", "Varianza (%)", "Acumulada (%)"))
+
+loadings_oper <- as.data.frame(pca_oper$rotation[, 1:2, drop = FALSE]) %>%
+  rownames_to_column("variable") %>%
+  pivot_longer(-variable, names_to = "componente", values_to = "loading") %>%
+  mutate(etiqueta = etiquetas_vars[variable])
+```
+
+```{r loadings-operativo, fig.width=8, fig.height=4.5}
+p_loadings_oper <- ggplot(loadings_oper, aes(x = componente, y = etiqueta, fill = loading)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", loading)), size = 3.5) +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+  labs(
+    title = "Loadings PCA — bloque operativo (log1p)",
+    subtitle = "Frecuencia, severidad y duracion",
+    x = "Componente", y = NULL, fill = "Loading"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+
+p_loadings_oper
+guardar_plot(p_loadings_oper, "pca_loadings_operativo_multivariado_mod.png", 8, 4.5)
+```
+
+## 6. Sintesis y recomendaciones para Etapa 4
+
+```{r sintesis}
+recomendacion <- tibble(
+  decision = c(
+    "Predictoras climaticas",
+    "Variable respuesta frecuencia",
+    "Variable respuesta continuidad",
+    "Variables a excluir por redundancia",
+    "Senal multivariada precipitacion"
+  ),
+  recomendacion = c(
+    paste(vars_clima_reducido, collapse = ", "),
+    "n_eventos (proxy SAIFI)",
+    "duracion_total (proxy SAIDI)",
+    "temp_max, temp_min, viento_max (VIF elevado con sus pares)",
+    paste0(
+      "rho parcial precip-n_eventos = ", round(rho_parcial, 3),
+      " (bivariado = ", round(rho_bivariado, 3), ")"
+    )
+  )
+)
+
+kable(recomendacion, col.names = c("Decision", "Recomendacion EDA"))
+```
+
+Los resultados orientan la Etapa 4: depuracion cuantitativa con subconjunto climatico reducido,
+definicion explicita de `n_eventos` como respuesta de frecuencia, construccion de ventanas
+temporales y estandarizacion previa al modelado predictivo.

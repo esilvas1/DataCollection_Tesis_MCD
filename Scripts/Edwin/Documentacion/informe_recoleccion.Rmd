@@ -395,16 +395,16 @@ Logica estructural:
 1. Se construye un calendario diario del periodo 2021-01-01 a 2025-12-31.
 2. Se realiza producto cartesiano entre inventario de activos y calendario diario.
 3. Sobre esa base se anexan variables de red, variables climaticas por cuadrante-dia y variables de eventos por activo-dia.
-4. Cuando un activo no presenta falla en el dia, se registra `DURACION = 0` y `FRECUENCIA = 0`.
+4. Cuando un activo no presenta falla en el dia, se registra `DURACION_min = 0` y `FRECUENCIA = 0`.
 
 Reglas para variables de evento en el dia:
 
-- `DURACION` (minutos): duración total del evento de interrupción en minutos, asignada al día de `FECHA_DESCONEXION` (sin prorrateo entre días).
-- `FRECUENCIA`: numero de interrupciones del activo cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese dia.
+- `DURACION_min` (minutos): minutos de interrupción del activo **en** ese día, prorrateados según la intersección de `[FECHA_DESCONEXION, FECHA_CONEXION]` con el día calendario. Si el evento cruza varios días, la duración se reparte; si hay varios eventos el mismo día, se suman. **No** se asigna la duración total del evento solo al día de desconexión.
+- `FRECUENCIA`: numero de interrupciones del activo cuyo inicio (`FECHA_DESCONEXION`) ocurre en ese dia (no se prorratea).
 
-Si un evento cruza medianoche, la duracion debe prorratearse por dia. Formula sugerida:
+Si un evento cruza medianoche, la duración **sí** se prorratea por día (regla implementada en `Consolidada.Rmd`). Esquema:
 
-`duracion_horas_dia = SUM(MAX(0, MIN(FECHA_CONEXION, FECHA + 1 dia) - MAX(FECHA_DESCONEXION, FECHA)) * 24)`
+`DURACION_min_dia = SUM(minutos de solape entre [FECHA_DESCONEXION, FECHA_CONEXION] y cada día calendario)`
 
 Estructura esperada de columnas finales (segun consolidado objetivo):
 
@@ -412,7 +412,7 @@ Estructura esperada de columnas finales (segun consolidado objetivo):
 - `ID_CUADRANTE`, `LATITUD_CUADRANTE`, `LONGITUD_CUADRANTE`, `FECHA`.
 - `CANTIDAD_ELEMENTOS`, `CANTIDAD_USUARIOS`, `ANTIGUEDAD_RED`, `EXPANSION_RED`.
 - `VELOCIDAD_VIENTO_MS`, `TEMPERATURA_MEDIA_C`, `HUMEDAD_RELATIVA_PCT`, `TEMPERATURA_MINIMA_C`, `TEMPERATURA_MAXIMA_C`, `PRECIPITACION_TOTAL_MM`.
-- `DURACION`, `FRECUENCIA`.
+- `DURACION_min`, `FRECUENCIA`.
 
 Mapeo de nombres recomendado para estandarizar salida:
 
@@ -461,7 +461,7 @@ La tabla consolidada final tiene una estimacion de:
 | TEMPERATURA_MINIMA_C | T2M_MIN | NASA POWER | Decimal | Temperatura minima diaria (C) | Variable exogena de clima para modelacion |
 | HUMEDAD_RELATIVA_PCT | RH2M | NASA POWER | Decimal | Humedad relativa diaria (%) | Variable exogena de clima para modelacion |
 | VELOCIDAD_VIENTO_MS | WS2M | NASA POWER | Decimal | Velocidad diaria del viento (m/s) | Variable exogena de clima para modelacion |
-| DURACION | FECHA_DESCONEXION/FECHA_CONEXION (derivado) | BRAE/OMS (eventos) | Decimal | Minutos de duración del evento asignados al día de desconexión | Variable objetivo/explicativa de continuidad |
+| DURACION_min | FECHA_DESCONEXION/FECHA_CONEXION (derivado) | BRAE/OMS (eventos) | Decimal | Minutos de interrupción del activo en el día, prorrateados por solape con el día calendario | Variable objetivo/explicativa de continuidad |
 | FRECUENCIA | Conteo de eventos por dia (derivado) | BRAE/OMS (eventos) | Entero | Numero de fallas del activo en el dia | Variable objetivo/explicativa de continuidad |
 
 Reglas de estandarizacion recomendadas:

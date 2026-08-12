@@ -125,9 +125,14 @@ resumen_extremos <- function(x) {
   out30 <- sum(x < li30 | x > ls30)
   outp  <- sum(x < p1 | x > p99)
 
+  media <- mean(x)
+  desv_est <- sd(x)
+  coef_var <- if (media != 0) desv_est / media else NA_real_
+
   tibble(
     n = n,
     min = min(x), Q1 = Q1, mediana = mediana, Q3 = Q3, max = max(x),
+    media = media, desv_est = desv_est, coef_var = round(coef_var, 3),
     IQR = IQR_v,
     lim_inf_15 = li15, lim_sup_15 = ls15,
     n_out_iqr15 = out15, pct_out_iqr15 = round(100 * out15 / n, 3),

@@ -99,6 +99,16 @@
       box-shadow: 0 4px 14px rgba(30, 64, 175, 0.08);
     }
 
+    .report-card.featured {
+      border-color: #93c5fd;
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 60%);
+    }
+
+    .report-card.featured .tag {
+      background: #1e40af;
+      color: #ffffff;
+    }
+
     .report-card a {
       display: block;
       padding: 1rem 1.15rem;
@@ -203,6 +213,18 @@
             <span class="tag">data_agrupacion.Rmd</span>
           </a>
         </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/consolidado_data_mod.html">
+            <span class="report-title">Dataset de modelado D_mod (2024–2025)</span>
+            <span class="report-meta">Scripts/Edwin/consolidado_data_mod.html</span>
+            <span class="report-desc">
+              Sección 5.3.5 (cierre) — Filtra <code>data_agrupada.csv</code> a 2024–2025 y exporta
+              <code>data_agrupada_mod.csv</code> sin sobrescribir <em>D<sub>EDA</sub></em>; insumo para
+              las secciones 5.3.6+ y Etapa 4 (entrenamiento 2024 / prueba 2025).
+            </span>
+            <span class="tag">consolidado_data_mod.Rmd</span>
+          </a>
+        </li>
       </ul>
     </section>
 
@@ -210,6 +232,18 @@
       <h2>Etapa 3 — Análisis exploratorio (EDA)</h2>
       <p class="section-desc">Diagnóstico de calidad, extremos y estadísticos descriptivos del panel.</p>
       <ul class="reports">
+        <li class="report-card featured">
+          <a href="Scripts/Edwin/EDA.html">
+            <span class="report-title">Documento de análisis descriptivo y exploratorio (EDA)</span>
+            <span class="report-meta">Scripts/Edwin/EDA.html</span>
+            <span class="report-desc">
+              Sección 5.3.10 — <strong>Entregable ejecutivo</strong> que consolida las Secciones 5.3.1–5.3.10:
+              calidad, distribución, temporalidad, <em>D<sub>mod</sub></em>, patrones, correlación, multivariado,
+              segmentación territorial y lineamientos para la Etapa 4.
+            </span>
+            <span class="tag">Entregable § 5.3.10</span>
+          </a>
+        </li>
         <li class="report-card">
           <a href="Scripts/Edwin/identificacion_datos_faltantes.html">
             <span class="report-title">Identificación de datos faltantes</span>
@@ -254,12 +288,100 @@
         </li>
         <li class="report-card">
           <a href="Scripts/Edwin/calculo_estadistico_descriptivo.html">
-            <span class="report-title">Cálculo de estadísticos descriptivos</span>
+            <span class="report-title">Cálculo de estadísticos descriptivos en data agrupada</span>
             <span class="report-meta">Scripts/Edwin/calculo_estadistico_descriptivo.html</span>
             <span class="report-desc">
-              Sección 5.3.3 — Medidas de tendencia central, dispersión, % ceros y frecuencias por TIPO.
+              Sección 5.3.3 — Tendencia central, dispersión, posición, forma y frecuencias sobre
+              <code>data_agrupada.csv</code> (cuadrante × semana): histogramas, boxplots, barras, pastel y curvas de densidad.
             </span>
-            <span class="tag">§ 5.3.3</span>
+            <span class="tag">calculo_estadistico_descriptivo.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/distribucion_variables.html">
+            <span class="report-title">Distribución de variables en data agrupada</span>
+            <span class="report-meta">Scripts/Edwin/distribucion_variables.html</span>
+            <span class="report-desc">
+              Sección 5.3.4 — Curvas de densidad, asimetría, curtosis y proporción de ceros sobre
+              <code>data_agrupada.csv</code> (cuadrante × semana): clima, precipitación y colas largas en severidad/continuidad.
+            </span>
+            <span class="tag">distribucion_variables.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/analisis_temporal_eventos.html">
+            <span class="report-title">Análisis temporal de eventos en data agrupada</span>
+            <span class="report-meta">Scripts/Edwin/analisis_temporal_eventos.html</span>
+            <span class="report-desc">
+              Sección 5.3.5 — Serie semanal de eventos 2021–2025 sobre <code>data_agrupada.csv</code>:
+              tendencia, eventos por año, estacionalidad mensual, ACF/PACF, severidad y cuadrantes activos.
+            </span>
+            <span class="tag">analisis_temporal_eventos.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/emparejamiento_eventos.html">
+            <span class="report-title">Emparejamiento evento–elemento y delimitación del dataset de modelado</span>
+            <span class="report-meta">Scripts/Edwin/emparejamiento_eventos.html</span>
+            <span class="report-desc">
+              Sección 5.3.5 (complemento) — Brecha por código de activo vs código de sitio
+              (OMS-SPARD/SP7); cruce <code>COMPONENTE_FALLADO</code> con
+              <code>tipo_elemento.csv</code> y definición de
+              <em>D<sub>mod</sub></em> (2024–2025) para la Etapa 4.
+              Exportación del panel filtrado:
+              <a href="Scripts/Edwin/consolidado_data_mod.html">consolidado_data_mod.html</a>.
+            </span>
+            <span class="tag">emparejamiento_eventos.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/identificacion_patrones.html">
+            <span class="report-title">Identificación de patrones, tendencias y visualización exploratoria</span>
+            <span class="report-meta">Scripts/Edwin/identificacion_patrones.html</span>
+            <span class="report-desc">
+              Sección 5.3.6 — Patrones y visualización exploratoria sobre
+              <code>data_agrupada_mod.csv</code> (<em>D<sub>mod</sub></em>, 2024–2025):
+              serie semanal, estacionalidad, ACF/PACF, ranking y mapa de cuadrantes,
+              dispersión precipitación–eventos, correlaciones climáticas y segmentación por actividad.
+              Integra la actividad de visualización exploratoria (fusionada desde subsección independiente).
+            </span>
+            <span class="tag">identificacion_patrones.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/analisis_correlacion.html">
+            <span class="report-title">Análisis de correlación y asociación</span>
+            <span class="report-meta">Scripts/Edwin/analisis_correlacion.html</span>
+            <span class="report-desc">
+              Sección 5.3.7 — Matrices de Spearman sobre <code>data_agrupada_mod.csv</code>
+              (<em>D<sub>mod</sub></em>): bloques clima, operativo y clima–operativo; mapas de calor,
+              redundancias climáticas y análisis condicionado en semanas con evento.
+            </span>
+            <span class="tag">analisis_correlacion.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/analisis_multivariado.html">
+            <span class="report-title">Evaluación inicial de relaciones multivariadas</span>
+            <span class="report-meta">Scripts/Edwin/analisis_multivariado.html</span>
+            <span class="report-desc">
+              Sección 5.3.8 — VIF, PCA exploratorio, dendrograma climático, correlación parcial
+              y GLM Poisson de diagnóstico sobre <code>data_agrupada_mod.csv</code>
+              (<em>D<sub>mod</sub></em>); recomendación de predictoras y variable respuesta para Etapa 4.
+            </span>
+            <span class="tag">analisis_multivariado.Rmd</span>
+          </a>
+        </li>
+        <li class="report-card">
+          <a href="Scripts/Edwin/segmentacion_exploratoria.html">
+            <span class="report-title">Segmentación exploratoria</span>
+            <span class="report-meta">Scripts/Edwin/segmentacion_exploratoria.html</span>
+            <span class="report-desc">
+              Sección 5.3.9 — Perfiles por nivel de actividad, comparación 2024 vs 2025,
+              régimen climático semanal (seco vs lluvioso) y clustering k-means de cuadrantes
+              sobre <code>data_agrupada_mod.csv</code> (<em>D<sub>mod</sub></em>).
+            </span>
+            <span class="tag">segmentacion_exploratoria.Rmd</span>
           </a>
         </li>
       </ul>

@@ -1,0 +1,367 @@
+---
+title: "Cobertura del emparejamiento evento-elemento y delimitacion del dataset de modelado"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+# Etapa 3 — Emparejamiento evento–elemento (complemento Sección 5.3.5)
+
+Al contrastar los totales anuales de eventos en `tabla_eventos_ajustado.csv` (BRAE) con la suma de
+`n_eventos` en `data_agrupada.csv` (cuadrante × semana), se evidencia un **subregistro sistemático**
+en el grano espacial durante 2021–2023. La causa técnica no es la ausencia del campo
+`COMPONENTE_FALLADO` en BRAE —que está completo en todos los años—, sino la **incompatibilidad de
+codificación** entre el identificador registrado en el evento y el inventario georreferenciado
+`tipo_elemento.csv` (Tabla 5.5, paso 5.2.1.4).
+
+En la compañía coexisten **dos esquemas de codificación** para los activos de red:
+
+1. **Código de sitio (ubicación):** identifica de forma estable el punto de conexión en el territorio.
+2. **Código de activo:** identifica el equipo instalado; **cambia cuando el activo se repone** por mantenimiento o renovación, mientras el código de sitio permanece.
+
+El panel consolidado y el inventario GIS emplean el código de **sitio** (`ELEMENTO` en
+`tipo_elemento.csv`). En cambio, OMS-SPARD registraba con frecuencia el **código del activo**
+reemplazado en el campo de elemento fallado (`BREAKER` $\rightarrow$ `COMPONENTE_FALLADO`), lo que
+impide el cruce histórico evento $\rightarrow$ punto de desconexión $\rightarrow$ cuadrante: clave
+para el análisis espacial de esta tesis. OMS-SP7 homogeniza parcialmente la práctica, lo que explica
+la mayor cobertura en 2024–2025 sin alcanzar el 100~\%.
+
+Este informe cuantifica la brecha anual y define el subconjunto analítico $D_{\mathrm{mod}}$ para la
+Etapa~4.
+
+```{r setup}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_eventos <- file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv")
+path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+
+if (!file.exists(path_eventos)) stop("No se encontro: ", path_eventos)
+if (!file.exists(path_agrupada)) stop("No se encontro: ", path_agrupada)
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+## Eventos BRAE por año
+
+```{r lectura-eventos}
+tabla_eventos <- read_csv(path_eventos, show_col_types = FALSE)
+
+col_elemento <- if ("COMPONENTE_FALLADO" %in% names(tabla_eventos)) {
+  "COMPONENTE_FALLADO"
+} else if ("ELEMENTO_FALLADO" %in% names(tabla_eventos)) {
+  "ELEMENTO_FALLADO"
+} else {
+  stop("No se encontro columna de elemento fallado en tabla_eventos_ajustado.csv")
+}
+
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    FECHA_DESCONEXION = dmy_hm(FECHA_DESCONEXION),
+    anio = year(FECHA_DESCONEXION),
+    tiene_elemento = !is.na(.data[[col_elemento]]) & .data[[col_elemento]] != ""
+  )
+
+eventos_brae_anio <- tabla_eventos %>%
+  group_by(anio) %>%
+  summarise(
+    n_eventos_brae = n(),
+    n_con_elemento = sum(tiene_elemento),
+    pct_con_elemento = round(100 * n_con_elemento / n_eventos_brae, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(anio)
+
+eventos_brae_anio
+```
+
+## Coincidencia con el inventario GIS (`tipo_elemento.csv`)
+
+El panel activo $\times$ día se construye a partir de `tipo_elemento.csv` (Tabla 5.5), cuyo campo
+`ELEMENTO` corresponde al **código de sitio** georreferenciado. Se evalúa, por año, en qué
+proporción el `COMPONENTE_FALLADO` del evento coincide con algún `ELEMENTO` del inventario; los
+eventos sin coincidencia no pueden propagarse a `FRECUENCIA` ni a `data_agrupada`.
+
+```{r match-inventario}
+path_inventario <- file.path(UBICACION_DATA, "tipo_elemento.csv")
+if (!file.exists(path_inventario)) {
+  stop("No se encontro: ", path_inventario)
+}
+
+tipo_elemento <- read_csv(path_inventario, show_col_types = FALSE)
+inventario_elementos <- unique(tipo_elemento$ELEMENTO)
+
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    en_inventario_gis = .data[[col_elemento]] %in% inventario_elementos
+  )
+
+match_inventario_anio <- tabla_eventos %>%
+  group_by(anio) %>%
+  summarise(
+    n_en_inventario = sum(en_inventario_gis),
+    pct_en_inventario = round(100 * mean(en_inventario_gis), 1),
+    .groups = "drop"
+  )
+
+match_inventario_anio
+n_distinct(tipo_elemento$ELEMENTO)
+```
+
+## Eventos en tabla agrupada por año
+
+```{r lectura-agrupada}
+tabla_agrupada <- read_csv(path_agrupada, show_col_types = FALSE)
+
+if ("semana" %in% names(tabla_agrupada) &&
+    !inherits(tabla_agrupada$semana, "Date")) {
+  tabla_agrupada <- tabla_agrupada %>%
+    mutate(semana = as.Date(semana))
+}
+
+eventos_agrupada_anio <- tabla_agrupada %>%
+  mutate(anio = year(semana)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_eventos_agrupada = sum(n_eventos, na.rm = TRUE),
+    n_filas = n(),
+    n_semanas = n_distinct(semana),
+    cuadrantes_con_evento = sum(n_eventos > 0, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(anio)
+
+eventos_agrupada_anio
+```
+
+## Tabla comparativa de cobertura
+
+Columnas publicadas en la tesis: **Eventos BRAE**, **En inventario GIS** (% de
+`COMPONENTE_FALLADO` presente en `tipo_elemento.csv`), **Panel espacial** y **Cobertura (%)**
+respecto a BRAE.
+
+```{r tabla-comparativa}
+tabla_cobertura <- eventos_brae_anio %>%
+  left_join(match_inventario_anio, by = "anio") %>%
+  left_join(eventos_agrupada_anio, by = "anio") %>%
+  mutate(
+    pct_cobertura = round(100 * n_eventos_agrupada / n_eventos_brae, 1)
+  ) %>%
+  select(
+    anio,
+    n_eventos_brae,
+    n_con_elemento,
+    pct_con_elemento,
+    n_en_inventario,
+    pct_en_inventario,
+    n_eventos_agrupada,
+    pct_cobertura
+  )
+
+tabla_cobertura
+
+tabla_cobertura_publica <- tabla_cobertura %>%
+  select(
+    anio,
+    n_eventos_brae,
+    pct_en_inventario,
+    panel_espacial = n_eventos_agrupada,
+    pct_cobertura
+  )
+
+write_csv(
+  tabla_cobertura,
+  file.path(UBICACION_DATA, "cobertura_emparejamiento_por_anio.csv")
+)
+
+kable(
+  tabla_cobertura_publica,
+  col.names = c(
+    "Anio",
+    "Eventos BRAE",
+    "En inventario GIS (%)",
+    "Panel espacial",
+    "Cobertura panel (%)"
+  ),
+  format = "html",
+  digits = 1
+)
+```
+
+## Gráfico comparativo BRAE vs agrupada
+
+Solo se contrastan los dos conteos que aportan información distinta: el registro
+transaccional BRAE y los eventos que efectivamente llegan al panel espacial
+(`data_agrupada`). La serie ``con elemento asignado'' coincide con BRAE al 100~\%
+y se omite del gráfico para evitar redundancia visual.
+
+```{r grafico-cobertura, fig.width=10, fig.height=5.5}
+datos_grafico <- tabla_cobertura %>%
+  select(anio, n_eventos_brae, n_eventos_agrupada, pct_cobertura) %>%
+  pivot_longer(
+    cols = c(n_eventos_brae, n_eventos_agrupada),
+    names_to = "fuente",
+    values_to = "n_eventos"
+  ) %>%
+  mutate(
+    fuente = factor(
+      fuente,
+      levels = c("n_eventos_brae", "n_eventos_agrupada"),
+      labels = c(
+        "Eventos BRAE (tabla_eventos_ajustado)",
+        "Eventos en panel espacial (data_agrupada)"
+      )
+    )
+  )
+
+etiquetas_pct <- tabla_cobertura %>%
+  transmute(
+    anio,
+    fuente = factor(
+      "Eventos en panel espacial (data_agrupada)",
+      levels = levels(datos_grafico$fuente)
+    ),
+    n_eventos = n_eventos_agrupada,
+    etiqueta = paste0(pct_cobertura, "%")
+  )
+
+grafico_cobertura <- ggplot(datos_grafico, aes(x = factor(anio), y = n_eventos, fill = fuente)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.62, alpha = 0.9) +
+  geom_text(
+    data = etiquetas_pct,
+    aes(x = factor(anio), y = n_eventos, label = etiqueta),
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE,
+    vjust = -0.45,
+    fontface = "bold",
+    size = 3.6,
+    color = "#B8323D"
+  ) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.12))) +
+  scale_fill_manual(values = c("#4A90D9", "#E84855")) +
+  labs(
+    title = "Cobertura anual: eventos BRAE vs panel espacial",
+    subtitle = paste(
+      "Etiquetas rojas: % de eventos BRAE en panel espacial;",
+      "brecha por codigo activo vs codigo sitio (OMS-SPARD) y mejora bajo OMS-SP7"
+    ),
+    x = "Anio",
+    y = "Numero de eventos",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.text = element_text(size = 9.5)
+  )
+
+grafico_cobertura
+
+guardar_plot(
+  grafico_cobertura,
+  "cobertura_emparejamiento_por_anio.png",
+  10,
+  5.5
+)
+```
+
+## Definición del dataset de modelado ($D_{\mathrm{mod}}$)
+
+Subconjunto de `data_agrupada.csv` restringido a **2024–2025**, periodo con mayor homogeneidad
+en la codificación bajo OMS-SP7 y cobertura del panel espacial del 77,7~\% al 92,4~\% frente a BRAE
+(vs.\ $\approx 28$--$29$~\% en 2021--2023 bajo OMS-SPARD).
+
+```{r d-mod}
+d_mod <- tabla_agrupada %>%
+  filter(year(semana) %in% 2024:2025)
+
+resumen_d_mod <- tibble(
+  metrica = c(
+    "Filas (cuadrante x semana)",
+    "Semanas distintas",
+    "Cuadrantes distintos",
+    "Total n_eventos",
+    "Total usuarios_afectados",
+    "Total duracion_total (horas)",
+    "Rango semanas (inicio)",
+    "Rango semanas (fin)"
+  ),
+  valor = c(
+    as.character(nrow(d_mod)),
+    as.character(n_distinct(d_mod$semana)),
+    as.character(n_distinct(d_mod$id_cuadrante)),
+    format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ","),
+    format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = ","),
+    format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = ","),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana))
+  )
+)
+
+resumen_d_mod
+
+d_mod_anio <- d_mod %>%
+  mutate(anio = year(semana)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_filas = n(),
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    eventos_por_semana = round(n_eventos / n_distinct(semana), 1),
+    .groups = "drop"
+  )
+
+d_mod_anio
+
+write_csv(d_mod_anio, file.path(UBICACION_DATA, "resumen_d_mod_por_anio.csv"))
+```
+
+## Decisión para la Etapa 4
+
+- **$D_{\mathrm{EDA}}$:** horizonte exploratorio 2021–2025 (Secciones 5.3.1–5.3.5).
+- **$D_{\mathrm{mod}}$:** `data_agrupada.csv` filtrada a `year(semana) \in \{2024, 2025\}`.
+- **Causa raíz de la brecha:** `COMPONENTE_FALLADO` (código de activo en OMS-SPARD) no siempre
+  coincide con `ELEMENTO` de `tipo_elemento.csv` (código de sitio del inventario GIS).
+- **Partición temporal propuesta:** entrenamiento con observaciones de **2024**; prueba con **2025**
+  (validación forward en serie autocorrelacionada).
+
+Los años 2021–2023 se conservan en el EDA pero **no** se emplean para estimar el modelo predictivo,
+dado el sesgo por incompatibilidad de codificación en el periodo OMS-SPARD.
