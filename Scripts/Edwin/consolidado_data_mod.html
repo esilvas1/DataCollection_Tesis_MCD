@@ -11,7 +11,7 @@
 
 <meta name="author" content="Edwin Silva Salas" />
 
-<meta name="date" content="2026-08-22" />
+<meta name="date" content="2026-08-23" />
 
 <title>Construccion del dataset de modelado D_mod (2024-2025)</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">Construccion del dataset de modelado D_mod
 (2024-2025)</h1>
 <h4 class="author">Edwin Silva Salas</h4>
-<h4 class="date">2026-08-22</h4>
+<h4 class="date">2026-08-23</h4>
 
 </div>
 
@@ -413,6 +413,7 @@ if (UBICACION_DATA == &quot;&quot;) {
 
 path_agrupada &lt;- file.path(UBICACION_DATA, &quot;data_agrupada.csv&quot;)
 path_ut &lt;- file.path(UBICACION_DATA, &quot;data_usuarios_totales_sistema.csv&quot;)
+path_usuarios_cuad &lt;- file.path(UBICACION_DATA, &quot;cant_usuarios_x_transformador.csv&quot;)
 path_salida &lt;- file.path(UBICACION_DATA, &quot;data_agrupada_mod.csv&quot;)
 
 if (!file.exists(path_agrupada)) {
@@ -420,6 +421,9 @@ if (!file.exists(path_agrupada)) {
 }
 if (!file.exists(path_ut)) {
   stop(&quot;No se encontro: &quot;, path_ut)
+}
+if (!file.exists(path_usuarios_cuad)) {
+  stop(&quot;No se encontro: &quot;, path_usuarios_cuad)
 }</code></pre>
 <div id="lectura-y-filtro-temporal" class="section level2">
 <h2>Lectura y filtro temporal</h2>
@@ -565,13 +569,76 @@ kable(
 </tr>
 </tbody>
 </table>
+<pre class="r"><code># Usuarios por cuadrante y mes: suma de CANTIDAD_USUARIOS de todos los
+# transformadores (TC1_CODCONEX) del cuadrante en ese ANIO-MES.
+usuarios_cuadrante_mes &lt;- read_csv(path_usuarios_cuad, show_col_types = FALSE) %&gt;%
+  mutate(
+    id_cuadrante = as.character(CUADRANTE),
+    anio = as.integer(ANIO),
+    mes = as.integer(MES)
+  ) %&gt;%
+  group_by(id_cuadrante, anio, mes) %&gt;%
+  summarise(
+    cantidad_usuarios_cuadrante = sum(CANTIDAD_USUARIOS, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+kable(
+  usuarios_cuadrante_mes %&gt;%
+    summarise(
+      filas = n(),
+      cuadrantes = n_distinct(id_cuadrante),
+      meses = n_distinct(paste(anio, mes)),
+      usuarios_min = min(cantidad_usuarios_cuadrante),
+      usuarios_mediana = median(cantidad_usuarios_cuadrante),
+      usuarios_max = max(cantidad_usuarios_cuadrante)
+    ) %&gt;%
+    mutate(across(where(is.numeric), ~ format(.x, big.mark = &quot;,&quot;))),
+  caption = &quot;Resumen de cantidad_usuarios_cuadrante (suma por cuadrante-mes)&quot;
+)</code></pre>
+<table>
+<caption>Resumen de cantidad_usuarios_cuadrante (suma por
+cuadrante-mes)</caption>
+<colgroup>
+<col width="9%" />
+<col width="16%" />
+<col width="9%" />
+<col width="19%" />
+<col width="25%" />
+<col width="19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">filas</th>
+<th align="left">cuadrantes</th>
+<th align="left">meses</th>
+<th align="left">usuarios_min</th>
+<th align="left">usuarios_mediana</th>
+<th align="left">usuarios_max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">8,158</td>
+<td align="left">340</td>
+<td align="left">24</td>
+<td align="left">1</td>
+<td align="left">242</td>
+<td align="left">196,891</td>
+</tr>
+</tbody>
+</table>
 <pre class="r"><code>d_mod &lt;- tabla_agrupada %&gt;%
   mutate(anio = year(semana)) %&gt;%
   filter(anio %in% 2024:2025) %&gt;%
-  select(-anio) %&gt;%
-  mutate(anio_mes = floor_date(semana, &quot;month&quot;)) %&gt;%
+  mutate(
+    anio_mes = floor_date(semana, &quot;month&quot;),
+    mes = month(semana),
+    id_cuadrante = as.character(id_cuadrante)
+  ) %&gt;%
   left_join(ut_mensual, by = &quot;anio_mes&quot;) %&gt;%
-  select(-anio_mes)
+  left_join(usuarios_cuadrante_mes, by = c(&quot;id_cuadrante&quot;, &quot;anio&quot;, &quot;mes&quot;)) %&gt;%
+  select(-anio, -anio_mes, -mes)
 
 n_sin_ut &lt;- sum(is.na(d_mod$usuarios_totales))
 if (n_sin_ut &gt; 0) {
@@ -581,6 +648,113 @@ if (n_sin_ut &gt; 0) {
   )
 }
 
+n_sin_cuad_antes &lt;- sum(is.na(d_mod$cantidad_usuarios_cuadrante))
+
+# Imputacion de faltantes en cantidad_usuarios_cuadrante:
+# - 258 y 273: moda (valor mensual que mas se repite) del propio cuadrante
+# - 68, 140, 333 y 344: sin inventario en la fuente -&gt; 0
+cuad_moda &lt;- c(&quot;258&quot;, &quot;273&quot;)
+cuad_cero &lt;- c(&quot;68&quot;, &quot;140&quot;, &quot;333&quot;, &quot;344&quot;)
+
+moda_por_cuadrante &lt;- usuarios_cuadrante_mes %&gt;%
+  filter(id_cuadrante %in% cuad_moda) %&gt;%
+  count(id_cuadrante, cantidad_usuarios_cuadrante, name = &quot;n_meses&quot;) %&gt;%
+  group_by(id_cuadrante) %&gt;%
+  slice_max(n_meses, n = 1, with_ties = FALSE) %&gt;%
+  ungroup() %&gt;%
+  transmute(id_cuadrante, cantidad_usuarios_moda = cantidad_usuarios_cuadrante, n_meses)
+
+kable(
+  moda_por_cuadrante %&gt;%
+    mutate(cantidad_usuarios_moda = format(cantidad_usuarios_moda, big.mark = &quot;,&quot;)),
+  col.names = c(&quot;Cuadrante&quot;, &quot;Moda (usuarios)&quot;, &quot;Meses con ese valor&quot;),
+  caption = &quot;Moda de cantidad_usuarios_cuadrante para imputar meses faltantes (258, 273)&quot;
+)</code></pre>
+<table>
+<caption>Moda de cantidad_usuarios_cuadrante para imputar meses
+faltantes (258, 273)</caption>
+<thead>
+<tr class="header">
+<th align="left">Cuadrante</th>
+<th align="left">Moda (usuarios)</th>
+<th align="right">Meses con ese valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">258</td>
+<td align="left">21</td>
+<td align="right">23</td>
+</tr>
+<tr class="even">
+<td align="left">273</td>
+<td align="left">88</td>
+<td align="right">23</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>d_mod &lt;- d_mod %&gt;%
+  left_join(moda_por_cuadrante %&gt;% select(id_cuadrante, cantidad_usuarios_moda),
+            by = &quot;id_cuadrante&quot;) %&gt;%
+  mutate(
+    cantidad_usuarios_cuadrante = case_when(
+      is.na(cantidad_usuarios_cuadrante) &amp; id_cuadrante %in% cuad_moda ~
+        cantidad_usuarios_moda,
+      is.na(cantidad_usuarios_cuadrante) &amp; id_cuadrante %in% cuad_cero ~ 0,
+      TRUE ~ cantidad_usuarios_cuadrante
+    )
+  ) %&gt;%
+  select(-cantidad_usuarios_moda)
+
+n_sin_cuad &lt;- sum(is.na(d_mod$cantidad_usuarios_cuadrante))
+cobertura_cuad &lt;- tibble(
+  metrica = c(
+    &quot;NA antes de imputacion&quot;,
+    &quot;NA despues de imputacion&quot;,
+    &quot;Filas con valor&quot;,
+    &quot;% cobertura final&quot;
+  ),
+  valor = c(
+    format(n_sin_cuad_antes, big.mark = &quot;,&quot;),
+    format(n_sin_cuad, big.mark = &quot;,&quot;),
+    format(nrow(d_mod) - n_sin_cuad, big.mark = &quot;,&quot;),
+    paste0(round(100 * (1 - n_sin_cuad / nrow(d_mod)), 2), &quot;%&quot;)
+  )
+)
+kable(cobertura_cuad, col.names = c(&quot;Metrica&quot;, &quot;Valor&quot;),
+      caption = &quot;Cobertura de cantidad_usuarios_cuadrante tras imputacion&quot;)</code></pre>
+<table>
+<caption>Cobertura de cantidad_usuarios_cuadrante tras
+imputacion</caption>
+<thead>
+<tr class="header">
+<th align="left">Metrica</th>
+<th align="left">Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">NA antes de imputacion</td>
+<td align="left">428</td>
+</tr>
+<tr class="even">
+<td align="left">NA despues de imputacion</td>
+<td align="left">0</td>
+</tr>
+<tr class="odd">
+<td align="left">Filas con valor</td>
+<td align="left">36,120</td>
+</tr>
+<tr class="even">
+<td align="left">% cobertura final</td>
+<td align="left">100%</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>if (n_sin_cuad &gt; 0) {
+  stop(&quot;Quedan &quot;, n_sin_cuad, &quot; filas sin cantidad_usuarios_cuadrante tras imputacion.&quot;)
+}
+
 d_mod &lt;- d_mod %&gt;%
   mutate(
     SAIFI = usuarios_afectados / usuarios_totales,
@@ -588,7 +762,7 @@ d_mod &lt;- d_mod %&gt;%
   )
 
 dim(d_mod)</code></pre>
-<pre><code>## [1] 36120    19</code></pre>
+<pre><code>## [1] 36120    20</code></pre>
 <pre class="r"><code>range(d_mod$semana)</code></pre>
 <pre><code>## [1] &quot;2024-01-01&quot; &quot;2025-12-29&quot;</code></pre>
 </div>
@@ -897,20 +1071,21 @@ resumen_anio</code></pre>
 message(&quot;Exportado: &quot;, path_salida)</code></pre>
 <pre><code>## Exportado: D:/OneDrive - PUJ Cali/Projecto_Grado_Javeriana/Data_Project//data_agrupada_mod.csv</code></pre>
 <pre class="r"><code>head(d_mod)</code></pre>
-<pre><code>## # A tibble: 6 × 19
+<pre><code>## # A tibble: 6 × 20
 ##   id_cuadrante semana     latitud longitud altitud usuarios_afectados
-##          &lt;dbl&gt; &lt;date&gt;       &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;              &lt;dbl&gt;
-## 1            1 2024-01-01    7.00    -72.7    3418                  0
-## 2            1 2024-01-08    7.00    -72.7    3418                  0
-## 3            1 2024-01-15    7.00    -72.7    3418                  0
-## 4            1 2024-01-22    7.00    -72.7    3418                  0
-## 5            1 2024-01-29    7.00    -72.7    3418                  0
-## 6            1 2024-02-05    7.00    -72.7    3418                  0
-## # ℹ 13 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
+##   &lt;chr&gt;        &lt;date&gt;       &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;              &lt;dbl&gt;
+## 1 1            2024-01-01    7.00    -72.7    3418                  0
+## 2 1            2024-01-08    7.00    -72.7    3418                  0
+## 3 1            2024-01-15    7.00    -72.7    3418                  0
+## 4 1            2024-01-22    7.00    -72.7    3418                  0
+## 5 1            2024-01-29    7.00    -72.7    3418                  0
+## 6 1            2024-02-05    7.00    -72.7    3418                  0
+## # ℹ 14 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
 ## #   temp_max_semana &lt;dbl&gt;, temp_min_semana &lt;dbl&gt;, humedad_media_semana &lt;dbl&gt;,
 ## #   viento_medio_semana &lt;dbl&gt;, viento_max_semana &lt;dbl&gt;,
 ## #   precip_total_semana &lt;dbl&gt;, n_eventos &lt;dbl&gt;, duracion_total &lt;dbl&gt;,
-## #   usuarios_totales &lt;dbl&gt;, SAIFI &lt;dbl&gt;, SAIDI &lt;dbl&gt;</code></pre>
+## #   usuarios_totales &lt;dbl&gt;, cantidad_usuarios_cuadrante &lt;dbl&gt;, SAIFI &lt;dbl&gt;,
+## #   SAIDI &lt;dbl&gt;</code></pre>
 <p>Las respuestas de modelado se construyen en el grano cuadrante ×
 semana:</p>
 <ul>
@@ -920,9 +1095,16 @@ semana:</p>
 <p>donde <code>usuarios_totales</code> proviene de
 <code>data_usuarios_totales_sistema.csv</code> (<code>CS1_UT_M</code>)
 asignado segun el <strong>mes calendario</strong> de la fecha de inicio
-de cada <code>semana</code>. <code>n_eventos</code> y
-<code>duracion_total</code> permanecen como insumos de construccion e
-historico; no son las variables a predecir.</p>
+de cada <code>semana</code>. La columna
+<code>cantidad_usuarios_cuadrante</code> suma
+<code>CANTIDAD_USUARIOS</code> de todos los transformadores del
+cuadrante en ese mismo anio-mes
+(<code>cant_usuarios_x_transformador.csv</code>). Los meses faltantes de
+los cuadrantes 258 y 273 se imputan con la moda mensual del propio
+cuadrante; los cuadrantes 68, 140, 333 y 344, ausentes en la fuente, se
+asignan en 0. <code>n_eventos</code> y <code>duracion_total</code>
+permanecen como insumos de construccion e historico; no son las
+variables a predecir.</p>
 <p><strong>Uso:</strong> <code>data_agrupada_mod.csv</code> es el insumo
 para las secciones 5.3.6 en adelante y la Etapa 4 (entrenamiento 2024 /
 prueba 2025). La agregacion original desde
