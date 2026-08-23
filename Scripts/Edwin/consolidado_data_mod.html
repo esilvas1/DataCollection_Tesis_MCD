@@ -11,7 +11,7 @@
 
 <meta name="author" content="Edwin Silva Salas" />
 
-<meta name="date" content="2026-06-16" />
+<meta name="date" content="2026-08-17" />
 
 <title>Construccion del dataset de modelado D_mod (2024-2025)</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">Construccion del dataset de modelado D_mod
 (2024-2025)</h1>
 <h4 class="author">Edwin Silva Salas</h4>
-<h4 class="date">2026-06-16</h4>
+<h4 class="date">2026-08-17</h4>
 
 </div>
 
@@ -431,13 +431,22 @@ if (&quot;semana&quot; %in% names(tabla_agrupada) &amp;&amp;
 
 dim(tabla_agrupada)</code></pre>
 <pre><code>## [1] 90128    16</code></pre>
-<pre class="r"><code>d_mod &lt;- tabla_agrupada %&gt;%
+<pre class="r"><code># Divisor de usuarios totales del OR: parametro fijo y actualizable.
+# Cambiar UT_USUARIOS y reexportar (o reescalar SAIDI/SAIFI = valor * UT_antiguo / UT_nuevo).
+UT_USUARIOS &lt;- 650000
+
+d_mod &lt;- tabla_agrupada %&gt;%
   mutate(anio = year(semana)) %&gt;%
   filter(anio %in% 2024:2025) %&gt;%
-  select(-anio)
+  select(-anio) %&gt;%
+  mutate(
+    usuarios_totales = UT_USUARIOS,
+    SAIFI = usuarios_afectados / usuarios_totales,
+    SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
+  )
 
 dim(d_mod)</code></pre>
-<pre><code>## [1] 36120    16</code></pre>
+<pre><code>## [1] 36120    19</code></pre>
 <pre class="r"><code>range(d_mod$semana)</code></pre>
 <pre><code>## [1] &quot;2024-01-01&quot; &quot;2025-12-29&quot;</code></pre>
 </div>
@@ -451,6 +460,9 @@ dim(d_mod)</code></pre>
     &quot;Total n_eventos&quot;,
     &quot;Total usuarios_afectados&quot;,
     &quot;Total duracion_total (horas)&quot;,
+    &quot;Usuarios totales (UT)&quot;,
+    &quot;SAIFI medio&quot;,
+    &quot;SAIDI medio&quot;,
     &quot;Semana inicio&quot;,
     &quot;Semana fin&quot;
   ),
@@ -461,6 +473,9 @@ dim(d_mod)</code></pre>
     format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = &quot;,&quot;),
     format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = &quot;,&quot;),
     format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = &quot;,&quot;),
+    format(unique(d_mod$usuarios_totales), big.mark = &quot;,&quot;),
+    signif(mean(d_mod$SAIFI, na.rm = TRUE), 3),
+    signif(mean(d_mod$SAIDI, na.rm = TRUE), 3),
     as.character(min(d_mod$semana)),
     as.character(max(d_mod$semana))
   )
@@ -500,10 +515,22 @@ kable(resumen_d_mod, col.names = c(&quot;Metrica&quot;, &quot;Valor&quot;))</cod
 <td align="left">986,626.1</td>
 </tr>
 <tr class="odd">
+<td align="left">Usuarios totales (UT)</td>
+<td align="left">650,000</td>
+</tr>
+<tr class="even">
+<td align="left">SAIFI medio</td>
+<td align="left">0.000258</td>
+</tr>
+<tr class="odd">
+<td align="left">SAIDI medio</td>
+<td align="left">0.017</td>
+</tr>
+<tr class="even">
 <td align="left">Semana inicio</td>
 <td align="left">2024-01-01</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Semana fin</td>
 <td align="left">2025-12-29</td>
 </tr>
@@ -533,7 +560,7 @@ resumen_anio</code></pre>
 message(&quot;Exportado: &quot;, path_salida)</code></pre>
 <pre><code>## Exportado: D:/OneDrive - PUJ Cali/Projecto_Grado_Javeriana/Data_Project//data_agrupada_mod.csv</code></pre>
 <pre class="r"><code>head(d_mod)</code></pre>
-<pre><code>## # A tibble: 6 × 16
+<pre><code>## # A tibble: 6 × 19
 ##   id_cuadrante semana     latitud longitud altitud usuarios_afectados
 ##          &lt;dbl&gt; &lt;date&gt;       &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;              &lt;dbl&gt;
 ## 1            1 2024-01-01    7.00    -72.7    3418                  0
@@ -542,10 +569,21 @@ message(&quot;Exportado: &quot;, path_salida)</code></pre>
 ## 4            1 2024-01-22    7.00    -72.7    3418                  0
 ## 5            1 2024-01-29    7.00    -72.7    3418                  0
 ## 6            1 2024-02-05    7.00    -72.7    3418                  0
-## # ℹ 10 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
+## # ℹ 13 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
 ## #   temp_max_semana &lt;dbl&gt;, temp_min_semana &lt;dbl&gt;, humedad_media_semana &lt;dbl&gt;,
 ## #   viento_medio_semana &lt;dbl&gt;, viento_max_semana &lt;dbl&gt;,
-## #   precip_total_semana &lt;dbl&gt;, n_eventos &lt;dbl&gt;, duracion_total &lt;dbl&gt;</code></pre>
+## #   precip_total_semana &lt;dbl&gt;, n_eventos &lt;dbl&gt;, duracion_total &lt;dbl&gt;,
+## #   usuarios_totales &lt;dbl&gt;, SAIFI &lt;dbl&gt;, SAIDI &lt;dbl&gt;</code></pre>
+<p>Las respuestas de modelado se construyen en el grano cuadrante ×
+semana:</p>
+<ul>
+<li><code>SAIFI = usuarios_afectados / usuarios_totales</code></li>
+<li><code>SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales</code></li>
+</ul>
+<p>con <code>usuarios_totales = 650000</code> (parametro fijo,
+modificable). <code>n_eventos</code> y <code>duracion_total</code>
+permanecen como insumos de construccion e historico; no son las
+variables a predecir.</p>
 <p><strong>Uso:</strong> <code>data_agrupada_mod.csv</code> es el insumo
 para las secciones 5.3.6 en adelante y la Etapa 4 (entrenamiento 2024 /
 prueba 2025). La agregacion original desde

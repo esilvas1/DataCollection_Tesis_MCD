@@ -218,7 +218,8 @@
             <span class="report-title">Dataset de modelado D_mod (2024–2025)</span>
             <span class="report-meta">Scripts/Edwin/consolidado_data_mod.html</span>
             <span class="report-desc">
-              Sección 5.3.5 (cierre) — Filtra <code>data_agrupada.csv</code> a 2024–2025 y exporta
+              Sección 5.3.5 (cierre) — Filtra <code>data_agrupada.csv</code> a 2024–2025, construye
+              <code>SAIFI</code> y <code>SAIDI</code> con <code>UT = 650000</code> y exporta
               <code>data_agrupada_mod.csv</code> sin sobrescribir <em>D<sub>EDA</sub></em>; insumo para
               las secciones 5.3.6+ y Etapa 4 (entrenamiento 2024 / prueba 2025).
             </span>
@@ -400,9 +401,9 @@
             <span class="report-desc">
               Sección 5.4.3 — Conjunto candidato <em>ex ante</em> sobre <code>data_agrupada_mod.csv</code>
               (<em>D<sub>mod</sub></em>): clima rezagado, histórico de eventos, rasgos del cuadrante,
-              exposición y estacionalidad. Filtros de cobertura y varianza casi nula, Spearman con
-              corrección FDR, redundancia (|ρ| ≥ 0,70) y VIF iterativo. Exporta
-              <code>data_modelado_cuanti.csv</code> y la bitácora
+              exposición y estacionalidad. Asociación Spearman con <code>SAIFI</code> y <code>SAIDI</code>
+              (FDR), redundancia (|ρ| ≥ 0,70) y VIF iterativo. Exporta
+              <code>data_modelado_cuanti.csv</code> (respuestas SAIDI/SAIFI) y la bitácora
               <code>decision_variables_cuanti.csv</code> sin eliminar variables del panel.
             </span>
             <span class="tag">asociacion_depuracion_cuantitativas.Rmd</span>

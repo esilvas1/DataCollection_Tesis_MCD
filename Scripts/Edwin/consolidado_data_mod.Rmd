@@ -57,10 +57,19 @@ if ("semana" %in% names(tabla_agrupada) &&
 
 dim(tabla_agrupada)
 
+# Divisor de usuarios totales del OR: parametro fijo y actualizable.
+# Cambiar UT_USUARIOS y reexportar (o reescalar SAIDI/SAIFI = valor * UT_antiguo / UT_nuevo).
+UT_USUARIOS <- 650000
+
 d_mod <- tabla_agrupada %>%
   mutate(anio = year(semana)) %>%
   filter(anio %in% 2024:2025) %>%
-  select(-anio)
+  select(-anio) %>%
+  mutate(
+    usuarios_totales = UT_USUARIOS,
+    SAIFI = usuarios_afectados / usuarios_totales,
+    SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
+  )
 
 dim(d_mod)
 range(d_mod$semana)
@@ -77,6 +86,9 @@ resumen_d_mod <- tibble(
     "Total n_eventos",
     "Total usuarios_afectados",
     "Total duracion_total (horas)",
+    "Usuarios totales (UT)",
+    "SAIFI medio",
+    "SAIDI medio",
     "Semana inicio",
     "Semana fin"
   ),
@@ -87,6 +99,9 @@ resumen_d_mod <- tibble(
     format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ","),
     format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = ","),
     format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = ","),
+    format(unique(d_mod$usuarios_totales), big.mark = ","),
+    signif(mean(d_mod$SAIFI, na.rm = TRUE), 3),
+    signif(mean(d_mod$SAIDI, na.rm = TRUE), 3),
     as.character(min(d_mod$semana)),
     as.character(max(d_mod$semana))
   )
@@ -116,6 +131,14 @@ message("Exportado: ", path_salida)
 
 head(d_mod)
 ```
+
+Las respuestas de modelado se construyen en el grano cuadrante × semana:
+
+- `SAIFI = usuarios_afectados / usuarios_totales`
+- `SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales`
+
+con `usuarios_totales = 650000` (parametro fijo, modificable). `n_eventos` y `duracion_total`
+permanecen como insumos de construccion e historico; no son las variables a predecir.
 
 **Uso:** `data_agrupada_mod.csv` es el insumo para las secciones 5.3.6 en adelante y la Etapa 4
 (entrenamiento 2024 / prueba 2025). La agregacion original desde `data_consolidada.csv` sigue
