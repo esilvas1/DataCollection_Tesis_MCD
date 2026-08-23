@@ -11,7 +11,7 @@
 
 <meta name="author" content="Edwin Silva Salas" />
 
-<meta name="date" content="2026-08-17" />
+<meta name="date" content="2026-08-22" />
 
 <title>Construccion del dataset de modelado D_mod (2024-2025)</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">Construccion del dataset de modelado D_mod
 (2024-2025)</h1>
 <h4 class="author">Edwin Silva Salas</h4>
-<h4 class="date">2026-08-17</h4>
+<h4 class="date">2026-08-22</h4>
 
 </div>
 
@@ -412,10 +412,14 @@ if (UBICACION_DATA == &quot;&quot;) {
 }
 
 path_agrupada &lt;- file.path(UBICACION_DATA, &quot;data_agrupada.csv&quot;)
+path_ut &lt;- file.path(UBICACION_DATA, &quot;data_usuarios_totales_sistema.csv&quot;)
 path_salida &lt;- file.path(UBICACION_DATA, &quot;data_agrupada_mod.csv&quot;)
 
 if (!file.exists(path_agrupada)) {
   stop(&quot;No se encontro: &quot;, path_agrupada)
+}
+if (!file.exists(path_ut)) {
+  stop(&quot;No se encontro: &quot;, path_ut)
 }</code></pre>
 <div id="lectura-y-filtro-temporal" class="section level2">
 <h2>Lectura y filtro temporal</h2>
@@ -431,16 +435,154 @@ if (&quot;semana&quot; %in% names(tabla_agrupada) &amp;&amp;
 
 dim(tabla_agrupada)</code></pre>
 <pre><code>## [1] 90128    16</code></pre>
-<pre class="r"><code># Divisor de usuarios totales del OR: parametro fijo y actualizable.
-# Cambiar UT_USUARIOS y reexportar (o reescalar SAIDI/SAIFI = valor * UT_antiguo / UT_nuevo).
-UT_USUARIOS &lt;- 650000
+<pre class="r"><code># Usuarios totales del sistema por mes (CS1_PERIODO_OP = 01/MM/YY, CS1_UT_M).
+# Cada semana se asocia al UT del mes calendario de la fecha de inicio de semana.
+ut_mensual &lt;- read_csv(path_ut, show_col_types = FALSE) %&gt;%
+  rename(
+    periodo_op = CS1_PERIODO_OP,
+    usuarios_totales = CS1_UT_M
+  ) %&gt;%
+  mutate(
+    periodo_op = as.Date(periodo_op, format = &quot;%d/%m/%y&quot;),
+    anio_mes = floor_date(periodo_op, &quot;month&quot;)
+  ) %&gt;%
+  select(anio_mes, usuarios_totales) %&gt;%
+  distinct(anio_mes, .keep_all = TRUE)
 
-d_mod &lt;- tabla_agrupada %&gt;%
+kable(
+  ut_mensual %&gt;%
+    mutate(anio_mes = format(anio_mes, &quot;%Y-%m&quot;),
+           usuarios_totales = format(usuarios_totales, big.mark = &quot;,&quot;)) %&gt;%
+    arrange(anio_mes),
+  col.names = c(&quot;Mes&quot;, &quot;Usuarios totales (UT)&quot;),
+  caption = &quot;Usuarios totales del sistema por mes (data_usuarios_totales_sistema.csv)&quot;
+)</code></pre>
+<table>
+<caption>Usuarios totales del sistema por mes
+(data_usuarios_totales_sistema.csv)</caption>
+<thead>
+<tr class="header">
+<th align="left">Mes</th>
+<th align="left">Usuarios totales (UT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2024-01</td>
+<td align="left">618,400</td>
+</tr>
+<tr class="even">
+<td align="left">2024-02</td>
+<td align="left">619,881</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-03</td>
+<td align="left">621,283</td>
+</tr>
+<tr class="even">
+<td align="left">2024-04</td>
+<td align="left">622,821</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-05</td>
+<td align="left">624,304</td>
+</tr>
+<tr class="even">
+<td align="left">2024-06</td>
+<td align="left">625,629</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-07</td>
+<td align="left">626,804</td>
+</tr>
+<tr class="even">
+<td align="left">2024-08</td>
+<td align="left">627,872</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-09</td>
+<td align="left">629,194</td>
+</tr>
+<tr class="even">
+<td align="left">2024-10</td>
+<td align="left">630,702</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-11</td>
+<td align="left">631,900</td>
+</tr>
+<tr class="even">
+<td align="left">2024-12</td>
+<td align="left">633,341</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-01</td>
+<td align="left">634,761</td>
+</tr>
+<tr class="even">
+<td align="left">2025-02</td>
+<td align="left">635,941</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-03</td>
+<td align="left">637,329</td>
+</tr>
+<tr class="even">
+<td align="left">2025-04</td>
+<td align="left">638,440</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-05</td>
+<td align="left">639,882</td>
+</tr>
+<tr class="even">
+<td align="left">2025-06</td>
+<td align="left">641,543</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-07</td>
+<td align="left">643,327</td>
+</tr>
+<tr class="even">
+<td align="left">2025-08</td>
+<td align="left">644,541</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-09</td>
+<td align="left">646,045</td>
+</tr>
+<tr class="even">
+<td align="left">2025-10</td>
+<td align="left">647,005</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-11</td>
+<td align="left">647,783</td>
+</tr>
+<tr class="even">
+<td align="left">2025-12</td>
+<td align="left">648,758</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>d_mod &lt;- tabla_agrupada %&gt;%
   mutate(anio = year(semana)) %&gt;%
   filter(anio %in% 2024:2025) %&gt;%
   select(-anio) %&gt;%
+  mutate(anio_mes = floor_date(semana, &quot;month&quot;)) %&gt;%
+  left_join(ut_mensual, by = &quot;anio_mes&quot;) %&gt;%
+  select(-anio_mes)
+
+n_sin_ut &lt;- sum(is.na(d_mod$usuarios_totales))
+if (n_sin_ut &gt; 0) {
+  stop(
+    &quot;Hay &quot;, n_sin_ut,
+    &quot; filas sin UT mensual. Revisar cobertura de data_usuarios_totales_sistema.csv.&quot;
+  )
+}
+
+d_mod &lt;- d_mod %&gt;%
   mutate(
-    usuarios_totales = UT_USUARIOS,
     SAIFI = usuarios_afectados / usuarios_totales,
     SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
   )
@@ -460,7 +602,10 @@ dim(d_mod)</code></pre>
     &quot;Total n_eventos&quot;,
     &quot;Total usuarios_afectados&quot;,
     &quot;Total duracion_total (horas)&quot;,
-    &quot;Usuarios totales (UT)&quot;,
+    &quot;UT minimo&quot;,
+    &quot;UT mediano&quot;,
+    &quot;UT maximo&quot;,
+    &quot;Meses UT distintos&quot;,
     &quot;SAIFI medio&quot;,
     &quot;SAIDI medio&quot;,
     &quot;Semana inicio&quot;,
@@ -473,7 +618,10 @@ dim(d_mod)</code></pre>
     format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = &quot;,&quot;),
     format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = &quot;,&quot;),
     format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = &quot;,&quot;),
-    format(unique(d_mod$usuarios_totales), big.mark = &quot;,&quot;),
+    format(min(d_mod$usuarios_totales), big.mark = &quot;,&quot;),
+    format(median(d_mod$usuarios_totales), big.mark = &quot;,&quot;),
+    format(max(d_mod$usuarios_totales), big.mark = &quot;,&quot;),
+    as.character(n_distinct(d_mod$usuarios_totales)),
     signif(mean(d_mod$SAIFI, na.rm = TRUE), 3),
     signif(mean(d_mod$SAIDI, na.rm = TRUE), 3),
     as.character(min(d_mod$semana)),
@@ -515,24 +663,213 @@ kable(resumen_d_mod, col.names = c(&quot;Metrica&quot;, &quot;Valor&quot;))</cod
 <td align="left">986,626.1</td>
 </tr>
 <tr class="odd">
-<td align="left">Usuarios totales (UT)</td>
-<td align="left">650,000</td>
+<td align="left">UT minimo</td>
+<td align="left">618,400</td>
 </tr>
 <tr class="even">
-<td align="left">SAIFI medio</td>
-<td align="left">0.000258</td>
+<td align="left">UT mediano</td>
+<td align="left">633,341</td>
 </tr>
 <tr class="odd">
-<td align="left">SAIDI medio</td>
-<td align="left">0.017</td>
+<td align="left">UT maximo</td>
+<td align="left">648,758</td>
 </tr>
 <tr class="even">
+<td align="left">Meses UT distintos</td>
+<td align="left">24</td>
+</tr>
+<tr class="odd">
+<td align="left">SAIFI medio</td>
+<td align="left">0.000264</td>
+</tr>
+<tr class="even">
+<td align="left">SAIDI medio</td>
+<td align="left">0.0174</td>
+</tr>
+<tr class="odd">
 <td align="left">Semana inicio</td>
 <td align="left">2024-01-01</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Semana fin</td>
 <td align="left">2025-12-29</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>resumen_ut_mes &lt;- d_mod %&gt;%
+  mutate(mes = format(floor_date(semana, &quot;month&quot;), &quot;%Y-%m&quot;)) %&gt;%
+  group_by(mes) %&gt;%
+  summarise(
+    n_filas = n(),
+    usuarios_totales = first(usuarios_totales),
+    saifi_medio = mean(SAIFI, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+kable(
+  resumen_ut_mes %&gt;%
+    mutate(
+      n_filas = format(n_filas, big.mark = &quot;,&quot;),
+      usuarios_totales = format(usuarios_totales, big.mark = &quot;,&quot;),
+      saifi_medio = signif(saifi_medio, 3)
+    ),
+  col.names = c(&quot;Mes&quot;, &quot;Filas&quot;, &quot;UT&quot;, &quot;SAIFI medio&quot;),
+  caption = &quot;Asignacion de UT mensual a las semanas de D_mod&quot;
+)</code></pre>
+<table>
+<caption>Asignacion de UT mensual a las semanas de D_mod</caption>
+<thead>
+<tr class="header">
+<th align="left">Mes</th>
+<th align="left">Filas</th>
+<th align="left">UT</th>
+<th align="right">SAIFI medio</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2024-01</td>
+<td align="left">1,720</td>
+<td align="left">618,400</td>
+<td align="right">1.55e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-02</td>
+<td align="left">1,376</td>
+<td align="left">619,881</td>
+<td align="right">9.02e-05</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-03</td>
+<td align="left">1,376</td>
+<td align="left">621,283</td>
+<td align="right">1.90e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-04</td>
+<td align="left">1,720</td>
+<td align="left">622,821</td>
+<td align="right">3.25e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-05</td>
+<td align="left">1,376</td>
+<td align="left">624,304</td>
+<td align="right">2.93e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-06</td>
+<td align="left">1,376</td>
+<td align="left">625,629</td>
+<td align="right">2.73e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-07</td>
+<td align="left">1,720</td>
+<td align="left">626,804</td>
+<td align="right">2.75e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-08</td>
+<td align="left">1,376</td>
+<td align="left">627,872</td>
+<td align="right">3.72e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-09</td>
+<td align="left">1,720</td>
+<td align="left">629,194</td>
+<td align="right">2.79e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-10</td>
+<td align="left">1,376</td>
+<td align="left">630,702</td>
+<td align="right">3.92e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2024-11</td>
+<td align="left">1,376</td>
+<td align="left">631,900</td>
+<td align="right">3.18e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2024-12</td>
+<td align="left">1,720</td>
+<td align="left">633,341</td>
+<td align="right">1.81e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-01</td>
+<td align="left">1,376</td>
+<td align="left">634,761</td>
+<td align="right">1.83e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-02</td>
+<td align="left">1,376</td>
+<td align="left">635,941</td>
+<td align="right">1.73e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-03</td>
+<td align="left">1,720</td>
+<td align="left">637,329</td>
+<td align="right">2.69e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-04</td>
+<td align="left">1,376</td>
+<td align="left">638,440</td>
+<td align="right">3.12e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-05</td>
+<td align="left">1,376</td>
+<td align="left">639,882</td>
+<td align="right">2.16e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-06</td>
+<td align="left">1,720</td>
+<td align="left">641,543</td>
+<td align="right">2.75e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-07</td>
+<td align="left">1,376</td>
+<td align="left">643,327</td>
+<td align="right">3.44e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-08</td>
+<td align="left">1,376</td>
+<td align="left">644,541</td>
+<td align="right">3.79e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-09</td>
+<td align="left">1,720</td>
+<td align="left">646,045</td>
+<td align="right">3.68e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-10</td>
+<td align="left">1,376</td>
+<td align="left">647,005</td>
+<td align="right">2.68e-04</td>
+</tr>
+<tr class="odd">
+<td align="left">2025-11</td>
+<td align="left">1,376</td>
+<td align="left">647,783</td>
+<td align="right">2.19e-04</td>
+</tr>
+<tr class="even">
+<td align="left">2025-12</td>
+<td align="left">1,720</td>
+<td align="left">648,758</td>
+<td align="right">1.99e-04</td>
 </tr>
 </tbody>
 </table>
@@ -580,10 +917,12 @@ semana:</p>
 <li><code>SAIFI = usuarios_afectados / usuarios_totales</code></li>
 <li><code>SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales</code></li>
 </ul>
-<p>con <code>usuarios_totales = 650000</code> (parametro fijo,
-modificable). <code>n_eventos</code> y <code>duracion_total</code>
-permanecen como insumos de construccion e historico; no son las
-variables a predecir.</p>
+<p>donde <code>usuarios_totales</code> proviene de
+<code>data_usuarios_totales_sistema.csv</code> (<code>CS1_UT_M</code>)
+asignado segun el <strong>mes calendario</strong> de la fecha de inicio
+de cada <code>semana</code>. <code>n_eventos</code> y
+<code>duracion_total</code> permanecen como insumos de construccion e
+historico; no son las variables a predecir.</p>
 <p><strong>Uso:</strong> <code>data_agrupada_mod.csv</code> es el insumo
 para las secciones 5.3.6 en adelante y la Etapa 4 (entrenamiento 2024 /
 prueba 2025). La agregacion original desde

@@ -75,7 +75,6 @@ ANIO_TEST <- 2025
 UMBRAL_RHO_REDUNDANTE <- 0.70
 UMBRAL_VIF <- 5
 UMBRAL_ALPHA_FDR <- 0.05
-UT_USUARIOS <- 650000
 ```
 
 ```{r funcion-guardar}
@@ -105,13 +104,41 @@ if (!inherits(d_mod$semana, "Date")) {
   d_mod <- d_mod %>% mutate(semana = as.Date(semana))
 }
 
-d_mod <- d_mod %>%
-  arrange(id_cuadrante, semana) %>%
-  mutate(
-    usuarios_totales = UT_USUARIOS,
-    SAIFI = usuarios_afectados / usuarios_totales,
-    SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
-  )
+# Si D_mod aun no trae UT mensual, se reasigna desde data_usuarios_totales_sistema.csv
+# por mes calendario de la semana.
+path_ut <- file.path(UBICACION_DATA, "data_usuarios_totales_sistema.csv")
+necesita_ut <- !all(c("usuarios_totales", "SAIFI", "SAIDI") %in% names(d_mod)) ||
+  (n_distinct(d_mod$usuarios_totales) <= 1)
+
+if (necesita_ut) {
+  if (!file.exists(path_ut)) {
+    stop("No se encontro: ", path_ut)
+  }
+  ut_mensual <- read_csv(path_ut, show_col_types = FALSE) %>%
+    rename(periodo_op = CS1_PERIODO_OP, usuarios_totales = CS1_UT_M) %>%
+    mutate(
+      periodo_op = as.Date(periodo_op, format = "%d/%m/%y"),
+      anio_mes = floor_date(periodo_op, "month")
+    ) %>%
+    select(anio_mes, usuarios_totales) %>%
+    distinct(anio_mes, .keep_all = TRUE)
+
+  d_mod <- d_mod %>%
+    select(-any_of(c("usuarios_totales", "SAIFI", "SAIDI"))) %>%
+    mutate(anio_mes = floor_date(semana, "month")) %>%
+    left_join(ut_mensual, by = "anio_mes") %>%
+    select(-anio_mes) %>%
+    mutate(
+      SAIFI = usuarios_afectados / usuarios_totales,
+      SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
+    )
+}
+
+if (any(is.na(d_mod$usuarios_totales))) {
+  stop("Hay semanas sin UT mensual. Revisar data_usuarios_totales_sistema.csv.")
+}
+
+d_mod <- d_mod %>% arrange(id_cuadrante, semana)
 
 resumen_panel <- tibble(
   metrica = c("Filas", "Cuadrantes", "Semanas", "Semana min", "Semana max", "Total eventos"),

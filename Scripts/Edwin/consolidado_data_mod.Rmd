@@ -36,10 +36,14 @@ if (UBICACION_DATA == "") {
 }
 
 path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+path_ut <- file.path(UBICACION_DATA, "data_usuarios_totales_sistema.csv")
 path_salida <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
 
 if (!file.exists(path_agrupada)) {
   stop("No se encontro: ", path_agrupada)
+}
+if (!file.exists(path_ut)) {
+  stop("No se encontro: ", path_ut)
 }
 ```
 
@@ -57,16 +61,47 @@ if ("semana" %in% names(tabla_agrupada) &&
 
 dim(tabla_agrupada)
 
-# Divisor de usuarios totales del OR: parametro fijo y actualizable.
-# Cambiar UT_USUARIOS y reexportar (o reescalar SAIDI/SAIFI = valor * UT_antiguo / UT_nuevo).
-UT_USUARIOS <- 650000
+# Usuarios totales del sistema por mes (CS1_PERIODO_OP = 01/MM/YY, CS1_UT_M).
+# Cada semana se asocia al UT del mes calendario de la fecha de inicio de semana.
+ut_mensual <- read_csv(path_ut, show_col_types = FALSE) %>%
+  rename(
+    periodo_op = CS1_PERIODO_OP,
+    usuarios_totales = CS1_UT_M
+  ) %>%
+  mutate(
+    periodo_op = as.Date(periodo_op, format = "%d/%m/%y"),
+    anio_mes = floor_date(periodo_op, "month")
+  ) %>%
+  select(anio_mes, usuarios_totales) %>%
+  distinct(anio_mes, .keep_all = TRUE)
+
+kable(
+  ut_mensual %>%
+    mutate(anio_mes = format(anio_mes, "%Y-%m"),
+           usuarios_totales = format(usuarios_totales, big.mark = ",")) %>%
+    arrange(anio_mes),
+  col.names = c("Mes", "Usuarios totales (UT)"),
+  caption = "Usuarios totales del sistema por mes (data_usuarios_totales_sistema.csv)"
+)
 
 d_mod <- tabla_agrupada %>%
   mutate(anio = year(semana)) %>%
   filter(anio %in% 2024:2025) %>%
   select(-anio) %>%
+  mutate(anio_mes = floor_date(semana, "month")) %>%
+  left_join(ut_mensual, by = "anio_mes") %>%
+  select(-anio_mes)
+
+n_sin_ut <- sum(is.na(d_mod$usuarios_totales))
+if (n_sin_ut > 0) {
+  stop(
+    "Hay ", n_sin_ut,
+    " filas sin UT mensual. Revisar cobertura de data_usuarios_totales_sistema.csv."
+  )
+}
+
+d_mod <- d_mod %>%
   mutate(
-    usuarios_totales = UT_USUARIOS,
     SAIFI = usuarios_afectados / usuarios_totales,
     SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
   )
@@ -86,7 +121,10 @@ resumen_d_mod <- tibble(
     "Total n_eventos",
     "Total usuarios_afectados",
     "Total duracion_total (horas)",
-    "Usuarios totales (UT)",
+    "UT minimo",
+    "UT mediano",
+    "UT maximo",
+    "Meses UT distintos",
     "SAIFI medio",
     "SAIDI medio",
     "Semana inicio",
@@ -99,7 +137,10 @@ resumen_d_mod <- tibble(
     format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ","),
     format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = ","),
     format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = ","),
-    format(unique(d_mod$usuarios_totales), big.mark = ","),
+    format(min(d_mod$usuarios_totales), big.mark = ","),
+    format(median(d_mod$usuarios_totales), big.mark = ","),
+    format(max(d_mod$usuarios_totales), big.mark = ","),
+    as.character(n_distinct(d_mod$usuarios_totales)),
     signif(mean(d_mod$SAIFI, na.rm = TRUE), 3),
     signif(mean(d_mod$SAIDI, na.rm = TRUE), 3),
     as.character(min(d_mod$semana)),
@@ -108,6 +149,27 @@ resumen_d_mod <- tibble(
 )
 
 kable(resumen_d_mod, col.names = c("Metrica", "Valor"))
+
+resumen_ut_mes <- d_mod %>%
+  mutate(mes = format(floor_date(semana, "month"), "%Y-%m")) %>%
+  group_by(mes) %>%
+  summarise(
+    n_filas = n(),
+    usuarios_totales = first(usuarios_totales),
+    saifi_medio = mean(SAIFI, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(
+  resumen_ut_mes %>%
+    mutate(
+      n_filas = format(n_filas, big.mark = ","),
+      usuarios_totales = format(usuarios_totales, big.mark = ","),
+      saifi_medio = signif(saifi_medio, 3)
+    ),
+  col.names = c("Mes", "Filas", "UT", "SAIFI medio"),
+  caption = "Asignacion de UT mensual a las semanas de D_mod"
+)
 
 resumen_anio <- d_mod %>%
   mutate(anio = year(semana)) %>%
@@ -137,8 +199,10 @@ Las respuestas de modelado se construyen en el grano cuadrante × semana:
 - `SAIFI = usuarios_afectados / usuarios_totales`
 - `SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales`
 
-con `usuarios_totales = 650000` (parametro fijo, modificable). `n_eventos` y `duracion_total`
-permanecen como insumos de construccion e historico; no son las variables a predecir.
+donde `usuarios_totales` proviene de `data_usuarios_totales_sistema.csv` (`CS1_UT_M`)
+asignado segun el **mes calendario** de la fecha de inicio de cada `semana`.
+`n_eventos` y `duracion_total` permanecen como insumos de construccion e historico;
+no son las variables a predecir.
 
 **Uso:** `data_agrupada_mod.csv` es el insumo para las secciones 5.3.6 en adelante y la Etapa 4
 (entrenamiento 2024 / prueba 2025). La agregacion original desde `data_consolidada.csv` sigue

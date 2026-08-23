@@ -1538,11 +1538,11 @@ Se construyen únicamente variables del grupo \textbf{disponibles antes del peri
 \subsection{Construcción de la variable respuesta}
 Las respuestas son $Y_t=\mathrm{SAIFI}_t$ y $Y'_t=\mathrm{SAIDI}_t$, calculadas en cada fila cuadrante~$\times$~semana como
 \begin{equation}
-\mathrm{SAIFI}_{q,s}=\dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT},
+\mathrm{SAIFI}_{q,s}=\dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
 \qquad
-\mathrm{SAIDI}_{q,s}=\dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT},
+\mathrm{SAIDI}_{q,s}=\dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
 \end{equation}
-con $UT=650{.}000$ usuarios totales del operador. Ese divisor se trata como parámetro fijo y puede actualizarse reescalando las columnas (\(\mathrm{SAIDI}_{\mathrm{nuevo}}=\mathrm{SAIDI}\times UT_{\mathrm{antiguo}}/UT_{\mathrm{nuevo}}\), e igual para $SAIFI$). \texttt{n\_eventos} y \texttt{duracion\_total} no se modelan como $Y$: permanecen como insumos de construcción y como historial rezagado. \texttt{elementos\_afectados} no entra en $Y$ ni como predictora contemporánea.
+donde $UT_{m(s)}$ es el valor mensual de usuarios totales del sistema (\texttt{CS1\_UT\_M} en \texttt{data\_usuarios\_totales\_sistema.csv}) correspondiente al mes calendario de la fecha de inicio de la semana~$s$. \texttt{n\_eventos} y \texttt{duracion\_total} no se modelan como $Y$: permanecen como insumos de construcción y como historial rezagado. \texttt{elementos\_afectados} no entra en $Y$ ni como predictora contemporánea.
 
 \subsection{Análisis de asociación y depuración de variables cuantitativas}
 \label{sec:asociacion_depuracion_cuanti}

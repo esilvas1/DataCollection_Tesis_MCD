@@ -5,12 +5,12 @@
 
 Los indicadores de continuidad del servicio SAIDI (Índice de Duración Promedio de Interrupción del Sistema) y SAIFI (Índice de Frecuencia Promedio de Interrupción del Sistema) en la empresa de distribución objeto de estudio presentan dificultades estructurales para su mejora sostenida. Si bien existen técnicas estadísticas y de aprendizaje automático ampliamente documentadas para el análisis de interrupciones en sistemas eléctricos, la principal limitación no radica en la ausencia de metodologías analíticas, sino en la calidad, estructura e interpretación de los datos disponibles, lo que dificulta el entrenamiento de modelos predictivos que sean simultáneamente confiables y explicativos \textcite{ref1,ref4,ref3,ref9}. En particular, resulta complejo detectar, cuantificar y explicar no solo las causas de las interrupciones, sino también su duración y los tiempos de restauración del servicio.
 
-El objetivo predictivo de este trabajo son los indicadores $SAIFI$ y $SAIDI$ a escala de cuadrante~$\times$~semana. Se construyen a partir de los registros operativos del panel, con un denominador fijo de usuarios totales del operador ($UT = 650{.}000$), actualizable con posterioridad:
+El objetivo predictivo de este trabajo son los indicadores $SAIFI$ y $SAIDI$ a escala de cuadrante~$\times$~semana. Se construyen a partir de los registros operativos del panel, con el denominador de usuarios totales del operador ($UT$) tomado de la serie mensual \texttt{data\_usuarios\_totales\_sistema.csv} y asignado a cada semana según el mes calendario de su fecha de inicio:
 
 \begin{equation}
-\mathrm{SAIFI}_{q,s} = \dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT},
+\mathrm{SAIFI}_{q,s} = \dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
 \qquad
-\mathrm{SAIDI}_{q,s} = \dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT}.
+\mathrm{SAIDI}_{q,s} = \dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}.
 \end{equation}
 
 \texttt{n\_eventos} y \texttt{duracion\_total} permanecen como insumos de construcción y de historial \emph{ex ante}; no constituyen las variables a predecir. \texttt{usuarios\_afectados} entra en el numerador de $Y$, pero no como predictora contemporánea.
