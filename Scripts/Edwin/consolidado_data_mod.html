@@ -11,7 +11,7 @@
 
 <meta name="author" content="Edwin Silva Salas" />
 
-<meta name="date" content="2026-08-23" />
+<meta name="date" content="2026-09-03" />
 
 <title>Construccion del dataset de modelado D_mod (2024-2025)</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">Construccion del dataset de modelado D_mod
 (2024-2025)</h1>
 <h4 class="author">Edwin Silva Salas</h4>
-<h4 class="date">2026-08-23</h4>
+<h4 class="date">2026-09-03</h4>
 
 </div>
 
@@ -415,6 +415,7 @@ path_agrupada &lt;- file.path(UBICACION_DATA, &quot;data_agrupada.csv&quot;)
 path_ut &lt;- file.path(UBICACION_DATA, &quot;data_usuarios_totales_sistema.csv&quot;)
 path_usuarios_cuad &lt;- file.path(UBICACION_DATA, &quot;cant_usuarios_x_transformador.csv&quot;)
 path_estrato &lt;- file.path(UBICACION_DATA, &quot;DATA_ESTRATO_SECTOR.csv&quot;)
+path_fechas_trafo &lt;- file.path(UBICACION_DATA, &quot;Fecha_transformadores.csv&quot;)
 path_salida &lt;- file.path(UBICACION_DATA, &quot;data_agrupada_mod.csv&quot;)
 
 if (!file.exists(path_agrupada)) {
@@ -428,6 +429,9 @@ if (!file.exists(path_usuarios_cuad)) {
 }
 if (!file.exists(path_estrato)) {
   stop(&quot;No se encontro: &quot;, path_estrato)
+}
+if (!file.exists(path_fechas_trafo)) {
+  stop(&quot;No se encontro: &quot;, path_fechas_trafo)
 }</code></pre>
 <div id="lectura-y-filtro-temporal" class="section level2">
 <h2>Lectura y filtro temporal</h2>
@@ -716,6 +720,103 @@ kable(
 </tr>
 </tbody>
 </table>
+<pre class="r"><code># Reposiciones / fechas de transformadores por cuadrante.
+# Por elemento: se cuentan todas las filas (reposiciones) y se toma la ultima
+# TT2_FMODIFICACION en estado OPERACION (si no hay, la maxima fecha del elemento).
+# Por cuadrante: fecha del activo mas viejo, del mas nuevo y promedio de
+# cantidad de modificaciones.
+fechas_trafo &lt;- read_csv(path_fechas_trafo, show_col_types = FALSE)
+names(fechas_trafo) &lt;- gsub(&quot;^\ufeff&quot;, &quot;&quot;, names(fechas_trafo))
+
+fechas_trafo &lt;- fechas_trafo %&gt;%
+  mutate(
+    id_cuadrante = as.character(ID_CUADRANTE),
+    codigo_elemento = as.character(TT2_CODIGOELEMENTO),
+    estado = toupper(trimws(as.character(TT2_ESTADO))),
+    fecha_mod = as.Date(TT2_FMODIFICACION, format = &quot;%d/%m/%Y&quot;)
+  )
+
+fecha_ultima_elemento &lt;- function(fecha, estado) {
+  f_op &lt;- fecha[estado == &quot;OPERACION&quot; &amp; !is.na(fecha)]
+  if (length(f_op) &gt; 0) {
+    return(max(f_op))
+  }
+  f_all &lt;- fecha[!is.na(fecha)]
+  if (length(f_all) == 0) {
+    return(as.Date(NA))
+  }
+  max(f_all)
+}
+
+por_elemento &lt;- fechas_trafo %&gt;%
+  group_by(id_cuadrante, codigo_elemento) %&gt;%
+  summarise(
+    cant_modificaciones = n(),
+    fecha_ultima_operacion = fecha_ultima_elemento(fecha_mod, estado),
+    en_operacion = any(estado == &quot;OPERACION&quot;, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+repos_cuadrante &lt;- por_elemento %&gt;%
+  group_by(id_cuadrante) %&gt;%
+  summarise(
+    FECHA_ACTIVO_MAS_VIEJO = {
+      f &lt;- fecha_ultima_operacion[en_operacion &amp; !is.na(fecha_ultima_operacion)]
+      if (length(f) == 0) {
+        f2 &lt;- fecha_ultima_operacion[!is.na(fecha_ultima_operacion)]
+        if (length(f2) == 0) as.Date(NA) else min(f2)
+      } else {
+        min(f)
+      }
+    },
+    FECHA_ACTIVO_MAS_NUEVO = {
+      f &lt;- fecha_ultima_operacion[en_operacion &amp; !is.na(fecha_ultima_operacion)]
+      if (length(f) == 0) {
+        f2 &lt;- fecha_ultima_operacion[!is.na(fecha_ultima_operacion)]
+        if (length(f2) == 0) as.Date(NA) else max(f2)
+      } else {
+        max(f)
+      }
+    },
+    PROM_CANT_MODIFICACIONES = round(mean(cant_modificaciones, na.rm = TRUE), 3),
+    n_elementos = n(),
+    n_elementos_operacion = sum(en_operacion, na.rm = TRUE),
+    .groups = &quot;drop&quot;
+  )
+
+kable(
+  repos_cuadrante %&gt;%
+    summarise(
+      cuadrantes = n(),
+      elementos_total = sum(n_elementos),
+      fecha_min = as.character(min(FECHA_ACTIVO_MAS_VIEJO, na.rm = TRUE)),
+      fecha_max = as.character(max(FECHA_ACTIVO_MAS_NUEVO, na.rm = TRUE)),
+      prom_mod_medio = round(mean(PROM_CANT_MODIFICACIONES, na.rm = TRUE), 3)
+    ),
+  caption = &quot;Resumen de fechas y reposiciones por cuadrante (Fecha_transformadores.csv)&quot;
+)</code></pre>
+<table>
+<caption>Resumen de fechas y reposiciones por cuadrante
+(Fecha_transformadores.csv)</caption>
+<thead>
+<tr class="header">
+<th align="right">cuadrantes</th>
+<th align="right">elementos_total</th>
+<th align="left">fecha_min</th>
+<th align="left">fecha_max</th>
+<th align="right">prom_mod_medio</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">343</td>
+<td align="right">25405</td>
+<td align="left">2025-02-26</td>
+<td align="left">2026-09-01</td>
+<td align="right">1.189</td>
+</tr>
+</tbody>
+</table>
 <pre class="r"><code>d_mod &lt;- tabla_agrupada %&gt;%
   mutate(anio = year(semana)) %&gt;%
   filter(anio %in% 2024:2025) %&gt;%
@@ -727,6 +828,16 @@ kable(
   left_join(ut_mensual, by = &quot;anio_mes&quot;) %&gt;%
   left_join(usuarios_cuadrante_mes, by = c(&quot;id_cuadrante&quot;, &quot;anio&quot;, &quot;mes&quot;)) %&gt;%
   left_join(estrato_cuadrante_mes, by = c(&quot;id_cuadrante&quot;, &quot;anio&quot;, &quot;mes&quot;)) %&gt;%
+  left_join(
+    repos_cuadrante %&gt;%
+      select(
+        id_cuadrante,
+        FECHA_ACTIVO_MAS_VIEJO,
+        FECHA_ACTIVO_MAS_NUEVO,
+        PROM_CANT_MODIFICACIONES
+      ),
+    by = &quot;id_cuadrante&quot;
+  ) %&gt;%
   select(-anio, -anio_mes, -mes)
 
 n_sin_ut &lt;- sum(is.na(d_mod$usuarios_totales))
@@ -949,14 +1060,52 @@ kable(cobertura, col.names = c(&quot;Metrica&quot;, &quot;Valor&quot;),
   stop(&quot;Quedan faltantes tras imputacion de usuarios/estrato.&quot;)
 }
 
-d_mod &lt;- d_mod %&gt;%
+cobertura_repos &lt;- tibble(
+  metrica = c(
+    &quot;Cuadrantes con fechas de reposicion&quot;,
+    &quot;Filas D_mod sin FECHA_ACTIVO_MAS_VIEJO&quot;,
+    &quot;Filas D_mod sin PROM_CANT_MODIFICACIONES&quot;
+  ),
+  valor = c(
+    as.character(n_distinct(repos_cuadrante$id_cuadrante)),
+    format(sum(is.na(d_mod$FECHA_ACTIVO_MAS_VIEJO)), big.mark = &quot;,&quot;),
+    format(sum(is.na(d_mod$PROM_CANT_MODIFICACIONES)), big.mark = &quot;,&quot;)
+  )
+)
+kable(cobertura_repos, col.names = c(&quot;Metrica&quot;, &quot;Valor&quot;),
+      caption = &quot;Cobertura de columnas de reposicion/fechas de transformadores&quot;)</code></pre>
+<table>
+<caption>Cobertura de columnas de reposicion/fechas de
+transformadores</caption>
+<thead>
+<tr class="header">
+<th align="left">Metrica</th>
+<th align="left">Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Cuadrantes con fechas de reposicion</td>
+<td align="left">343</td>
+</tr>
+<tr class="even">
+<td align="left">Filas D_mod sin FECHA_ACTIVO_MAS_VIEJO</td>
+<td align="left">105</td>
+</tr>
+<tr class="odd">
+<td align="left">Filas D_mod sin PROM_CANT_MODIFICACIONES</td>
+<td align="left">105</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>d_mod &lt;- d_mod %&gt;%
   mutate(
     SAIFI = usuarios_afectados / usuarios_totales,
     SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
   )
 
 dim(d_mod)</code></pre>
-<pre><code>## [1] 36120    31</code></pre>
+<pre><code>## [1] 36120    34</code></pre>
 <pre class="r"><code>range(d_mod$semana)</code></pre>
 <pre><code>## [1] &quot;2024-01-01&quot; &quot;2025-12-29&quot;</code></pre>
 </div>
@@ -1265,7 +1414,7 @@ resumen_anio</code></pre>
 message(&quot;Exportado: &quot;, path_salida)</code></pre>
 <pre><code>## Exportado: D:/OneDrive - PUJ Cali/Projecto_Grado_Javeriana/Data_Project//data_agrupada_mod.csv</code></pre>
 <pre class="r"><code>head(d_mod)</code></pre>
-<pre><code>## # A tibble: 6 × 31
+<pre><code>## # A tibble: 6 × 34
 ##   id_cuadrante semana     latitud longitud altitud usuarios_afectados
 ##   &lt;chr&gt;        &lt;date&gt;       &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;              &lt;dbl&gt;
 ## 1 1            2024-01-01    7.00    -72.7    3418                  0
@@ -1274,7 +1423,7 @@ message(&quot;Exportado: &quot;, path_salida)</code></pre>
 ## 4 1            2024-01-22    7.00    -72.7    3418                  0
 ## 5 1            2024-01-29    7.00    -72.7    3418                  0
 ## 6 1            2024-02-05    7.00    -72.7    3418                  0
-## # ℹ 25 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
+## # ℹ 28 more variables: elementos_afectados &lt;dbl&gt;, temp_media_semana &lt;dbl&gt;,
 ## #   temp_max_semana &lt;dbl&gt;, temp_min_semana &lt;dbl&gt;, humedad_media_semana &lt;dbl&gt;,
 ## #   viento_medio_semana &lt;dbl&gt;, viento_max_semana &lt;dbl&gt;,
 ## #   precip_total_semana &lt;dbl&gt;, n_eventos &lt;dbl&gt;, duracion_total &lt;dbl&gt;,
