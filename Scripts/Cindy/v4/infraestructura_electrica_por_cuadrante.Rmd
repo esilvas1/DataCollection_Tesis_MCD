@@ -1,0 +1,708 @@
+## Infraestructura eléctrica por cuadrante
+
+La capa `fallas_eventos` contiene un inventario georreferenciado de
+elementos de infraestructura eléctrica asociados a cada cuadrante. Pese
+a su nombre, esta capa **no registra eventos temporales de falla**: a
+partir de las columnas `TIPO`, `Name` y `CUADRANTE` se identifica que
+corresponde a un inventario físico de activos de red. Esta distinción
+se deja explícita aquí porque es relevante para la interpretación
+metodológica del panel.
+
+Se identifican cinco tipos de elementos:
+
+- Aisladero
+- Cuchilla
+- Interruptor
+- Reconectador
+- Transformador
+
+La información se agrega a nivel de **cuadrante** para construir
+variables estructurales que posteriormente se incorporarán al panel
+utilizado para el pronóstico de SAIDI y SAIFI. Estas variables
+representan características estructurales de la red (exposición,
+complejidad, capacidad de protección/aislamiento) y no deben
+interpretarse como conteos de fallas.
+
+### Paquetes
+
+```{r infra-paquetes}
+library(sf)
+library(dplyr)
+library(tidyr)
+library(knitr)
+```
+
+```{r entorno}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+### Distribución de los elementos de infraestructura
+
+```{r}
+library(sf)
+
+st_layers(file.path(UBICACION_DATA, "fallas_eventos.gpkg"))   # ver qué capas tiene
+
+fallas_eventos<- st_read(file.path(UBICACION_DATA, "fallas_eventos.gpkg"), layer = "fallas_eventos")
+
+cuadrantes_poligonos<-st_read(file.path(UBICACION_DATA, "fallas_eventos.gpkg"), layer = "cuadrantes_poligonos")
+
+```
+```{r}
+#st_crs(fallas_eventos)   # revisa el sistema de coordenadas
+nrow(fallas_eventos)     # debería ser 47,652
+#head(fallas_eventos)
+```
+
+
+Antes de construir las variables se revisa la composición del
+inventario, para saber qué tipos de activos están disponibles y
+evaluar más adelante cuáles aportan mayor relevancia explicativa para
+SAIDI y SAIFI.
+
+```{r infra-distribucion}
+tipos_infra <- fallas_eventos %>%
+  st_drop_geometry() %>%
+  count(TIPO, sort = TRUE)
+
+kable(
+  tipos_infra,
+  caption = "Distribución de los elementos de infraestructura eléctrica"
+)
+```
+
+### Número de elementos de cada tipo por cuadrante
+
+Se cuenta el número de elementos de cada tipo presente en cada
+cuadrante. Estas variables caracterizan la composición física de la
+red de distribución: un mayor número de elementos puede representar
+mayor extensión o complejidad de infraestructura expuesta a posibles
+interrupciones.
+
+```{r infra-conteo-tipo}
+infra_tipo <- fallas_eventos %>%
+  st_drop_geometry() %>%
+  count(CUADRANTE, TIPO, name = "n") %>%
+  pivot_wider(
+    names_from  = TIPO,
+    values_from = n,
+    values_fill = 0
+  )
+```
+
+### Estandarización de nombres
+
+Se utilizan nombres explícitos para facilitar la interpretación de las
+variables en los modelos posteriores.
+
+**Corrección:** el `rename()` original asume que las cinco columnas
+(`Aisladero`, `Cuchilla`, `Interruptor`, `Reconectador`,
+`Transformador`) siempre existen tras el `pivot_wider()`. Si algún
+cuadrante o la muestra completa no contiene alguno de los cinco tipos,
+esa columna no se crea y el `rename()` fallará. Se agrega una
+verificación previa que crea en cero cualquier columna faltante, para
+que el pipeline no se rompa silenciosamente ni truene con un error
+críptico.
+
+```{r infra-estandarizar-nombres}
+tipos_esperados <- c(
+  "Aisladero", "Cuchilla", "Interruptor", "Reconectador", "Transformador"
+)
+
+faltantes <- setdiff(tipos_esperados, names(infra_tipo))
+
+if (length(faltantes) > 0) {
+  infra_tipo[faltantes] <- 0
+}
+
+infra_cuadrante <- infra_tipo %>%
+  rename(
+    n_aisladeros      = Aisladero,
+    n_cuchillas       = Cuchilla,
+    n_interruptores   = Interruptor,
+    n_reconectadores  = Reconectador,
+    n_transformadores = Transformador
+  )
+```
+
+### Número total de elementos de infraestructura
+
+`n_elementos` representa el tamaño absoluto del inventario de
+infraestructura eléctrica localizado en cada cuadrante:
+
+$$
+n\_elementos = aisladeros + cuchillas + interruptores + reconectadores + transformadores
+$$
+
+Un cuadrante con más elementos posee una mayor cantidad de activos
+potencialmente expuestos a fallas. **Importante:** esta variable
+representa exposición estructural y no debe interpretarse como número
+de fallas.
+
+```{r infra-total-elementos}
+infra_cuadrante <- infra_cuadrante %>%
+  mutate(
+    n_elementos =
+      n_aisladeros +
+      n_cuchillas +
+      n_interruptores +
+      n_reconectadores +
+      n_transformadores
+  )
+```
+
+### Número de tipos de infraestructura presentes
+
+`n_tipos_infraestructura` mide la diversidad de tipos de activos
+presentes en cada cuadrante (rango 1 a 5) y busca aproximar la
+heterogeneidad de la red: un cuadrante con distintos tipos de activos
+puede tener una estructura más compleja que uno dominado por un solo
+tipo de elemento.
+
+Dado que solo toma cinco valores posibles, **no se recomienda usarla
+como variable principal** del modelo de SAIDI/SAIFI; se conserva como
+indicador exploratorio de heterogeneidad, útil por ejemplo para
+estratificar cuadrantes o como control adicional.
+
+```{r infra-tipos-presentes}
+infra_cuadrante <- infra_cuadrante %>%
+  mutate(
+    n_tipos_infraestructura =
+      rowSums(
+        across(
+          c(
+            n_aisladeros,
+            n_cuchillas,
+            n_interruptores,
+            n_reconectadores,
+            n_transformadores
+          )
+        ) > 0
+      )
+  )
+```
+
+### Participación de cada tipo de infraestructura
+
+Además del número absoluto de activos, se calcula la composición
+porcentual de la infraestructura, lo que permite diferenciar entre:
+
+a) cuadrantes grandes, que simplemente tienen más activos, y
+b) cuadrantes cuya red tiene una composición distinta (p. ej. mayor
+   proporción de transformadores frente a elementos de protección).
+
+**Corrección:** el cálculo original (`n_tipo / n_elementos`) genera
+`NaN` en cualquier cuadrante con `n_elementos == 0` (cero elementos de
+infraestructura registrados), porque divide entre cero. Ese `NaN` se
+propagaría a la verificación de proporciones y a cualquier modelo que
+use estas columnas. Se corrige forzando la proporción a `0` cuando no
+hay elementos, ya que conceptualmente un cuadrante sin infraestructura
+no tiene una composición definida, pero para efectos del panel es más
+seguro codificarlo como cero y no como valor faltante.
+
+```{r infra-proporciones}
+infra_cuadrante <- infra_cuadrante %>%
+  mutate(
+    prop_aisladeros      = if_else(n_elementos == 0, 0, n_aisladeros      / n_elementos),
+    prop_cuchillas       = if_else(n_elementos == 0, 0, n_cuchillas       / n_elementos),
+    prop_interruptores   = if_else(n_elementos == 0, 0, n_interruptores   / n_elementos),
+    prop_reconectadores  = if_else(n_elementos == 0, 0, n_reconectadores  / n_elementos),
+    prop_transformadores = if_else(n_elementos == 0, 0, n_transformadores / n_elementos)
+  )
+```
+
+### Organización de la tabla final
+
+La tabla conserva el identificador espacial, las variables de escala,
+las cantidades por tipo de activo y las variables de composición.
+`CUADRANTE` se mantiene como identificador y no como variable numérica
+explicativa, dado que el número asignado al cuadrante no tiene
+significado cardinal.
+
+```{r infra-tabla-final}
+infra_cuadrante <- infra_cuadrante %>%
+  select(
+    CUADRANTE,
+
+    # Variables de escala
+    n_elementos,
+    n_tipos_infraestructura,
+
+    # Número de activos por tipo
+    n_transformadores,
+    n_aisladeros,
+    n_cuchillas,
+    n_interruptores,
+    n_reconectadores,
+
+    # Composición de la infraestructura
+    prop_transformadores,
+    prop_aisladeros,
+    prop_cuchillas,
+    prop_interruptores,
+    prop_reconectadores
+  )
+```
+
+### Revisión de la tabla
+
+```{r infra-revision}
+str(infra_cuadrante)
+
+head(infra_cuadrante)
+
+summary(infra_cuadrante)
+```
+
+### Verificación de consistencia
+
+Se verifica que la suma de los elementos clasificados por tipo
+coincida con el número total de elementos. La diferencia debe ser cero
+en todos los cuadrantes.
+
+```{r infra-verificacion-total}
+infra_cuadrante <- infra_cuadrante %>%
+  mutate(
+    verificacion_total =
+      n_elementos -
+      (
+        n_aisladeros +
+        n_cuchillas +
+        n_interruptores +
+        n_reconectadores +
+        n_transformadores
+      )
+  )
+
+table(infra_cuadrante$verificacion_total)
+```
+
+### Verificación de las participaciones
+
+Las participaciones de los cinco tipos deben sumar 1 en cada cuadrante
+con `n_elementos > 0`. Con la corrección del paso anterior, los
+cuadrantes sin elementos suman 0 (no 1), así que la verificación se
+hace por separado para cada caso y así evita interpretar un 0
+legítimo como un error de cálculo.
+
+```{r infra-verificacion-proporciones}
+infra_cuadrante <- infra_cuadrante %>%
+  mutate(
+    verificacion_proporciones =
+      prop_aisladeros +
+      prop_cuchillas +
+      prop_interruptores +
+      prop_reconectadores +
+      prop_transformadores
+  )
+
+# Cuadrantes con elementos: la suma debe ser 1 (o 0 si no aplica)
+summary(
+  infra_cuadrante$verificacion_proporciones[infra_cuadrante$n_elementos > 0]
+)
+
+# Cuadrantes sin elementos: la suma debe ser exactamente 0
+table(
+  infra_cuadrante$verificacion_proporciones[infra_cuadrante$n_elementos == 0]
+)
+```
+
+### Exportar tabla de infraestructura
+
+La tabla se guarda como CSV para facilitar su integración posterior
+con el panel de SAIDI y SAIFI.
+
+```{r infra-exportar}
+write.csv(
+  infra_cuadrante,
+  file.path(UBICACION_DATA, "infraestructura_por_cuadrante.csv"),
+  row.names   = FALSE,
+  fileEncoding = "UTF-8"
+)
+```
+
+### Qué se construyó conceptualmente
+
+| Variable                  | Qué mide                           | Relevancia potencial                                  |
+| -------------------------- | ----------------------------------- | -------------------------------------------------------|
+| `n_elementos`              | Tamaño total de la infraestructura  | Exposición/escala de la red                            |
+| `n_transformadores`        | Cantidad de transformadores         | Escala y estructura de la red                          |
+| `n_aisladeros`             | Cantidad de aisladeros              | Composición y extensión de la red                      |
+| `n_cuchillas`              | Cantidad de cuchillas               | Seccionamiento de la red                                |
+| `n_interruptores`          | Cantidad de interruptores           | Protección y operación                                  |
+| `n_reconectadores`         | Cantidad de reconectadores          | Protección, aislamiento y operación                     |
+| `n_tipos_infraestructura`  | Diversidad de activos               | Heterogeneidad estructural (exploratoria)                |
+| `prop_*`                   | Composición relativa                | Estructura de la red, independiente de su tamaño         |
+
+**Advertencia para la especificación del modelo:** no se deben incluir
+todas estas variables simultáneamente, porque `n_elementos` es
+exactamente la suma de los cinco conteos por tipo, y las cinco
+`prop_*` suman exactamente 1 (colinealidad perfecta por construcción).
+Al especificar el modelo de SAIDI/SAIFI habrá que optar por **escala**,
+por **composición**, o por una combinación específicamente justificada
+(p. ej. `n_elementos` + cuatro de las cinco `prop_*`, dejando una como
+categoría base).
+
+
+
+## Análisis gráfico de la infraestructura eléctrica por cuadrante
+
+Esta sección complementa la construcción de `infra_cuadrante` con
+visualizaciones exploratorias, con el objetivo de entender cómo se
+distribuye la infraestructura entre cuadrantes antes de decidir qué
+variables entran al modelo de SAIDI/SAIFI.
+
+```{r infra-graficos-paquetes}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(scales)
+```
+
+### Distribución del tamaño de infraestructura
+
+El histograma muestra si la mayoría de cuadrantes tiene pocos
+elementos y unos pocos concentran mucha infraestructura (cola larga),
+patrón común en redes de distribución.
+
+```{r infra-hist-elementos, fig.width=7, fig.height=4}
+ggplot(infra_cuadrante, aes(x = n_elementos)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  labs(
+    title    = "Distribución del número de elementos de infraestructura",
+    subtitle = "Por cuadrante",
+    x        = "Número total de elementos (n_elementos)",
+    y        = "Número de cuadrantes"
+  ) +
+  theme_minimal()
+```
+
+### Composición promedio de la infraestructura por tipo
+
+Se calcula el promedio de cada `prop_*` a nivel general para ver qué
+tipo de elemento domina la red en términos relativos.
+
+```{r infra-composicion-promedio, fig.width=7, fig.height=4}
+composicion_promedio <- infra_cuadrante %>%
+  summarise(
+    Transformadores = mean(prop_transformadores),
+    Aisladeros      = mean(prop_aisladeros),
+    Cuchillas       = mean(prop_cuchillas),
+    Interruptores   = mean(prop_interruptores),
+    Reconectadores  = mean(prop_reconectadores)
+  ) %>%
+  pivot_longer(
+    everything(),
+    names_to  = "tipo",
+    values_to = "proporcion_promedio"
+  )
+
+ggplot(composicion_promedio, aes(x = reorder(tipo, proporcion_promedio), y = proporcion_promedio)) +
+  geom_col(fill = "darkorange") +
+  geom_text(aes(label = percent(proporcion_promedio, accuracy = 0.1)), hjust = -0.1) +
+  coord_flip() +
+  scale_y_continuous(labels = percent, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title    = "Composición promedio de la infraestructura eléctrica",
+    subtitle = "Participación promedio por tipo de elemento, entre cuadrantes",
+    x        = NULL,
+    y        = "Proporción promedio"
+  ) +
+  theme_minimal()
+```
+
+### Composición por cuadrante (top 30 por tamaño)
+
+Con 344 cuadrantes no es legible graficar todos en un solo eje. Se
+muestran los 30 cuadrantes con más infraestructura, para ver si la
+composición cambia con el tamaño de la red.
+
+```{r infra-composicion-top30, fig.width=9, fig.height=5}
+top_cuadrantes <- infra_cuadrante %>%
+  slice_max(n_elementos, n = 30) %>%
+  select(CUADRANTE, starts_with("prop_")) %>%
+  pivot_longer(
+    starts_with("prop_"),
+    names_to  = "tipo",
+    values_to = "proporcion"
+  ) %>%
+  mutate(
+    tipo = recode(
+      tipo,
+      prop_transformadores = "Transformadores",
+      prop_aisladeros      = "Aisladeros",
+      prop_cuchillas       = "Cuchillas",
+      prop_interruptores   = "Interruptores",
+      prop_reconectadores  = "Reconectadores"
+    )
+  )
+
+ggplot(top_cuadrantes, aes(x = reorder(factor(CUADRANTE), -proporcion), y = proporcion, fill = tipo)) +
+  geom_col() +
+  scale_y_continuous(labels = percent) +
+  labs(
+    title = "Composición de infraestructura en los 30 cuadrantes con más elementos",
+    x     = "Cuadrante",
+    y     = "Proporción",
+    fill  = "Tipo de elemento"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 6))
+```
+
+### Diversidad de infraestructura
+
+Distribución del número de cuadrantes según cuántos tipos distintos de
+elementos (1 a 5) contienen. Es la variable exploratoria de
+heterogeneidad documentada previamente en este `.Rmd`.
+
+```{r infra-diversidad, fig.width=6, fig.height=4}
+ggplot(infra_cuadrante, aes(x = factor(n_tipos_infraestructura))) +
+  geom_bar(fill = "seagreen") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.3) +
+  labs(
+    title = "Diversidad de tipos de infraestructura por cuadrante",
+    x     = "Número de tipos distintos presentes (1 a 5)",
+    y     = "Número de cuadrantes"
+  ) +
+  theme_minimal()
+```
+
+### Relación entre escala y diversidad
+
+Boxplot de `n_elementos` según `n_tipos_infraestructura`, para
+verificar si cuadrantes con más tipos de activos también tienden a
+tener más elementos en total, o si ambas variables aportan información
+distinta al modelo.
+
+```{r infra-escala-diversidad, fig.width=6, fig.height=4}
+ggplot(infra_cuadrante, aes(x = factor(n_tipos_infraestructura), y = n_elementos)) +
+  geom_boxplot(fill = "lightblue", outlier.alpha = 0.4) +
+  labs(
+    title = "Tamaño de infraestructura según diversidad de tipos",
+    x     = "Número de tipos distintos presentes",
+    y     = "Número total de elementos (n_elementos)"
+  ) +
+  theme_minimal()
+```
+
+### Mapa interactivo: infraestructura eléctrica por cuadrante
+
+Este mapa complementa el análisis gráfico anterior con una vista
+espacial. Se muestran dos coropletas alternables sobre la malla de
+cuadrantes —tamaño total de infraestructura (`n_elementos`) y
+diversidad de tipos (`n_tipos_infraestructura`)— junto con los puntos
+individuales de cada elemento, coloreados por tipo.
+
+
+```{r infra-mapa-todas-variables, fig.width=9, fig.height=7}
+library(leaflet)
+library(sf)
+library(dplyr)
+
+# ----------------------------------------------------------------
+# 1. Unir infra_cuadrante a la geometría real de los cuadrantes
+# ----------------------------------------------------------------
+
+cuadrantes_infra <- cuadrantes_poligonos %>%
+  left_join(infra_cuadrante, by = "CUADRANTE") %>%
+  st_transform(4326)
+
+fallas_eventos <- st_transform(fallas_eventos, 4326)
+
+# ----------------------------------------------------------------
+# 2. Variables a mapear (todas las numéricas de interés)
+# ----------------------------------------------------------------
+#
+# Se excluyen las columnas de verificación (no son variables de
+# interpretación, solo controles de calidad).
+# ----------------------------------------------------------------
+
+variables_mapa <- c(
+  n_elementos              = "N° total de elementos",
+  n_tipos_infraestructura  = "N° de tipos de infraestructura",
+  n_transformadores        = "N° de transformadores",
+  n_aisladeros             = "N° de aisladeros",
+  n_cuchillas              = "N° de cuchillas",
+  n_interruptores          = "N° de interruptores",
+  n_reconectadores         = "N° de reconectadores",
+  prop_transformadores     = "Proporción de transformadores",
+  prop_aisladeros          = "Proporción de aisladeros",
+  prop_cuchillas           = "Proporción de cuchillas",
+  prop_interruptores       = "Proporción de interruptores",
+  prop_reconectadores      = "Proporción de reconectadores"
+)
+
+# ----------------------------------------------------------------
+# 3. Paleta y etiqueta por variable
+# ----------------------------------------------------------------
+#
+# Las proporciones (0-1) usan una paleta distinta de las variables
+# de conteo, para que la escala de color sea interpretable en
+# ambos casos.
+# ----------------------------------------------------------------
+
+crear_paleta <- function(var) {
+  if (grepl("^prop_", var)) {
+    colorNumeric("PuBuGn", domain = cuadrantes_infra[[var]])
+  } else {
+    colorNumeric("YlOrRd", domain = cuadrantes_infra[[var]])
+  }
+}
+
+# ----------------------------------------------------------------
+# 4. Mapa base
+# ----------------------------------------------------------------
+
+mapa_infra <- leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron)
+
+# ----------------------------------------------------------------
+# 5. Una capa de polígonos (coropleta) por variable
+# ----------------------------------------------------------------
+
+for (var in names(variables_mapa)) {
+
+  etiqueta <- variables_mapa[[var]]
+  pal      <- crear_paleta(var)
+  valores  <- cuadrantes_infra[[var]]
+
+  mapa_infra <- mapa_infra %>%
+    addPolygons(
+      data = cuadrantes_infra,
+      fillColor = pal(valores),
+      fillOpacity = 0.65,
+      color = "gray40",
+      weight = 0.6,
+      opacity = 0.8,
+      label = paste0(
+        "Cuadrante ", cuadrantes_infra$CUADRANTE,
+        ": ", round(valores, 3), " (", etiqueta, ")"
+      ),
+      group = etiqueta
+    )
+}
+
+# ----------------------------------------------------------------
+# 6. Puntos individuales por tipo de elemento
+# ----------------------------------------------------------------
+
+tipos <- unique(fallas_eventos$TIPO)
+
+pal_tipo <- colorFactor(
+  palette = c(
+    "Transformador" = "#1f78b4",
+    "Aisladero"     = "#33a02c",
+    "Cuchilla"      = "#ff7f00",
+    "Reconectador"  = "#e31a1c",
+    "Interruptor"   = "#6a3d9a"
+  ),
+  domain = tipos
+)
+
+for (t in tipos) {
+  datos_tipo <- fallas_eventos %>% filter(TIPO == t)
+  mapa_infra <- mapa_infra %>%
+    addCircleMarkers(
+      data = datos_tipo,
+      radius = 3,
+      color = ~pal_tipo(TIPO),
+      stroke = FALSE,
+      fillOpacity = 0.7,
+      label = ~paste0(Name, " - ", TIPO, " (Cuadrante ", CUADRANTE, ")"),
+      group = t
+    )
+}
+
+# ----------------------------------------------------------------
+# 7. Control de capas
+# ----------------------------------------------------------------
+#
+# Todas las coropletas van en baseGroups: son mutuamente
+# excluyentes, ver una desactiva las demás automáticamente. Los
+# tipos de elemento son overlayGroups, combinables entre sí.
+#
+# NOTA: no se agrega addLegend() por cada variable, porque con 12
+# variables saturaría el mapa con 12 leyendas simultáneas y no hay
+# forma nativa en leaflet de mostrar solo la leyenda de la capa
+# base activa. Se deja la etiqueta (label) de cada polígono como
+# referencia al pasar el mouse.
+# ----------------------------------------------------------------
+
+mapa_infra <- mapa_infra %>%
+  addLayersControl(
+    baseGroups = unname(variables_mapa),
+    overlayGroups = tipos,
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+mapa_infra
+```
+
+```{r}
+library(htmlwidgets)
+
+saveWidget(
+  mapa_infra,
+  file = file.path(UBICACION_DATA, "mapa_infraestructura_cuadrantes.html"),
+  selfcontained = TRUE
+)
+```
+
+
+```{r}
+library(sf)
+
+ruta_gpkg <- file.path(UBICACION_DATA, "infraestructura_cuadrantes.gpkg")
+
+# ----------------------------------------------------------------
+# Capa 1: puntos individuales de infraestructura (47,652 elementos)
+# ----------------------------------------------------------------
+st_write(
+  fallas_eventos,
+  ruta_gpkg,
+  layer = "fallas_eventos",
+  delete_layer = TRUE
+)
+
+# ----------------------------------------------------------------
+# Capa 2: polígonos de cuadrantes CON todas las variables agregadas
+# (n_elementos, n_tipos_infraestructura, conteos y proporciones)
+# ----------------------------------------------------------------
+st_write(
+  cuadrantes_infra,
+  ruta_gpkg,
+  layer = "cuadrantes_infra",
+  delete_layer = TRUE
+)
+
+# ----------------------------------------------------------------
+# Verificación: confirmar que ambas capas quedaron guardadas
+# ----------------------------------------------------------------
+st_layers(ruta_gpkg)
+```
+
+
+# así se cargaría la capa
+```{r}
+# 
+# ruta_gpkg <- file.path(UBICACION_DATA, "infraestructura_cuadrantes.gpkg")
+# fallas_eventos    <- st_read(ruta_gpkg, layer = "fallas_eventos")
+# cuadrantes_infra  <- st_read(ruta_gpkg, layer = "cuadrantes_infra")
+
+```
+

@@ -1,0 +1,615 @@
+---
+title: "Estratificación socioeconómica municipal por cuadrante (cuadrantes reales)"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introducción
+
+Este documento continúa el pipeline de construcción del panel
+**semana x cuadrante** para SAIDI/SAIFI, retomando exactamente donde
+quedó el documento de infraestructura + NDVI (`cuadrantes_infra`,
+`data_final` y el `.gpkg` ya exportado con esas capas).
+
+**Objetivo de este documento:** incorporar información oficial de
+**estratificación socioeconómica**, como variable de control adicional
+(hipótesis: redes en municipios de estrato bajo suelen ser más
+antiguas, con menor mantenimiento preventivo, lo que se asocia con
+mayor frecuencia y duración de interrupciones).
+
+**Precisión metodológica importante, que se mantiene durante todo el
+documento:** la fuente disponible (`Estr_Capa.gdb`, capa
+`Mpio_Metodologia_Estr_Estr_Predom`) reporta el **estrato predominante
+a nivel municipal**, no a nivel de vivienda o predio dentro del
+cuadrante. Por eso la variable se nombra explícitamente
+`estrato_predominante_municipal` en vez de `estrato_cuadrante`: la
+primera es la afirmación que los datos realmente soportan; la segunda
+implicaría una precisión espacial que no se tiene (sería el paralelo
+municipal de la variable `estrato_modal` calculada previamente con el
+shapefile catastral predial, cuando ese sí estaba disponible a nivel
+de predio).
+
+## Paquetes y carga de insumos previos
+
+```{r estrato-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+paquetes_estrato <- c("sf", "dplyr", "readr", "ggplot2", "knitr",
+                      "kableExtra", "scales", "leaflet", "htmlwidgets")
+
+invisible(lapply(paquetes_estrato, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+```
+
+```{r entorno}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+Si vienes de continuar la sesión anterior, `cuadrantes_infra` y
+`data_final` ya existen en el entorno. Si es una sesión nueva, se
+recargan desde las exportaciones previas.
+
+```{r estrato-recargar-insumos}
+ruta_gpkg_export <- file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg")
+
+if (!exists("cuadrantes_infra")) {
+  cuadrantes_infra <- st_read(ruta_gpkg_export, layer = "cuadrantes_infra_reales", quiet = TRUE)
+  cat("cuadrantes_infra recargado desde el .gpkg exportado.\n")
+}
+
+if (!exists("data_final")) {
+  data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+  cat("data_final recargado desde el .rds exportado.\n")
+}
+
+cuadrantes_infra <- cuadrantes_infra %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE))
+
+data_final <- data_final %>%
+  mutate(id_cuadrante = as.character(id_cuadrante))
+
+cat(sprintf("cuadrantes_infra: %d polígonos | data_final: %d filas, %d cuadrantes únicos\n",
+            nrow(cuadrantes_infra), nrow(data_final), n_distinct(data_final$id_cuadrante)))
+```
+
+---
+
+# Parte 1 — Inspección de la File Geodatabase de estratificación
+
+## Descompresión y localización de la geodatabase
+
+La fuente es una **File Geodatabase (`.gdb`)** empaquetada en `.zip`,
+descargada del portal oficial de estratificación. Se descomprime una
+sola vez; si la carpeta ya existe, no se repite el proceso.
+
+```{r estrato-descomprimir-gdb}
+archivo_zip <- file.path(UBICACION_DATA, "Estr_Capa.gdb.zip")
+carpeta_gdb <- "estratificacion"
+
+if (!file.exists(archivo_zip)) {
+  stop("No se encontró el archivo: ", archivo_zip,
+       "\nVerifica que esté en Downloads con ese nombre exacto.")
+}
+
+if (!dir.exists(carpeta_gdb)) {
+  dir.create(carpeta_gdb, recursive = TRUE)
+  unzip(archivo_zip, exdir = carpeta_gdb)
+  cat("Geodatabase descomprimida en:", carpeta_gdb, "\n")
+} else {
+  cat("Carpeta de estratificación ya existe; no se vuelve a descomprimir.\n")
+}
+
+# Localizar la carpeta .gdb dentro de lo descomprimido
+gdb <- list.dirs(carpeta_gdb, recursive = TRUE, full.names = TRUE) |>
+  grep("\\.gdb$", x = _, value = TRUE)
+
+if (length(gdb) == 0) {
+  stop("No se encontró ninguna carpeta .gdb dentro de ", carpeta_gdb)
+}
+
+cat("Geodatabase localizada en:", gdb, "\n")
+```
+
+## Inventario de capas disponibles
+
+```{r estrato-listar-capas}
+capas_estr <- st_layers(gdb)
+capas_estr
+```
+
+---
+
+# Parte 2 — Asignación de estrato predominante a cuadrantes reales
+
+## Estrategia
+
+La capa `Mpio_Metodologia_Estr_Estr_Predom` contiene información
+oficial de estratificación **a nivel municipal**. Como
+`cuadrantes_infra` ya tiene la geometría real de los cuadrantes, la
+asignación se hace por **intersección espacial directa**
+(cuadrante → municipio), sin necesidad de reconstruir puntos a partir
+de `latitud`/`longitud`.
+
+```{r estrato-cargar-capa-municipal}
+estrato_municipal <- st_read(gdb, layer = "Mpio_Metodologia_Estr_Estr_Predom", quiet = TRUE)
+
+cat(sprintf("Municipios en la capa de estratificación: %d\n", nrow(estrato_municipal)))
+```
+
+```{r estrato-reparar-geometria}
+cat("Geometrías inválidas antes de reparar:", sum(!st_is_valid(estrato_municipal)), "\n")
+
+estrato_municipal <- st_make_valid(estrato_municipal)
+
+cat("Geometrías inválidas después de reparar:", sum(!st_is_valid(estrato_municipal)), "\n")
+
+# Por seguridad, revisar también cuadrantes_infra (aunque ya la usaste
+# en mapas sin problema, confirma que no tenga el mismo defecto)
+cat("Geometrías inválidas en cuadrantes_infra:", sum(!st_is_valid(cuadrantes_infra)), "\n")
+if (sum(!st_is_valid(cuadrantes_infra)) > 0) {
+  cuadrantes_infra <- st_make_valid(cuadrantes_infra)
+}
+```
+
+
+## Homologación de sistemas de coordenadas
+
+```{r estrato-verificar-crs}
+cat("CRS cuadrantes_infra:\n"); print(st_crs(cuadrantes_infra)$input)
+cat("CRS estrato_municipal:\n"); print(st_crs(estrato_municipal)$input)
+```
+
+```{r estrato-homologar-crs}
+# Se usa el CRS de los cuadrantes reales como referencia, para no
+# introducir distorsión en la geometría que ya usamos en todo el
+# pipeline (mapas, exportaciones, NDVI).
+estrato_municipal <- estrato_municipal %>%
+  st_transform(st_crs(cuadrantes_infra))
+```
+
+## Selección de variables relevantes
+
+```{r estrato-seleccionar-variables}
+estrato_municipal <- estrato_municipal %>%
+  select(
+    DPTO_CCDGO, DPTO_CNMBR,
+    MPIO_CCDGO, MPIO_CNMBR, MPIO_CCNCT,
+    TipoMetodologia, ProcesoRevisionGral,
+    Estratos_Mun, Estrato_Predom
+  )
+
+kable(head(st_drop_geometry(estrato_municipal), 5),
+      caption = "Vista previa — capa municipal de estratificación") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 9)
+```
+
+## Asignación espacial: cuadrante → municipio
+
+```{r estrato-join-espacial}
+cuadrantes_infra_estrato <- st_join(
+  cuadrantes_infra,
+  estrato_municipal,
+  join = st_intersects,
+  left = TRUE
+)
+
+cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  select(id_cuadrante, MPIO_CCNCT, MPIO_CNMBR, Estratos_Mun, Estrato_Predom) %>%
+  head(10) %>%
+  kable(caption = "Vista previa — cuadrantes con municipio y estrato asignado") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 10)
+```
+
+---
+
+# Parte 3 — Validaciones (no basta con que el código corra)
+
+`st_join()` entre polígonos puede asignar **más de un municipio** a un
+mismo cuadrante si este cae justo sobre un límite administrativo. No
+se asume que el resultado es correcto solo porque no hubo error — se
+valida explícitamente antes de continuar.
+
+## Validación 1: un cuadrante debe tener exactamente una asignación
+
+```{r estrato-validacion-multiples-asignaciones}
+asignacion_municipal <- cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  count(id_cuadrante, name = "n_asignaciones")
+
+tabla_asignaciones <- table(asignacion_municipal$n_asignaciones, useNA = "ifany")
+print(tabla_asignaciones)
+
+cuadrantes_multiples <- asignacion_municipal %>% filter(n_asignaciones > 1)
+
+cat(sprintf(
+  "\nResultado esperado: %d cuadrantes → %d asignaciones (1 a 1).\n",
+  nrow(cuadrantes_infra), nrow(cuadrantes_infra)
+))
+cat(sprintf("Cuadrantes con más de una asignación (sobre límite municipal): %d\n",
+            nrow(cuadrantes_multiples)))
+```
+
+### Resolución de cuadrantes en el límite (si los hay)
+
+Para un cuadrante que intersecta dos municipios, la regla usada es el
+**municipio del centroide** — no "el municipio con mayor porcentaje de
+área". Esto es deliberado: el cuadrante es una unidad espacial
+construida alrededor de un punto/ubicación de infraestructura, no un
+área administrativa; el centroide representa mejor "dónde está" el
+cuadrante conceptualmente.
+
+```{r estrato-resolver-multiples-por-centroide}
+if (nrow(cuadrantes_multiples) > 0) {
+
+  ids_multiples <- cuadrantes_multiples$id_cuadrante
+
+  # Centroide de los cuadrantes conflictivos, y su municipio único
+  resolucion_centroide <- cuadrantes_infra %>%
+    filter(id_cuadrante %in% ids_multiples) %>%
+    st_centroid() %>%
+    st_join(estrato_municipal, join = st_intersects, left = TRUE) %>%
+    st_drop_geometry() %>%
+    select(id_cuadrante, DPTO_CCDGO, DPTO_CNMBR, MPIO_CCDGO, MPIO_CNMBR,
+           MPIO_CCNCT, TipoMetodologia, ProcesoRevisionGral,
+           Estratos_Mun, Estrato_Predom)
+
+  # Se reemplazan las filas conflictivas por la asignación única del centroide
+  cuadrantes_infra_estrato <- cuadrantes_infra_estrato %>%
+    filter(!id_cuadrante %in% ids_multiples) %>%
+    bind_rows(
+      cuadrantes_infra %>%
+        filter(id_cuadrante %in% ids_multiples) %>%
+        left_join(resolucion_centroide, by = "id_cuadrante")
+    )
+
+  cat(sprintf("Resuelto por centroide: %d cuadrantes reasignados a un único municipio.\n",
+              length(ids_multiples)))
+
+  # Re-verificar
+  verificacion_post <- cuadrantes_infra_estrato %>%
+    st_drop_geometry() %>%
+    count(id_cuadrante, name = "n_asignaciones")
+  print(table(verificacion_post$n_asignaciones, useNA = "ifany"))
+
+} else {
+  cat("No se detectaron cuadrantes con múltiples asignaciones. No se requiere resolución.\n")
+}
+```
+
+## Validación 2: cobertura departamental esperada
+
+```{r estrato-validacion-departamento}
+resumen_departamento <- cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  count(DPTO_CCDGO, DPTO_CNMBR, name = "n_cuadrantes")
+
+kable(resumen_departamento,
+      caption = "Cuadrantes por departamento (esperado: Norte de Santander, 344)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+if (nrow(resumen_departamento) > 1 || any(is.na(resumen_departamento$DPTO_CNMBR))) {
+  warning("Hay cuadrantes fuera del departamento esperado o sin asignación departamental. Revisar geometría de cuadrantes_infra antes de continuar.")
+}
+```
+
+## Validación 3: cuadrantes sin ninguna asignación (fuera de cobertura)
+
+```{r estrato-validacion-sin-asignacion}
+sin_asignacion <- cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  filter(is.na(Estrato_Predom)) %>%
+  distinct(id_cuadrante)
+
+cat(sprintf("Cuadrantes sin estrato asignado (fuera de cobertura de la capa municipal): %d\n",
+            nrow(sin_asignacion)))
+
+if (nrow(sin_asignacion) > 0) print(sin_asignacion$id_cuadrante)
+```
+
+---
+
+# Parte 4 — Nombres explícitos y descripción de variables
+
+Se renombra con nombres explícitos, para que la interpretación quede
+clara sin necesidad de consultar el diccionario cada vez.
+
+```{r estrato-renombrar-variables}
+cuadrantes_infra_estrato <- cuadrantes_infra_estrato %>%
+  mutate(
+    codigo_municipio                = MPIO_CCNCT,
+    municipio                       = MPIO_CNMBR,
+    codigo_departamento             = DPTO_CCDGO,
+    departamento                    = DPTO_CNMBR,
+    metodologia_estratificacion     = TipoMetodologia,
+    n_estratos_municipio            = Estratos_Mun,
+    estrato_predominante_municipal  = Estrato_Predom
+  )
+```
+
+---
+
+# Parte 5 — Análisis exploratorio y gráficos
+
+## Distribución de cuadrantes por municipio y estrato predominante
+
+```{r estrato-resumen-municipio}
+resumen_estrato <- cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  count(municipio, estrato_predominante_municipal, n_estratos_municipio,
+        name = "n_cuadrantes") %>%
+  arrange(desc(n_cuadrantes))
+
+kable(resumen_estrato,
+      caption = "Cuadrantes por municipio y estrato predominante municipal") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+## Distribución global del estrato predominante municipal
+
+```{r estrato-distribucion-global}
+tabla_estrato <- table(cuadrantes_infra_estrato$estrato_predominante_municipal, useNA = "ifany")
+print(tabla_estrato)
+```
+
+```{r estrato-plot-distribucion, fig.width=7, fig.height=4}
+cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  filter(!is.na(estrato_predominante_municipal)) %>%
+  count(estrato_predominante_municipal) %>%
+  ggplot(aes(x = factor(estrato_predominante_municipal), y = n)) +
+  geom_col(fill = "#4575b4") +
+  geom_text(aes(label = n), vjust = -0.4) +
+  labs(
+    title    = "Cuadrantes según estrato predominante municipal",
+    subtitle = "Variable municipal, no de precisión predial dentro del cuadrante",
+    x = "Estrato predominante del municipio", y = "N° de cuadrantes"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Distribución por municipio (barras apiladas)
+
+```{r estrato-plot-municipio, fig.width=8, fig.height=5}
+cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  filter(!is.na(municipio)) %>%
+  count(municipio, estrato_predominante_municipal) %>%
+  ggplot(aes(x = reorder(municipio, -n), y = n, fill = factor(estrato_predominante_municipal))) +
+  geom_col() +
+  labs(
+    title = "Cuadrantes por municipio, coloreados por estrato predominante",
+    x = NULL, y = "N° de cuadrantes",
+    fill = "Estrato\npredom."
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Mapa: estrato predominante municipal por cuadrante
+
+```{r estrato-mapa-estatico, fig.width=8, fig.height=7}
+ggplot(cuadrantes_infra_estrato) +
+  geom_sf(aes(fill = factor(estrato_predominante_municipal)),
+          color = "gray40", linewidth = 0.15) +
+  scale_fill_brewer(palette = "RdYlBu", direction = -1,
+                     na.value = "grey80", name = "Estrato\npredom.\nmunicipal") +
+  labs(
+    title    = "Estrato predominante municipal por cuadrante",
+    subtitle = "Geometría real — variable municipal, no predial"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+## Mapa interactivo
+
+```{r estrato-mapa-leaflet, fig.width=9, fig.height=7}
+cuadrantes_wgs84 <- cuadrantes_infra_estrato %>% st_transform(4326)
+
+pal_estrato_mun <- colorFactor(
+  "RdYlBu",
+  domain = cuadrantes_wgs84$estrato_predominante_municipal,
+  reverse = TRUE,
+  na.color = "grey80"
+)
+
+mapa_estrato <- leaflet(cuadrantes_wgs84) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    fillColor = ~pal_estrato_mun(estrato_predominante_municipal),
+    fillOpacity = 0.65, color = "gray40", weight = 0.6, opacity = 0.8,
+    label = ~paste0(
+      "Cuadrante ", id_cuadrante, " — ", municipio,
+      ": estrato predom. municipal ", estrato_predominante_municipal
+    )
+  ) %>%
+  addLegend(pal = pal_estrato_mun, values = ~estrato_predominante_municipal,
+            title = "Estrato predom.\nmunicipal", position = "bottomright")
+
+mapa_estrato
+```
+
+---
+
+# Parte 6 — Integración al panel y a la geometría exportada
+
+## Actualizar la capa `cuadrantes_infra_reales` en el `.gpkg`
+
+No se crea un archivo nuevo — se **actualiza** la capa existente
+dentro de `infraestructura_cuadrantes_reales.gpkg`, que a partir de
+aquí incluye también municipio, departamento, metodología de
+estratificación y estrato predominante municipal.
+
+```{r estrato-export-gpkg}
+st_write(
+  cuadrantes_infra_estrato,
+  ruta_gpkg_export,
+  layer = "cuadrantes_infra_reales",
+  delete_layer = TRUE
+)
+
+st_layers(ruta_gpkg_export)
+```
+
+## Incorporar al panel `data_final`
+
+```{r estrato-agregar-al-panel}
+estratificacion_cuadrante <- cuadrantes_infra_estrato %>%
+  st_drop_geometry() %>%
+  select(
+    id_cuadrante, codigo_municipio, municipio,
+    codigo_departamento, departamento,
+    metodologia_estratificacion, n_estratos_municipio,
+    estrato_predominante_municipal
+  ) %>%
+  distinct()
+
+# Se descarta cualquier columna previa de estratificación municipal,
+# para que correr el chunk más de una vez no genere duplicados .x/.y
+data_final <- data_final %>%
+  select(-any_of(names(estratificacion_cuadrante)[-1])) %>%
+  left_join(estratificacion_cuadrante, by = "id_cuadrante")
+
+cat(sprintf("Panel actualizado: %d filas x %d columnas\n",
+            nrow(data_final), ncol(data_final)))
+```
+
+### Cobertura de la integración
+
+```{r estrato-cobertura-panel}
+cobertura_estrato <- data_final %>%
+  summarise(
+    filas_total                    = n(),
+    filas_con_estrato               = sum(!is.na(estrato_predominante_municipal)),
+    pct_cobertura                   = round(100 * mean(!is.na(estrato_predominante_municipal)), 2),
+    cuadrantes_sin_estrato           = n_distinct(id_cuadrante[is.na(estrato_predominante_municipal)])
+  )
+
+kable(t(cobertura_estrato), col.names = "Valor",
+      caption = "Cobertura de estratificación municipal en el panel") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+---
+
+# Parte 7 — Análisis exploratorio: estrato municipal y fallas
+
+```{r estrato-saidi-por-estrato-municipal, fig.width=8, fig.height=5}
+if (all(c("SAIDI", "hubo_falla") %in% names(data_final))) {
+
+  data_final %>%
+    filter(hubo_falla == 1, !is.na(estrato_predominante_municipal)) %>%
+    ggplot(aes(x = factor(estrato_predominante_municipal), y = SAIDI,
+               fill = factor(estrato_predominante_municipal))) +
+    geom_boxplot(outlier.alpha = 0.2, width = 0.6) +
+    scale_fill_brewer(palette = "RdYlBu", direction = -1) +
+    labs(
+      title    = "SAIDI según estrato predominante municipal",
+      subtitle = "Hipótesis: municipios de estrato bajo, mayor duración de interrupciones",
+      x = "Estrato predominante municipal", y = "SAIDI (h/usuario/semana)"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "none")
+
+} else {
+  message("SAIDI / hubo_falla no están en data_final: corre primero el pipeline de SAIDI/SAIFI.")
+}
+```
+
+---
+
+# Parte 8 — Guardado final del panel
+
+```{r estrato-export-panel}
+saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
+
+cat(sprintf(
+  "Panel final guardado: %d filas x %d columnas (incluye estratificación municipal)\n",
+  nrow(data_final), ncol(data_final)
+))
+```
+
+## Exportación adicional: tabla de estratificación sola
+
+```{r estrato-export-csv}
+write_csv(
+  estratificacion_cuadrante,
+  file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv")
+)
+```
+
+**Así se recarga esta información en otra sesión:**
+
+```{r estrato-como-recargar, eval=FALSE}
+ruta_gpkg_export <- file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg")
+st_layers(ruta_gpkg_export)
+
+cuadrantes_infra_estrato <- st_read(ruta_gpkg_export, layer = "cuadrantes_infra_reales")
+
+data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+
+estratificacion_cuadrante <- read_csv(
+  file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv")
+)
+```
+
+---
+
+# Diccionario de variables incorporadas
+
+```{r estrato-diccionario}
+tribble(
+  ~Variable, ~Tipo, ~Variacion, ~Fuente, ~Descripcion,
+
+  "codigo_municipio", "Categórica", "Cuadrante (estático)", "Estr_Capa.gdb",
+    "Código DIVIPOLA del municipio donde se localiza el cuadrante (por intersección espacial o, en límites, por centroide).",
+
+  "municipio", "Categórica", "Cuadrante (estático)", "Estr_Capa.gdb",
+    "Nombre del municipio.",
+
+  "metodologia_estratificacion", "Categórica", "Cuadrante (estático)", "Estr_Capa.gdb",
+    "Tipo de metodología de estratificación aplicada por el municipio (urbana, rural, etc., según codificación oficial).",
+
+  "n_estratos_municipio", "Numérica", "Cuadrante (estático)", "Estr_Capa.gdb",
+    "Número de estratos socioeconómicos presentes en el municipio.",
+
+  "estrato_predominante_municipal", "Categórica (1-6)", "Cuadrante (estático)", "Estr_Capa.gdb",
+    "Estrato socioeconómico predominante del MUNICIPIO donde se localiza el cuadrante. No representa el estrato de las viviendas dentro del cuadrante — es una característica territorial municipal, no predial."
+) %>%
+  kable(caption = "Diccionario — variables de estratificación municipal") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(5, width = "42%")
+```
+
+**Recordatorio metodológico final:** con esta fuente se puede afirmar,
+por ejemplo, *"el X% de los cuadrantes se ubican en municipios cuyo
+estrato predominante es 2"* — pero **no** *"el X% de los cuadrantes son
+de estrato 2"*. La primera es la que los datos soportan. Además,
+`estrato_predominante_municipal` es, igual que `infra_cuadrante` y
+`estrato_modal` (cuando venía del shapefile catastral predial),
+**estática en el tiempo**: en un modelo con efectos fijos de cuadrante
+queda colineal con el efecto fijo y no se identifica en el estimador
+*within*. Es apropiada para modelos *pooled*/RE, caracterización
+territorial, o interacciones con variables temporales.

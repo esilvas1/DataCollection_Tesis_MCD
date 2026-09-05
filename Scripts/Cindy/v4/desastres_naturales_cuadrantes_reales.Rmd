@@ -1,0 +1,581 @@
+---
+title: "Eventos catastróficos por cuadrante-semana: inundaciones, deslizamientos y otros desastres"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introducción
+
+Este documento continúa el pipeline del panel **semana x cuadrante**
+para SAIDI/SAIFI, incorporando eventos de origen natural (inundaciones,
+deslizamientos, vendavales, etc.) reportados oficialmente por la
+Unidad Nacional para la Gestión del Riesgo de Desastres (UNGRD).
+
+**Hipótesis:** semanas con eventos catastróficos en el municipio de un
+cuadrante pueden coincidir con mayor frecuencia/duración de
+interrupciones eléctricas (daño directo a infraestructura, caída de
+árboles sobre líneas, inundación de subestaciones, etc.).
+
+**Fuente:** portal de Datos Abiertos de Colombia (`datos.gov.co`),
+dataset "Emergencias UNGRD" (id `wwkg-r6te`), descarga directa vía
+Socrata, sin necesidad de autenticación.
+
+**Granularidad de la fuente:** los eventos se reportan a nivel
+**municipal**, con fecha exacta del evento — no hay coordenadas
+puntuales ni nivel de cuadrante. La estrategia de asignación es la
+misma que ya usaste para estratificación: cuadrante → municipio
+(mismo código DIVIPOLA). La diferencia clave es que **este dato sí
+varía en el tiempo** (a diferencia de estrato/infraestructura, que son
+estáticos): cada evento tiene una fecha, por lo que se puede agregar a
+nivel de semana.
+
+**Precisión metodológica que se mantiene explícita:** un evento
+reportado en el municipio se asigna a **todos** los cuadrantes de ese
+municipio en la semana correspondiente. Esto es una limitación de
+granularidad idéntica a la de `estrato_predominante_municipal` — la
+variable resultante debe interpretarse como *"hubo un evento
+catastrófico reportado en el municipio del cuadrante esa semana"*, no
+como *"el cuadrante específico sufrió daño directo"*.
+
+## Paquetes y carga de insumos previos
+
+```{r desastres-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+paquetes_desastres <- c("readr", "dplyr", "tidyr", "janitor", "lubridate",
+                        "ggplot2", "knitr", "kableExtra", "scales",
+                        "sf", "leaflet")
+
+invisible(lapply(paquetes_desastres, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+```
+
+```{r entorno}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+Si vienes de continuar la sesión anterior, `data_final` y
+`estratificacion_cuadrante` (que ya trae `codigo_municipio` por
+cuadrante) existen en el entorno. Si es sesión nueva, se recargan.
+
+```{r desastres-recargar-insumos}
+if (!exists("data_final")) {
+  data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+  cat("data_final recargado desde el .rds exportado.\n")
+}
+
+if (!exists("estratificacion_cuadrante")) {
+  ruta_estrato <- file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv")
+  if (!file.exists(ruta_estrato)) {
+    stop("No se encontró estratificacion_municipal_por_cuadrante.csv. ",
+         "Corre primero el documento de estratificación municipal.")
+  }
+  estratificacion_cuadrante <- read_csv(ruta_estrato, show_col_types = FALSE)
+  cat("estratificacion_cuadrante recargado desde CSV.\n")
+}
+
+data_final <- data_final %>%
+  mutate(id_cuadrante = as.character(id_cuadrante))
+
+# Mapeo cuadrante -> municipio (código DIVIPOLA), ya construido en el
+# documento de estratificación. Es la pieza clave para unir eventos
+# municipales a cada cuadrante.
+mapeo_cuadrante_municipio <- estratificacion_cuadrante %>%
+  mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+  select(id_cuadrante, codigo_municipio, municipio) %>%
+  distinct()
+
+cat(sprintf("Cuadrantes con municipio asignado: %d\n", nrow(mapeo_cuadrante_municipio)))
+```
+
+---
+
+# Parte 1 — Descarga del dataset UNGRD
+
+```{r desastres-descargar-ungrd}
+URL_UNGRD    <- "https://www.datos.gov.co/api/views/wwkg-r6te/rows.csv?accessType=DOWNLOAD"
+ARCHIVO_UNGRD <- file.path(UBICACION_DATA, "emergencias_ungrd.csv")
+
+if (!file.exists(ARCHIVO_UNGRD)) {
+  message("Descargando dataset UNGRD (puede tardar, el archivo nacional es grande)...")
+  download.file(URL_UNGRD, destfile = ARCHIVO_UNGRD, mode = "wb")
+  message("Descarga completada.")
+} else {
+  message("Dataset UNGRD ya disponible localmente: ", ARCHIVO_UNGRD)
+}
+
+emergencias_raw <- read_csv(ARCHIVO_UNGRD, show_col_types = FALSE) %>%
+  clean_names()
+
+cat(sprintf("Registros nacionales totales: %d\n", nrow(emergencias_raw)))
+cat("Columnas disponibles:\n")
+print(names(emergencias_raw))
+```
+
+## Filtrar Norte de Santander y eventos de interés
+
+Se excluyen deliberadamente eventos como accidentes de tránsito,
+mineros o explosiones — no son la hipótesis de esta tesis (riesgo
+climático/geológico sobre la red eléctrica), aunque estén en la misma
+fuente.
+
+```{r desastres-filtrar-relevantes}
+eventos_relevantes <- c(
+  "INUNDACION", "MOVIMIENTO EN MASA", "VENDAVAL", "GRANIZADA",
+  "AVENIDA TORRENCIAL", "CRECIENTE SUBITA", "EROSION", "SISMO",
+  "TEMPORAL", "TORMENTA ELECTRICA", "DESLIZAMIENTO", "INCENDIO DE COBERTURA VEGETAL"
+)
+
+emergencias_nds <- emergencias_raw %>%
+  filter(
+    departamento == "NORTE DE SANTANDER",
+    evento %in% eventos_relevantes
+  ) %>%
+  mutate(
+    fecha        = as.Date(fecha, format = "%m/%d/%Y"),
+    divipola     = as.character(divipola)
+  )
+
+cat(sprintf("Eventos filtrados en Norte de Santander: %d\n", nrow(emergencias_nds)))
+
+kable(
+  emergencias_nds %>% count(evento, sort = TRUE, name = "n_eventos"),
+  caption = "Distribución de eventos catastróficos filtrados — Norte de Santander"
+) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+## Validación: cobertura temporal de la fuente
+
+```{r desastres-validacion-temporal}
+rango_ungrd <- emergencias_nds %>%
+  summarise(fecha_min = min(fecha, na.rm = TRUE), fecha_max = max(fecha, na.rm = TRUE))
+
+rango_panel <- data_final %>%
+  summarise(fecha_min = min(semana, na.rm = TRUE), fecha_max = max(semana, na.rm = TRUE))
+
+cat(sprintf("Rango UNGRD (Norte de Santander): %s a %s\n",
+            rango_ungrd$fecha_min, rango_ungrd$fecha_max))
+cat(sprintf("Rango del panel (data_final): %s a %s\n",
+            rango_panel$fecha_min, rango_panel$fecha_max))
+
+if (rango_ungrd$fecha_max < rango_panel$fecha_min | rango_ungrd$fecha_min > rango_panel$fecha_max) {
+  warning("Los rangos de fechas de UNGRD y del panel no se superponen. Revisar antes de continuar.")
+} else {
+  cat("Los rangos se superponen: la union aportara informacion en parte del periodo.\n")
+}
+```
+
+## Validación: municipios sin correspondencia DIVIPOLA
+
+```{r desastres-validacion-divipola}
+municipios_ungrd    <- unique(emergencias_nds$divipola)
+municipios_panel     <- unique(mapeo_cuadrante_municipio$codigo_municipio)
+
+solo_en_ungrd  <- setdiff(municipios_ungrd, municipios_panel)
+solo_en_panel  <- setdiff(municipios_panel, municipios_ungrd)
+
+cat(sprintf("Municipios con eventos UNGRD pero sin cuadrantes en el panel: %d\n", length(solo_en_ungrd)))
+cat(sprintf("Municipios con cuadrantes en el panel pero sin eventos UNGRD registrados: %d\n", length(solo_en_panel)))
+
+if (length(solo_en_panel) > 0) {
+  cat("Municipios del panel sin eventos registrados (puede ser normal si no tuvieron emergencias):\n")
+  print(
+    estratificacion_cuadrante %>%
+      filter(codigo_municipio %in% solo_en_panel) %>%
+      distinct(codigo_municipio, municipio)
+  )
+}
+```
+
+---
+
+# Parte 2 — Agregación semanal por municipio
+
+Se agrega el conteo y tipo de eventos a nivel de **municipio-semana**,
+alineando la semana con la misma grilla temporal usada en el resto del
+panel (`data_final$semana`).
+
+```{r desastres-agregacion-semanal}
+# Grilla de semanas del panel (mismo ancla temporal que el resto del pipeline)
+semanas_panel <- data_final %>%
+  distinct(semana) %>%
+  arrange(semana)
+
+# Se asigna cada evento a la semana del panel más cercana (hacia atrás),
+# replicando la misma lógica de alineación usada para NDVI/población.
+asignar_semana_panel <- function(fecha_evento, semanas) {
+  semanas[which.max(semanas[semanas <= fecha_evento])]
+}
+
+emergencias_nds <- emergencias_nds %>%
+  rowwise() %>%
+  mutate(
+    semana = if (any(semanas_panel$semana <= fecha)) {
+      max(semanas_panel$semana[semanas_panel$semana <= fecha])
+    } else {
+      NA_real_
+    }
+  ) %>%
+  ungroup() %>%
+  mutate(semana = as.Date(semana, origin = "1970-01-01"))
+
+cat(sprintf("Eventos sin semana asignable (fuera del rango del panel): %d\n",
+            sum(is.na(emergencias_nds$semana))))
+
+# Conteo de eventos por municipio-semana, con desagregación por tipo
+eventos_municipio_semana <- emergencias_nds %>%
+  filter(!is.na(semana)) %>%
+  group_by(divipola, municipio, semana) %>%
+  summarise(
+    n_eventos_catastroficos = n(),
+    tipos_evento            = paste(sort(unique(evento)), collapse = "; "),
+    personas_afectadas_evt  = sum(personas, na.rm = TRUE),
+    familias_afectadas_evt  = sum(familias, na.rm = TRUE),
+    hubo_inundacion         = as.integer(any(evento == "INUNDACION")),
+    hubo_movimiento_masa    = as.integer(any(evento == "MOVIMIENTO EN MASA")),
+    hubo_vendaval           = as.integer(any(evento == "VENDAVAL")),
+    .groups = "drop"
+  )
+
+cat(sprintf("Municipio-semanas con al menos un evento: %d\n", nrow(eventos_municipio_semana)))
+
+kable(head(eventos_municipio_semana, 10),
+      caption = "Vista previa — eventos catastróficos agregados por municipio-semana") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 9)
+```
+
+---
+
+# Parte 3 — Expansión a cuadrante-semana
+
+Cada municipio-semana con eventos se replica a **todos** los
+cuadrantes que pertenecen a ese municipio, generando la tabla final
+lista para unir a `data_final`.
+
+```{r desastres-expandir-cuadrante-semana}
+desastres_cuadrante_semana <- mapeo_cuadrante_municipio %>%
+  rename(divipola = codigo_municipio) %>%
+  mutate(divipola = as.character(divipola)) %>%
+  left_join(
+    eventos_municipio_semana %>%
+      mutate(divipola = as.character(divipola)) %>%
+      select(-municipio),
+    by = "divipola"
+  ) %>%
+  select(-divipola)
+
+cat(sprintf(
+  "Tabla expandida a cuadrante-semana: %d filas (cuadrantes con al menos un evento en alguna semana)\n",
+  sum(!is.na(desastres_cuadrante_semana$n_eventos_catastroficos))
+))
+```
+
+---
+
+# Parte 4 — Análisis exploratorio y gráficos
+
+## Frecuencia de eventos por tipo (Norte de Santander, todo el período)
+
+```{r desastres-plot-frecuencia-tipo, fig.width=8, fig.height=5}
+emergencias_nds %>%
+  count(evento, sort = TRUE) %>%
+  ggplot(aes(x = reorder(evento, n), y = n)) +
+  geom_col(fill = "#e6550d") +
+  geom_text(aes(label = n), hjust = -0.15, size = 3.2) +
+  coord_flip() +
+  labs(
+    title = "Frecuencia de eventos catastróficos por tipo",
+    subtitle = "Norte de Santander, según UNGRD",
+    x = NULL, y = "Número de eventos"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Serie temporal de eventos por semana
+
+```{r desastres-serie-temporal, fig.width=9, fig.height=5}
+eventos_municipio_semana %>%
+  group_by(semana) %>%
+  summarise(n_eventos = sum(n_eventos_catastroficos), .groups = "drop") %>%
+  ggplot(aes(x = semana, y = n_eventos)) +
+  geom_col(fill = "#3182bd") +
+  labs(
+    title = "Eventos catastróficos por semana — Norte de Santander",
+    subtitle = "Suma de todos los municipios",
+    x = NULL, y = "N° de eventos"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Municipios más afectados
+
+```{r desastres-top-municipios, fig.width=8, fig.height=5}
+eventos_municipio_semana %>%
+  group_by(municipio) %>%
+  summarise(n_eventos = sum(n_eventos_catastroficos), .groups = "drop") %>%
+  slice_max(n_eventos, n = 15) %>%
+  ggplot(aes(x = reorder(municipio, n_eventos), y = n_eventos)) +
+  geom_col(fill = "#31a354") +
+  coord_flip() +
+  labs(
+    title = "Municipios con más eventos catastróficos reportados",
+    subtitle = "Top 15 — todo el período disponible",
+    x = NULL, y = "N° de eventos"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Mapa: cuadrantes según número de eventos históricos en su municipio
+
+Requiere `cuadrantes_infra` (geometría real) del documento de
+infraestructura. Si no está en el entorno, este chunk se omite sin
+romper el knit.
+
+```{r desastres-mapa, fig.width=9, fig.height=7}
+if (exists("cuadrantes_infra")) {
+
+  eventos_totales_municipio <- eventos_municipio_semana %>%
+    group_by(municipio) %>%
+    summarise(n_eventos_total = sum(n_eventos_catastroficos), .groups = "drop")
+
+  mapa_desastres_datos <- cuadrantes_infra %>%
+    mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE)) %>%
+    left_join(mapeo_cuadrante_municipio, by = "id_cuadrante") %>%
+    left_join(eventos_totales_municipio, by = "municipio") %>%
+    st_transform(4326)
+
+  pal_desastres <- colorNumeric("OrRd", domain = mapa_desastres_datos$n_eventos_total, na.color = "grey80")
+
+  leaflet(mapa_desastres_datos) %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(
+      fillColor = ~pal_desastres(n_eventos_total),
+      fillOpacity = 0.65, color = "gray40", weight = 0.6, opacity = 0.8,
+      label = ~paste0("Cuadrante ", id_cuadrante, " — ", municipio,
+                      ": ", n_eventos_total, " eventos históricos")
+    ) %>%
+    addLegend(pal = pal_desastres, values = ~n_eventos_total,
+              title = "N° eventos\nhistóricos\n(municipio)", position = "bottomright")
+
+} else {
+  message("cuadrantes_infra no está en el entorno — se omite el mapa. Corre primero el documento de infraestructura.")
+}
+```
+
+---
+
+# Parte 5 — Integración al panel
+
+```{r desastres-union-panel}
+data_final <- data_final %>%
+  select(-any_of(c("n_eventos_catastroficos", "tipos_evento",
+                    "personas_afectadas_evt", "familias_afectadas_evt",
+                    "hubo_inundacion", "hubo_movimiento_masa", "hubo_vendaval"))) %>%
+  left_join(
+    desastres_cuadrante_semana %>%
+      select(id_cuadrante, semana, n_eventos_catastroficos, tipos_evento,
+             personas_afectadas_evt, familias_afectadas_evt,
+             hubo_inundacion, hubo_movimiento_masa, hubo_vendaval),
+    by = c("id_cuadrante", "semana")
+  ) %>%
+  mutate(
+    # NA significa "sin evento registrado esa semana", no dato faltante:
+    # se recodifica explícitamente a 0 para las variables de conteo/binarias
+    n_eventos_catastroficos = replace_na(n_eventos_catastroficos, 0),
+    hubo_inundacion         = replace_na(hubo_inundacion, 0L),
+    hubo_movimiento_masa    = replace_na(hubo_movimiento_masa, 0L),
+    hubo_vendaval           = replace_na(hubo_vendaval, 0L),
+    hubo_evento_catastrofico = as.integer(n_eventos_catastroficos > 0)
+  )
+
+cat(sprintf("Panel actualizado: %d filas x %d columnas\n", nrow(data_final), ncol(data_final)))
+
+cobertura_desastres <- data_final %>%
+  summarise(
+    filas_total                  = n(),
+    semanas_con_evento            = sum(hubo_evento_catastrofico),
+    pct_semanas_con_evento         = round(100 * mean(hubo_evento_catastrofico), 2)
+  )
+
+kable(t(cobertura_desastres), col.names = "Valor",
+      caption = "Cobertura de eventos catastróficos en el panel") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## SAIDI/SAIFI en semanas con vs. sin evento catastrófico
+
+Condicional: solo corre si `SAIDI`/`SAIFI` ya están en `data_final`.
+
+```{r desastres-saidi-vs-evento, fig.width=8, fig.height=5}
+if (all(c("SAIDI", "SAIFI") %in% names(data_final))) {
+
+  datos_plot <- data_final %>%
+    filter(hubo_falla == 1) %>%
+    mutate(evento_f = factor(
+      hubo_evento_catastrofico,
+      levels = c(0, 1),
+      labels = c("Sin evento", "Con evento")
+    ))
+
+  cat("Distribución de evento_f en semanas con falla:\n")
+  print(table(datos_plot$evento_f, useNA = "ifany"))
+
+  if (n_distinct(datos_plot$evento_f) < 2) {
+    message("Solo hay un nivel de evento_f en las semanas con falla — no se puede comparar. Se omite el gráfico.")
+  } else {
+
+    datos_plot %>%
+      tidyr::pivot_longer(c(SAIDI, SAIFI), names_to = "indicador", values_to = "valor") %>%
+      ggplot(aes(x = evento_f, y = valor, fill = evento_f)) +
+      geom_boxplot(outlier.alpha = 0.2, width = 0.5) +
+      facet_wrap(~indicador, scales = "free_y") +
+      scale_fill_manual(values = c("Sin evento" = "#a1d99b", "Con evento" = "#de2d26")) +
+      labs(
+        title = "SAIDI/SAIFI según ocurrencia de evento catastrófico en el municipio",
+        subtitle = "Solo semanas con falla eléctrica registrada",
+        x = NULL, y = "Valor"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "none")
+  }
+
+} else {
+  message("SAIDI/SAIFI no están en data_final todavía — se omite este gráfico.")
+}
+```
+
+---
+
+# Parte 6 — Exportaciones
+
+```{r desastres-exportar}
+write_csv(
+  eventos_municipio_semana,
+  file.path(UBICACION_DATA, "eventos_catastroficos_municipio_semana.csv")
+)
+
+write_csv(
+  desastres_cuadrante_semana,
+  file.path(UBICACION_DATA, "eventos_catastroficos_cuadrante_semana.csv")
+)
+
+saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
+
+cat(sprintf("Panel final guardado: %d filas x %d columnas (incluye eventos catastróficos)\n",
+            nrow(data_final), ncol(data_final)))
+```
+
+---
+
+# Parte 7 — Sismos (pendiente: fuente por confirmar)
+
+El dataset UNGRD usado arriba prácticamente no reporta sismos (son
+manejados aparte por el Servicio Geológico Colombiano). Cuando tengas
+el enlace de descarga directa del catálogo de sismicidad del SGC
+(`datos.sgc.gov.co` o `sish.sgc.gov.co`), esta sección se completa con
+la misma estructura: descarga → filtro geográfico (Norte de Santander,
+por bounding box de coordenadas ya que sismos sí traen lat/lon propias)
+→ agregación semanal → unión al panel.
+
+**Diferencia clave esperada con sismos:** a diferencia de los eventos
+UNGRD (asignados por municipio), el catálogo del SGC trae epicentro
+como punto (lat/lon) — por lo tanto la asignación a cuadrante puede
+hacerse por **distancia real** del epicentro al centroide de cada
+cuadrante (`centroides_cuadrante_real`), no por pertenencia municipal.
+Esto sería más preciso que el resto de variables de esta sección, y
+permitiría además ponderar por magnitud/distancia (p. ej. energía
+sísmica atenuada con la distancia) en vez de un simple binario.
+
+```{r sismos-placeholder, eval=FALSE}
+# ============================================================
+# PENDIENTE: completar cuando se tenga la URL de descarga del SGC
+# ============================================================
+#
+# URL_SGC <- "..."  # pendiente
+#
+# sismos_raw <- read_csv(URL_SGC) %>% clean_names()
+#
+# sismos_nds <- sismos_raw %>%
+#   filter(
+#     latitud  >= 7.0, latitud  <= 9.5,   # bounding box aproximado N. de Santander
+#     longitud >= -73.5, longitud <= -72.0
+#   )
+#
+# Asignación por distancia al centroide real (no por municipio):
+# library(sf)
+# sismos_sf <- st_as_sf(sismos_nds, coords = c("longitud", "latitud"), crs = 4326)
+# centroides_sf <- centroides_cuadrante_real %>%
+#   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE)
+#
+# Para cada sismo, cuadrante más cercano (o todos los cuadrantes dentro
+# de un radio de influencia, ponderado por magnitud/distancia):
+# sismos_cercanos <- st_join(sismos_sf, centroides_sf, join = st_nearest_feature)
+```
+
+---
+
+# Diccionario de variables incorporadas
+
+```{r desastres-diccionario}
+tribble(
+  ~Variable, ~Tipo, ~Variacion, ~Fuente, ~Descripcion,
+
+  "n_eventos_catastroficos", "Numérica (conteo)", "Cuadrante x semana", "UNGRD",
+    "Número de eventos catastróficos (inundación, movimiento en masa, vendaval, etc.) reportados en el MUNICIPIO del cuadrante, en esa semana. Un evento municipal se replica a todos los cuadrantes del municipio.",
+
+  "hubo_evento_catastrofico", "Binaria", "Cuadrante x semana", "Derivada",
+    "1 si n_eventos_catastroficos > 0 esa semana.",
+
+  "hubo_inundacion", "Binaria", "Cuadrante x semana", "UNGRD",
+    "1 si hubo al menos un evento de tipo INUNDACION en el municipio esa semana.",
+
+  "hubo_movimiento_masa", "Binaria", "Cuadrante x semana", "UNGRD",
+    "1 si hubo al menos un evento de tipo MOVIMIENTO EN MASA (deslizamiento) en el municipio esa semana.",
+
+  "hubo_vendaval", "Binaria", "Cuadrante x semana", "UNGRD",
+    "1 si hubo al menos un evento de tipo VENDAVAL en el municipio esa semana.",
+
+  "personas_afectadas_evt", "Numérica", "Cuadrante x semana", "UNGRD",
+    "Suma de personas afectadas por los eventos catastróficos del municipio esa semana (variable municipal, no específica del cuadrante).",
+
+  "tipos_evento", "Texto", "Cuadrante x semana", "UNGRD",
+    "Lista de tipos de evento distintos ocurridos esa semana en el municipio, separados por punto y coma."
+) %>%
+  kable(caption = "Diccionario — variables de eventos catastróficos") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(5, width = "42%")
+```
+
+**Recordatorio metodológico:** a diferencia de infraestructura y
+estrato (estáticas), estas variables **sí varían en el tiempo** y por
+tanto pueden identificarse en modelos con efectos fijos de cuadrante.
+Sin embargo, comparten la misma limitación de granularidad municipal
+que `estrato_predominante_municipal`: un evento reportado en el
+municipio no implica que el cuadrante específico haya sufrido daño
+directo. La interpretación correcta es *"hubo un evento catastrófico
+reportado en el municipio del cuadrante esa semana"*, útil como proxy
+de exposición regional a riesgo climático/geológico, no como medida
+directa de impacto en la red del cuadrante.

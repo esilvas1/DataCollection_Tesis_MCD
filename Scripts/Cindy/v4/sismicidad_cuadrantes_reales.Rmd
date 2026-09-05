@@ -1,0 +1,833 @@
+---
+title: "Sismicidad SGC por cuadrante-semana: exposición sísmica a la red eléctrica"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introducción
+
+Este documento incorpora la **sismicidad** al panel semana x cuadrante
+de SAIDI/SAIFI, a partir del catálogo del Servicio Geológico Colombiano
+(SGC), período 2019-01-01 a 2026-08-17.
+
+**Diferencia clave frente a estratificación y eventos UNGRD:** el
+catálogo sísmico trae **epicentro puntual** (latitud/longitud), no
+agregación municipal. Esto permite una asignación **espacial real** a
+cada cuadrante — por distancia del epicentro al centroide real del
+cuadrante — en vez de heredar el evento a todos los cuadrantes de un
+municipio. Es, por tanto, la fuente más precisa de las tres capas de
+riesgo incorporadas hasta ahora (infraestructura, estratificación,
+desastres UNGRD, sismicidad).
+
+**Hipótesis:** eventos sísmicos cercanos y de mayor magnitud pueden
+dañar directamente la infraestructura eléctrica (torres, transformadores,
+aisladores) o inducir fallas por vibración/asentamiento del terreno,
+aumentando SAIDI/SAIFI en la semana del evento y posiblemente en las
+semanas inmediatamente posteriores (daño acumulado, réplicas).
+
+## Paquetes y carga de insumos previos
+
+```{r sismos-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+paquetes_sismos <- c("sf", "dplyr", "lubridate", "tidyr", "ggplot2",
+                     "knitr", "kableExtra", "scales", "leaflet", "purrr",
+                     "readr", "units")
+
+invisible(lapply(paquetes_sismos, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+```
+
+```{r entorno}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+```{r sismos-recargar-insumos}
+if (!exists("data_final")) {
+  data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+  cat("data_final recargado desde el .rds exportado.\n")
+}
+
+if (!exists("centroides_cuadrante_real")) {
+  ruta_centroides <- file.path(UBICACION_DATA, "centroides_cuadrantes_reales.csv")
+  if (!file.exists(ruta_centroides)) {
+    stop("No se encontró centroides_cuadrantes_reales.csv. Corre primero el documento de infraestructura/NDVI.")
+  }
+  centroides_cuadrante_real <- read_csv(ruta_centroides, show_col_types = FALSE)
+  cat("centroides_cuadrante_real recargado desde CSV.\n")
+}
+
+data_final <- data_final %>% mutate(id_cuadrante = as.character(id_cuadrante))
+
+centroides_real <- centroides_cuadrante_real %>%
+  rename(id_cuadrante = CUADRANTE) %>%
+  mutate(id_cuadrante = as.character(id_cuadrante))
+
+cat(sprintf("Cuadrantes con centroide real disponible: %d\n", nrow(centroides_real)))
+```
+
+---
+
+# Parte 1 — Carga y preparación del catálogo sísmico (SGC)
+
+## Carga del catálogo
+
+Ajusta la ruta según dónde hayas guardado la descarga del SGC (GeoJSON,
+shapefile o `.rds` con el objeto `sf` de puntos).
+
+```{r sismos-cargar}
+ruta_sismos <- file.path(UBICACION_DATA, "sismos_sgc.geojson")
+
+if (!file.exists(ruta_sismos)) {
+  stop(
+    "No se encontró el catálogo de sismos en: ", ruta_sismos,
+    "\nVerifica que el archivo .geojson esté en esa ruta."
+  )
+}
+
+sismos <- st_read(ruta_sismos, quiet = TRUE)
+
+cat(sprintf("Catálogo cargado: %d eventos\n", nrow(sismos)))
+str(sismos)
+
+# library(sf)
+# url_sismos <- "https://archive.sgc.gov.co/catalog_download_data/20260818_023734_ea42d3a0-fbfd-4a39-9419-bcf22d85c877.geojson"
+# 
+# archivo_sismos <- "sismos_sgc_2019_2026.geojson"
+# 
+# # Descargar
+# download.file(
+# url = url_sismos,
+# destfile = archivo_sismos,
+# mode = "wb"
+# )
+
+```
+
+## Preparar fechas y geometría
+
+`local_time`/`utc_time` se convierten a `POSIXct`. La geometría
+original es `POINT Z` (X = longitud, Y = latitud, Z = profundidad); como
+la profundidad ya está disponible en la columna `depth`, se elimina la
+coordenada Z para trabajar con operaciones espaciales 2D estándar.
+
+```{r sismos-preparar}
+sismos <- sismos %>%
+  mutate(
+    local_time = ymd_hms(local_time),
+    utc_time   = ymd_hms(utc_time)
+  ) %>%
+  st_zm(drop = TRUE)
+```
+
+## Filtrar período de estudio
+
+Se conservan los eventos entre el 1 de enero de 2019 y el 17 de agosto
+de 2026 (fecha de corte de esta extracción). **2026 es un año
+incompleto** — no debe compararse directamente con años completos sin
+tener en cuenta la diferente exposición temporal.
+
+```{r sismos-filtrar-periodo}
+sismos_2019_2026 <- sismos %>%
+  filter(
+    local_time >= ymd_hms("2019-01-01 00:00:00"),
+    local_time <= ymd_hms("2026-08-17 23:59:59")
+  )
+
+cat(sprintf("Eventos en el período de estudio: %d\n", nrow(sismos_2019_2026)))
+cat("Rango cubierto:\n")
+print(range(sismos_2019_2026$local_time, na.rm = TRUE))
+```
+
+## Identificación preliminar de eventos en Norte de Santander (exploratoria)
+
+Este filtro por texto (`place`) se usa **solo para exploración
+inicial**. La asignación definitiva y relevante para el modelo se hace
+más adelante por **distancia real a cada cuadrante**, sin depender de
+cómo el SGC redactó el campo `place` ni de límites departamentales
+estrictos — un sismo con epicentro en Santander pero a pocos km de un
+cuadrante de Norte de Santander sí puede ser relevante para ese
+cuadrante.
+
+```{r sismos-filtro-texto-exploratorio}
+sismos_NS_texto <- sismos_2019_2026 %>%
+  filter(grepl("Norte de Santander", place, ignore.case = TRUE))
+
+cat(sprintf("Eventos identificados preliminarmente (texto 'Norte de Santander'): %d\n",
+            nrow(sismos_NS_texto)))
+```
+
+---
+
+# Parte 2 — Caracterización exploratoria de la sismicidad
+
+## Resumen general
+
+```{r sismos-resumen-general}
+resumen_sismos <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  summarise(
+    n = n(),
+    fecha_min = min(local_time, na.rm = TRUE),
+    fecha_max = max(local_time, na.rm = TRUE),
+    magnitud_min = min(magnitude, na.rm = TRUE),
+    magnitud_max = max(magnitude, na.rm = TRUE),
+    magnitud_promedio = mean(magnitude, na.rm = TRUE),
+    magnitud_mediana = median(magnitude, na.rm = TRUE),
+    profundidad_min = min(depth, na.rm = TRUE),
+    profundidad_max = max(depth, na.rm = TRUE),
+    profundidad_promedio = mean(depth, na.rm = TRUE)
+  )
+
+kable(t(resumen_sismos), col.names = "Valor",
+      caption = "Resumen general — sismicidad Norte de Santander (filtro exploratorio por texto)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## Tipos de magnitud reportados
+
+El catálogo usa **distintas escalas/tipos de magnitud** (`mag_type`).
+No se debe asumir que todas son directamente equivalentes a magnitud
+de momento (Mw) sin justificación metodológica — se conserva
+`mag_type` como variable de control, sin homogeneizar por ahora.
+
+```{r sismos-tipos-magnitud}
+tabla_tipo_magnitud <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  count(mag_type, sort = TRUE, name = "n_eventos")
+
+kable(tabla_tipo_magnitud, caption = "Distribución de tipos de magnitud reportados") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r sismos-plot-tipo-magnitud, fig.width=7, fig.height=4}
+ggplot(tabla_tipo_magnitud, aes(x = reorder(mag_type, n_eventos), y = n_eventos)) +
+  geom_col(fill = "#756bb1") +
+  coord_flip() +
+  labs(title = "Tipos de magnitud en el catálogo (Norte de Santander)",
+       x = NULL, y = "N° de eventos") +
+  theme_minimal(base_size = 12)
+```
+
+## Distribución de la magnitud
+
+```{r sismos-distribucion-magnitud}
+summary(sismos_NS_texto$magnitude)
+```
+
+```{r sismos-plot-histograma-magnitud, fig.width=8, fig.height=5}
+sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  ggplot(aes(x = magnitude)) +
+  geom_histogram(bins = 40, fill = "#3182bd", color = "white") +
+  geom_vline(xintercept = c(2, 3, 4), linetype = "dashed", color = "#de2d26") +
+  labs(
+    title    = "Distribución de magnitud sísmica",
+    subtitle = "Líneas punteadas: umbrales de referencia M≥2, M≥3, M≥4",
+    x = "Magnitud", y = "N° de eventos"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Sismos por año
+
+**2026 está incompleto** (hasta el 16-17 de agosto) — no comparar
+directamente su conteo con años completos.
+
+```{r sismos-por-anio}
+sismos_por_anio <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  mutate(anio = year(local_time)) %>%
+  count(anio)
+
+kable(sismos_por_anio, caption = "Número de sismos por año") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+```{r sismos-plot-por-anio, fig.width=8, fig.height=5}
+ggplot(sismos_por_anio, aes(x = factor(anio), y = n)) +
+  geom_col(fill = "#08519c") +
+  geom_text(aes(label = n), vjust = -0.4, size = 3.5) +
+  annotate("text", x = as.character(max(sismos_por_anio$anio)),
+           y = max(sismos_por_anio$n) * 0.5, label = "año\nincompleto",
+           color = "#de2d26", size = 3, fontface = "italic") +
+  labs(title = "Sismos por año — Norte de Santander", x = NULL, y = "N° de sismos") +
+  theme_minimal(base_size = 12)
+```
+
+## Caracterización anual completa
+
+```{r sismos-resumen-anual}
+resumen_anual_sismos <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  mutate(anio = year(local_time)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_sismos = n(),
+    magnitud_max = max(magnitude, na.rm = TRUE),
+    magnitud_promedio = mean(magnitude, na.rm = TRUE),
+    magnitud_mediana = median(magnitude, na.rm = TRUE),
+    profundidad_promedio = mean(depth, na.rm = TRUE),
+    profundidad_min = min(depth, na.rm = TRUE),
+    profundidad_max = max(depth, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(resumen_anual_sismos, digits = 2,
+      caption = "Caracterización anual de la sismicidad") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r sismos-plot-magnitud-anual, fig.width=8, fig.height=5}
+ggplot(resumen_anual_sismos, aes(x = anio)) +
+  geom_line(aes(y = magnitud_promedio), color = "#3182bd", linewidth = 1) +
+  geom_point(aes(y = magnitud_promedio), color = "#3182bd", size = 2) +
+  geom_line(aes(y = magnitud_max), color = "#de2d26", linewidth = 1, linetype = "dashed") +
+  geom_point(aes(y = magnitud_max), color = "#de2d26", size = 2) +
+  labs(
+    title    = "Magnitud promedio (azul) y máxima (rojo, punteado) por año",
+    x = NULL, y = "Magnitud"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Conteo por umbral de magnitud
+
+**No se eliminan los sismos pequeños.** Se conservan todos y se
+construyen medidas alternativas de actividad sísmica a distintos
+umbrales, dejando que el análisis posterior (econométrico o de
+aprendizaje automático) determine cuáles tienen mayor capacidad
+explicativa sobre SAIDI/SAIFI. Los sismos pequeños pueden seguir siendo
+informativos sobre actividad sísmica local de la zona, más allá del
+riesgo de daño directo.
+
+```{r sismos-umbrales}
+resumen_umbrales <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  summarise(
+    total    = n(),
+    m_ge_2   = sum(magnitude >= 2,   na.rm = TRUE),
+    m_ge_3   = sum(magnitude >= 3,   na.rm = TRUE),
+    m_ge_4   = sum(magnitude >= 4,   na.rm = TRUE),
+    m_ge_4_5 = sum(magnitude >= 4.5, na.rm = TRUE)
+  )
+
+kable(t(resumen_umbrales), col.names = "N° eventos",
+      caption = "Conteo de sismos por umbral de magnitud") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+```{r sismos-umbrales-anual}
+sismos_umbrales_anual <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  mutate(anio = year(local_time)) %>%
+  group_by(anio) %>%
+  summarise(
+    n_sismos     = n(),
+    n_m2         = sum(magnitude >= 2, na.rm = TRUE),
+    n_m3         = sum(magnitude >= 3, na.rm = TRUE),
+    n_m4         = sum(magnitude >= 4, na.rm = TRUE),
+    magnitud_max = max(magnitude, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(sismos_umbrales_anual, caption = "Umbrales de magnitud por año") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r sismos-plot-umbrales-anual, fig.width=9, fig.height=5}
+sismos_umbrales_anual %>%
+  select(anio, n_sismos, n_m2, n_m3, n_m4) %>%
+  pivot_longer(-anio, names_to = "umbral", values_to = "n") %>%
+  mutate(umbral = factor(umbral, levels = c("n_sismos", "n_m2", "n_m3", "n_m4"),
+                          labels = c("Todos", "M≥2", "M≥3", "M≥4"))) %>%
+  ggplot(aes(x = anio, y = n, color = umbral)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2) +
+  labs(title = "Sismos por año, según umbral de magnitud", x = NULL, y = "N° de sismos", color = "Umbral") +
+  theme_minimal(base_size = 12)
+```
+
+## Eventos de mayor magnitud (M ≥ 3)
+
+```{r sismos-mayores}
+sismos_mayores <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  filter(magnitude >= 3) %>%
+  arrange(desc(magnitude)) %>%
+  select(id, local_time, place, magnitude, mag_type, depth, latitude, longitude)
+
+kable(head(sismos_mayores, 30), caption = "30 eventos de mayor magnitud (M≥3)") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 10)
+```
+
+## Calidad de localización
+
+Variables de calidad disponibles en el catálogo (no se descartan
+todavía; pueden usarse como filtros de calidad más adelante si el
+modelo lo requiere).
+
+```{r sismos-calidad}
+resumen_calidad <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  summarise(
+    rms_mediana                = median(rms, na.rm = TRUE),
+    gap_mediana                 = median(gap, na.rm = TRUE),
+    nst_mediana                 = median(nst, na.rm = TRUE),
+    error_magnitud_mediano       = median(magnitude_error, na.rm = TRUE),
+    error_latitud_mediano        = median(latitude_error, na.rm = TRUE),
+    error_longitud_mediano       = median(longitude_error, na.rm = TRUE),
+    error_profundidad_mediano    = median(depth_error, na.rm = TRUE)
+  )
+
+kable(t(resumen_calidad), col.names = "Mediana",
+      caption = "Indicadores de calidad de localización (medianas)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## Profundidades atípicas (negativas)
+
+Se detectaron profundidades negativas. **No se corrigen
+arbitrariamente** — pueden corresponder a la convención del catálogo
+(profundidad relativa a un nivel de referencia) o a incertidumbre de
+localización.
+
+```{r sismos-profundidades-negativas}
+n_prof_negativa <- sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  summarise(n_profundidad_negativa = sum(depth < 0, na.rm = TRUE))
+
+cat(sprintf("Eventos con profundidad negativa: %d\n", n_prof_negativa$n_profundidad_negativa))
+
+sismos_NS_texto %>%
+  st_drop_geometry() %>%
+  filter(depth < 0) %>%
+  select(id, local_time, place, magnitude, mag_type, depth, depth_error) %>%
+  head(20) %>%
+  kable(caption = "Eventos con profundidad negativa (muestra)") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 9)
+```
+
+## Objeto preliminar
+
+Se conserva `sismos_NS` sin depurar (sin eliminar sismos pequeños,
+profundidades negativas, ni tipos de magnitud) — la depuración se
+decide después de la caracterización completa, no antes.
+
+```{r sismos-objeto-preliminar}
+sismos_NS <- sismos_NS_texto
+
+cat(sprintf(
+  "Número de sismos: %d\nFecha inicial: %s\nFecha final: %s\nMagnitud mínima: %.1f\nMagnitud máxima: %.1f\n",
+  nrow(sismos_NS),
+  format(min(sismos_NS$local_time, na.rm = TRUE)),
+  format(max(sismos_NS$local_time, na.rm = TRUE)),
+  min(sismos_NS$magnitude, na.rm = TRUE),
+  max(sismos_NS$magnitude, na.rm = TRUE)
+))
+```
+
+---
+
+# Parte 3 — Espacialización: distancia real de cada sismo a cada cuadrante
+
+**Cambio metodológico clave respecto a estratificación y UNGRD:** aquí
+no se asigna por pertenencia municipal. Se calcula la **distancia real**
+entre el epicentro de cada sismo y el centroide real de cada cuadrante,
+y se define un **radio de influencia** — un sismo puede ser relevante
+para un cuadrante aunque su epicentro esté fuera de Norte de Santander,
+si cae dentro del radio.
+
+Se prueban varios radios (`25`, `50`, `100` km) para no imponer un
+único criterio arbitrario; el análisis posterior decide cuál aporta
+mayor capacidad explicativa.
+
+```{r sismos-espacializar}
+RADIOS_KM <- c(25, 50, 100)
+
+# Todos los sismos del período (no solo el filtro de texto), porque un
+# epicentro fuera de Norte de Santander puede seguir estando dentro del
+# radio de influencia de un cuadrante cercano al límite departamental.
+sismos_geo <- sismos_2019_2026 %>%
+  filter(!is.na(latitude), !is.na(longitude)) %>%
+  st_transform(4326)
+
+centroides_sf <- centroides_real %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE)
+
+# Matriz de distancias cuadrante x sismo (en metros -> km).
+# Con miles de sismos y cientos de cuadrantes esto puede ser una matriz
+# grande; se calcula una sola vez y se reutiliza para todos los radios.
+matriz_distancias_m <- st_distance(centroides_sf, sismos_geo)
+matriz_distancias_km <- matriz_distancias_m / 1000
+
+cat(sprintf("Matriz de distancias: %d cuadrantes x %d sismos\n",
+            nrow(matriz_distancias_km), ncol(matriz_distancias_km)))
+```
+
+## Verificación: distribución de la distancia mínima por cuadrante
+
+```{r sismos-verificar-distancias, fig.width=8, fig.height=5}
+distancia_min_cuadrante <- apply(matriz_distancias_km, 1, min)
+
+cat(sprintf("Distancia mínima a algún sismo — mediana: %.1f km | máx: %.1f km\n",
+            median(distancia_min_cuadrante), max(distancia_min_cuadrante)))
+
+data.frame(id_cuadrante = centroides_real$id_cuadrante,
+           dist_min_km  = as.numeric(distancia_min_cuadrante)) %>%
+  ggplot(aes(x = dist_min_km)) +
+  geom_histogram(bins = 40, fill = "#54278f", color = "white") +
+  geom_vline(xintercept = RADIOS_KM, linetype = "dashed", color = "#de2d26") +
+  labs(
+    title = "Distancia mínima de cada cuadrante al sismo más cercano (todo el período)",
+    subtitle = "Líneas punteadas: radios de influencia evaluados (25, 50, 100 km)",
+    x = "Distancia mínima (km)", y = "N° de cuadrantes"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 4 — Construcción de variables sísmicas por cuadrante-semana
+
+Para cada cuadrante *i* y semana *t*, dentro de cada radio de
+influencia *R*, se calculan:
+
+- **`n_sismos`**: número total de sismos dentro del radio, en la semana.
+- **`n_sismos_m2` / `n_sismos_m3` / `n_sismos_m4`**: número de sismos con magnitud ≥ 2, ≥ 3, ≥ 4, dentro del radio.
+- **`magnitud_max`**: magnitud máxima registrada dentro del radio, en la semana.
+- **`dist_sismo_min_km`**: distancia al epicentro más cercano de la semana (independiente del radio, informativo por sí mismo).
+
+```{r sismos-construir-variables-semanales}
+semanas_panel <- data_final %>% distinct(semana) %>% arrange(semana)
+
+# Semana del panel a la que pertenece cada sismo (misma lógica de
+# "ancla hacia atrás" usada con eventos UNGRD)
+asignar_semana <- function(fecha_evento, semanas) {
+  candidatas <- semanas[semanas <= as.Date(fecha_evento)]
+  if (length(candidatas) == 0) return(as.Date(NA))
+  max(candidatas)
+}
+
+sismos_geo <- sismos_geo %>%
+  mutate(semana = as.Date(sapply(local_time, asignar_semana, semanas = semanas_panel$semana),
+                           origin = "1970-01-01"))
+
+cat(sprintf("Sismos sin semana asignable (fuera del rango del panel): %d\n",
+            sum(is.na(sismos_geo$semana))))
+
+# Para cada radio, se construye la tabla cuadrante-semana
+construir_variables_sismo <- function(radio_km) {
+
+  # Matriz lógica: TRUE si el sismo j está dentro del radio del cuadrante i
+  dentro_radio <- matriz_distancias_km < units::set_units(radio_km, "km")
+
+  purrr::map_dfr(seq_len(nrow(centroides_real)), function(i) {
+
+    idx_sismos <- which(dentro_radio[i, ])
+    if (length(idx_sismos) == 0) return(NULL)
+
+    sismos_cuadrante <- sismos_geo[idx_sismos, ] %>%
+      st_drop_geometry() %>%
+      mutate(dist_km = as.numeric(matriz_distancias_km[i, idx_sismos])) %>%
+      filter(!is.na(semana))
+
+    if (nrow(sismos_cuadrante) == 0) return(NULL)
+
+    sismos_cuadrante %>%
+      group_by(semana) %>%
+      summarise(
+        n_sismos           = n(),
+        n_sismos_m2        = sum(magnitude >= 2, na.rm = TRUE),
+        n_sismos_m3        = sum(magnitude >= 3, na.rm = TRUE),
+        n_sismos_m4        = sum(magnitude >= 4, na.rm = TRUE),
+        magnitud_max       = max(magnitude, na.rm = TRUE),
+        dist_sismo_min_km  = min(dist_km, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(id_cuadrante = centroides_real$id_cuadrante[i])
+  })
+}
+
+sismos_r25  <- construir_variables_sismo(25)  %>% rename_with(~paste0(., "_r25"),  -c(id_cuadrante, semana))
+sismos_r50  <- construir_variables_sismo(50)  %>% rename_with(~paste0(., "_r50"),  -c(id_cuadrante, semana))
+sismos_r100 <- construir_variables_sismo(100) %>% rename_with(~paste0(., "_r100"), -c(id_cuadrante, semana))
+
+cat(sprintf("Cuadrante-semanas con actividad — R25: %d | R50: %d | R100: %d\n",
+            nrow(sismos_r25), nrow(sismos_r50), nrow(sismos_r100)))
+```
+
+---
+
+# Parte 5 — Gráficos geográficos y temporales
+
+## Mapa: sismos y cuadrantes reales
+
+```{r sismos-mapa, fig.width=9, fig.height=7}
+if (exists("cuadrantes_infra")) {
+
+  pal_mag <- colorNumeric("YlOrRd", domain = sismos_NS_texto$magnitude)
+
+  leaflet() %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(
+      data = cuadrantes_infra %>% st_transform(4326),
+      fillColor = "transparent", color = "gray50", weight = 0.6, opacity = 0.6
+    ) %>%
+    addCircleMarkers(
+      data = sismos_NS_texto %>% st_transform(4326),
+      radius = ~pmax(2, magnitude * 2),
+      color = ~pal_mag(magnitude),
+      stroke = FALSE, fillOpacity = 0.6,
+      label = ~paste0("M", magnitude, " — ", format(local_time, "%Y-%m-%d"), " — ", place)
+    ) %>%
+    addLegend(pal = pal_mag, values = sismos_NS_texto$magnitude,
+              title = "Magnitud", position = "bottomright")
+
+} else {
+  message("cuadrantes_infra no está en el entorno — se omite el mapa combinado. Se muestra solo los sismos.")
+
+  pal_mag <- colorNumeric("YlOrRd", domain = sismos_NS_texto$magnitude)
+
+  leaflet(sismos_NS_texto %>% st_transform(4326)) %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addCircleMarkers(
+      radius = ~pmax(2, magnitude * 2), color = ~pal_mag(magnitude),
+      stroke = FALSE, fillOpacity = 0.6,
+      label = ~paste0("M", magnitude, " — ", format(local_time, "%Y-%m-%d"))
+    ) %>%
+    addLegend(pal = pal_mag, values = ~magnitude, title = "Magnitud", position = "bottomright")
+}
+```
+
+## Mapa: exposición sísmica acumulada por cuadrante (radio 50 km)
+
+```{r sismos-mapa-exposicion, fig.width=9, fig.height=7}
+if (exists("cuadrantes_infra")) {
+
+  exposicion_cuadrante <- sismos_r50 %>%
+    group_by(id_cuadrante) %>%
+    summarise(
+      n_sismos_total_r50 = sum(n_sismos_r50),
+      magnitud_max_r50   = max(magnitud_max_r50),
+      .groups = "drop"
+    )
+
+  mapa_exposicion_datos <- cuadrantes_infra %>%
+    mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE)) %>%
+    left_join(exposicion_cuadrante, by = "id_cuadrante") %>%
+    st_transform(4326)
+
+  pal_exp <- colorNumeric("Purples", domain = mapa_exposicion_datos$n_sismos_total_r50, na.color = "grey90")
+
+  leaflet(mapa_exposicion_datos) %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(
+      fillColor = ~pal_exp(n_sismos_total_r50),
+      fillOpacity = 0.7, color = "gray40", weight = 0.6, opacity = 0.8,
+      label = ~paste0("Cuadrante ", id_cuadrante, ": ", n_sismos_total_r50,
+                      " sismos históricos dentro de 50 km")
+    ) %>%
+    addLegend(pal = pal_exp, values = ~n_sismos_total_r50,
+              title = "N° sismos\n(radio 50km,\nhistórico)", position = "bottomright")
+
+} else {
+  message("cuadrantes_infra no está en el entorno — se omite este mapa.")
+}
+```
+
+## Serie temporal: sismicidad semanal (radio 50 km, agregado)
+
+```{r sismos-serie-temporal, fig.width=9, fig.height=5}
+sismos_r50 %>%
+  group_by(semana) %>%
+  summarise(n_sismos_semana = sum(n_sismos_r50), .groups = "drop") %>%
+  ggplot(aes(x = semana, y = n_sismos_semana)) +
+  geom_col(fill = "#6a51a3") +
+  labs(
+    title = "Actividad sísmica semanal (radio 50 km, suma de todos los cuadrantes)",
+    x = NULL, y = "N° de sismos"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 6 — Integración al panel
+
+Se une la versión de radio 50 km como variable principal (intermedia
+entre 25 y 100 km); las otras dos quedan disponibles como variables
+alternativas para pruebas de sensibilidad del modelo.
+
+```{r sismos-union-panel}
+data_final <- data_final %>%
+  select(-any_of(c(
+    "n_sismos_r25", "n_sismos_m2_r25", "n_sismos_m3_r25", "n_sismos_m4_r25", "magnitud_max_r25", "dist_sismo_min_km_r25",
+    "n_sismos_r50", "n_sismos_m2_r50", "n_sismos_m3_r50", "n_sismos_m4_r50", "magnitud_max_r50", "dist_sismo_min_km_r50",
+    "n_sismos_r100","n_sismos_m2_r100","n_sismos_m3_r100","n_sismos_m4_r100","magnitud_max_r100","dist_sismo_min_km_r100",
+    "hubo_sismo"
+  ))) %>%
+  left_join(sismos_r25,  by = c("id_cuadrante", "semana")) %>%
+  left_join(sismos_r50,  by = c("id_cuadrante", "semana")) %>%
+  left_join(sismos_r100, by = c("id_cuadrante", "semana")) %>%
+  mutate(across(
+    c(n_sismos_r25, n_sismos_m2_r25, n_sismos_m3_r25, n_sismos_m4_r25,
+      n_sismos_r50, n_sismos_m2_r50, n_sismos_m3_r50, n_sismos_m4_r50,
+      n_sismos_r100, n_sismos_m2_r100, n_sismos_m3_r100, n_sismos_m4_r100),
+    ~replace_na(., 0)
+  )) %>%
+  mutate(hubo_sismo_r50 = as.integer(n_sismos_r50 > 0))
+
+cat(sprintf("Panel actualizado: %d filas x %d columnas\n", nrow(data_final), ncol(data_final)))
+
+cobertura_sismos <- data_final %>%
+  summarise(
+    filas_total          = n(),
+    semanas_con_sismo_r50 = sum(hubo_sismo_r50),
+    pct_semanas_con_sismo  = round(100 * mean(hubo_sismo_r50), 2)
+  )
+
+kable(t(cobertura_sismos), col.names = "Valor",
+      caption = "Cobertura de sismicidad en el panel (radio 50 km)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## SAIDI/SAIFI según ocurrencia de sismo (radio 50 km)
+
+```{r sismos-saidi-vs-sismo, fig.width=8, fig.height=5}
+if (all(c("SAIDI", "SAIFI") %in% names(data_final))) {
+
+  datos_plot <- data_final %>%
+    filter(hubo_falla == 1) %>%
+    mutate(sismo_f = factor(hubo_sismo_r50, levels = c(0, 1), labels = c("Sin sismo", "Con sismo")))
+
+  if (n_distinct(datos_plot$sismo_f) < 2) {
+    message("Solo hay un nivel de sismo_f en las semanas con falla — se omite el gráfico.")
+  } else {
+    datos_plot %>%
+      tidyr::pivot_longer(c(SAIDI, SAIFI), names_to = "indicador", values_to = "valor") %>%
+      ggplot(aes(x = sismo_f, y = valor, fill = sismo_f)) +
+      geom_boxplot(outlier.alpha = 0.2, width = 0.5) +
+      facet_wrap(~indicador, scales = "free_y") +
+      scale_fill_manual(values = c("Sin sismo" = "#a1d99b", "Con sismo" = "#54278f")) +
+      labs(
+        title = "SAIDI/SAIFI según ocurrencia de sismo (radio 50 km)",
+        subtitle = "Solo semanas con falla eléctrica registrada",
+        x = NULL, y = "Valor"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(legend.position = "none")
+  }
+
+} else {
+  message("SAIDI/SAIFI no están en data_final todavía — se omite este gráfico.")
+}
+```
+
+---
+
+# Parte 7 — Exportaciones
+
+```{r sismos-exportar}
+write_csv(sismos_r25,  file.path(UBICACION_DATA, "sismos_cuadrante_semana_r25km.csv"))
+write_csv(sismos_r50,  file.path(UBICACION_DATA, "sismos_cuadrante_semana_r50km.csv"))
+write_csv(sismos_r100, file.path(UBICACION_DATA, "sismos_cuadrante_semana_r100km.csv"))
+
+saveRDS(sismos_NS, file.path(UBICACION_DATA, "sismos_NS_preliminar.rds"))
+
+saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
+
+cat(sprintf("Panel final guardado: %d filas x %d columnas (incluye sismicidad)\n",
+            nrow(data_final), ncol(data_final)))
+```
+
+---
+
+# Diccionario de variables incorporadas
+
+```{r sismos-diccionario}
+tribble(
+  ~Variable, ~Tipo, ~Variacion, ~Fuente, ~Descripcion,
+
+  "n_sismos_r{25,50,100}", "Numérica (conteo)", "Cuadrante x semana", "SGC",
+    "Número de sismos con epicentro dentro del radio indicado (km) del centroide real del cuadrante, en esa semana.",
+
+  "n_sismos_m2_r{...}", "Numérica (conteo)", "Cuadrante x semana", "SGC",
+    "Número de sismos con magnitud ≥ 2 dentro del radio, en esa semana.",
+
+  "n_sismos_m3_r{...}", "Numérica (conteo)", "Cuadrante x semana", "SGC",
+    "Número de sismos con magnitud ≥ 3 dentro del radio, en esa semana.",
+
+  "n_sismos_m4_r{...}", "Numérica (conteo)", "Cuadrante x semana", "SGC",
+    "Número de sismos con magnitud ≥ 4 dentro del radio, en esa semana.",
+
+  "magnitud_max_r{...}", "Numérica", "Cuadrante x semana", "SGC",
+    "Magnitud máxima registrada dentro del radio, en esa semana.",
+
+  "dist_sismo_min_km_r{...}", "Numérica (km)", "Cuadrante x semana", "SGC, derivada",
+    "Distancia del epicentro más cercano (dentro del radio) al centroide real del cuadrante, en esa semana.",
+
+  "hubo_sismo_r50", "Binaria", "Cuadrante x semana", "Derivada",
+    "1 si n_sismos_r50 > 0 esa semana.",
+
+  "mag_type", "Categórica (en sismos_NS)", "Por evento", "SGC",
+    "Tipo/escala de magnitud reportada (MLr_3, MLr_vmm, Mw, etc.). No homogeneizado a Mw; se conserva para control de heterogeneidad de fuente."
+) %>%
+  kable(caption = "Diccionario — variables de sismicidad") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(5, width = "42%")
+```
+
+## Importancia para la modelación
+
+- **Es la variable con mayor precisión espacial** de las cuatro capas
+  de riesgo incorporadas: usa distancia real al centroide, no
+  pertenencia municipal (estrato, UNGRD) ni agregación de polígono
+  (infraestructura, que sí tiene geometría real pero es estática).
+- **Varía en el tiempo** (a diferencia de infraestructura y estrato),
+  por lo que puede identificarse en modelos con efectos fijos de
+  cuadrante.
+- **No filtrar por magnitud desde el inicio**: se dejan disponibles
+  `n_sismos`, `n_sismos_m2`, `n_sismos_m3` y `n_sismos_m4` para que el
+  modelo (o una selección de variables tipo LASSO/Random Forest)
+  determine qué umbral aporta más señal — un aumento en la cantidad de
+  microsismos podría reflejar actividad de falla local sin daño
+  directo, mientras que eventos M≥3-4 son más plausibles como causa
+  directa de falla en la red.
+- **`dist_sismo_min_km`** es conceptualmente la variable más
+  prometedora bajo la lógica de atenuación física (a mayor distancia,
+  menor energía percibida en superficie) — se recomienda probarla
+  interactuada con magnitud (`magnitud_max / dist_sismo_min_km`, o una
+  forma funcional tipo atenuación sísmica) en una iteración posterior
+  del modelo, en vez de usar ambas por separado desde el inicio.
+- **Precaución con la tendencia temporal**: el aumento de conteo de
+  sismos en 2024-2025 puede reflejar mejoras en capacidad de detección
+  del catálogo, no necesariamente mayor sismicidad real — evitar
+  interpretar `n_sismos` como medida pura de "intensidad sísmica" sin
+  controlar por año/tendencia en el modelo.
+- **Radios múltiples (25/50/100 km) se dejan como variables
+  alternativas**, no para incluir las tres simultáneamente en el mismo
+  modelo (alta correlación esperable entre ellas), sino para pruebas de
+  sensibilidad sobre cuál radio de influencia ajusta mejor.
