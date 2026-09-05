@@ -43,6 +43,11 @@ logs/*.txt
 *.docx
 *.csv
 *.xlsx
+*.png
+*.RData
+*.rdb
+*.rdx
+*__packages
 
 # LaTeX/Overleaf temporary files
 *.aux
