@@ -1,0 +1,604 @@
+---
+title: "Guía maestra del proyecto — Panel semana x cuadrante SAIDI/SAIFI"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, eval = FALSE)
+```
+
+# Cómo usar esta guía
+
+Este documento **no ejecuta código** (todos los chunks tienen
+`eval = FALSE`) — es un mapa de navegación del proyecto de tesis:
+qué `.Rmd` hace qué, en qué orden correrlos, qué variables produce
+cada uno, y dónde queda cada archivo de salida.
+
+**Todo el proyecto vive en:** la ruta definida por cada persona en su propio archivo `.env` (variable `UBICACION_DATA`) — ver `.env.example`. Ya no hay rutas fijas a `C:/Users/User/Downloads`.
+
+**Unidad muestral del panel final:** semana x cuadrante (344 cuadrantes
+reales, geometría desde `fallas_eventos.gpkg`).
+
+---
+
+# Orden de ejecución del pipeline
+
+El panel se construye de forma **acumulativa**: cada documento retoma
+`data_final` donde lo dejó el anterior, agrega sus propias variables, y
+vuelve a guardar `data_final_modelo_cuadrantes_reales.rds/.csv`. El
+orden correcto para correr todo desde cero es:
+
+```text
+1. infraestructura_electrica_por_cuadrante.Rmd
+        ↓  (crea cuadrantes_infra, fallas_eventos.gpkg)
+2. panel_saidi_saifi_cuadrantes_reales.Rmd
+        ↓  (centroides reales, NDVI semanal, SAIDI/SAIFI con
+        ↓   denominador real, composicion de estrato/tipo de uso
+        ↓   REAL por cuadrante, edad de activos y mantenimiento)
+3. estratificacion_municipal_cuadrantes_reales.Rmd
+        ↓  (SOLO para mapeo cuadrante->municipio, usado por 4 y 5;
+        ↓   su variable de estrato ya NO se usa en el modelo)
+4. desastres_naturales_cuadrantes_reales.Rmd
+        ↓  (eventos UNGRD: inundación, deslizamiento, vendaval...)
+5. sismicidad_cuadrantes_reales.Rmd
+        ↓  (sismicidad SGC por distancia real al cuadrante)
+6. topologia_red_electrica_cuadrantes_reales.Rmd
+        ↓  (grafo eléctrico, longitud de red, nodos terminales, vecindad eléctrica)
+
+  →  data_final_modelo_cuadrantes_reales.rds/.csv  (panel completo, insumo del modelo)
+        ↓
+7. modelo_saidi_saifi_cuadrantes_reales.Rmd
+        →  seleccion de variables, comparacion de especificaciones,
+           modelo espacial SAR/SEM, modelo de conteo Poisson/NB
+```
+
+**Nota sobre el documento 7:** a diferencia de los documentos 1-6, el
+de modelación **no vuelve a guardar** `data_final` con variables
+nuevas — lo consume tal como queda al final del documento 6, y
+construye a partir de ahí las variables de modelación (rezagos,
+medias móviles, rezago espacial de vecinos, corte transversal
+ponderado para SAR/SEM). Es el último eslabón de la cadena.
+
+Si solo necesitas actualizar una capa (por ejemplo, agregar
+mantenimiento más adelante), no hace falta re-correr todo desde el
+paso 1 — basta con que `data_final` ya exista en el `.rds` y el nuevo
+documento lo recargue (todos tienen el chunk `if (!exists("data_final"))`
+al inicio).
+
+---
+
+# 1. `infraestructura_electrica_por_cuadrante.Rmd`
+
+**Qué hace:** procesa el inventario georreferenciado de elementos de
+infraestructura eléctrica (aisladores, cuchillas, interruptores,
+reconectadores, transformadores) desde `fallas_eventos.gpkg`, agregado
+a nivel de cuadrante real. Construye la geometría base
+(`cuadrantes_infra`) que usan todos los documentos posteriores.
+
+**Entradas:**
+
+- `fallas_eventos.gpkg` (capas `fallas_eventos` y `cuadrantes_poligonos`)
+
+**Salidas (objetos R):** `infra_cuadrante`, `cuadrantes_infra`,
+`fallas_eventos` (transformado a WGS84)
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `fallas_eventos.gpkg` | Capas originales de infraestructura y cuadrantes |
+
+**Variables generadas (por cuadrante, estáticas):**
+
+| Variable | Descripción |
+|---|---|
+| `n_elementos` | Total de elementos de infraestructura del cuadrante |
+| `n_tipos_infraestructura` | Diversidad de tipos presentes (1-5) |
+| `n_transformadores`, `n_aisladeros`, `n_cuchillas`, `n_interruptores`, `n_reconectadores` | Conteo por tipo de activo |
+| `prop_transformadores`, `prop_aisladeros`, `prop_cuchillas`, `prop_interruptores`, `prop_reconectadores` | Composición relativa por tipo |
+
+**Advertencia metodológica:** todas estas variables son **estáticas**
+(no varían por semana) — colineales con efectos fijos de cuadrante en
+modelos *within*.
+
+```{r ref-1, eval=FALSE}
+# Para reabrir este documento:
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "infraestructura_electrica_por_cuadrante.Rmd"))
+```
+
+---
+
+# 2. `panel_saidi_saifi_cuadrantes_reales.Rmd`
+
+**Qué hace:** documento central del panel. Calcula **centroides
+reales** de cada cuadrante, descarga y procesa **NDVI semanal** (MODIS
+MOD13Q1), verifica **SAIDI y SAIFI** con el denominador real por
+cuadrante, e incorpora la **composición real de usuarios por estrato y
+tipo de uso** y las **variables de activos/mantenimiento** — la
+entrega final del compañero de tesis con CENS.
+
+**Entradas:**
+
+- `cuadrantes_infra` (del documento 1, o recargado desde el `.gpkg`)
+- `data_agrupada_mod.csv` (tabla maestra final, 34 columnas: clima,
+  eventos, `usuarios_afectados`, `duracion_total`, `usuarios_totales`
+  [sistema completo, constante], `cantidad_usuarios_cuadrante`
+  [denominador real por cuadrante], `ESTRATO_1..6`, `INDUSTRIAL`,
+  `COMERCIAL`, `OFICIAL`, `PROVISIONAL`, `ALUMBRADO_PUBLICO`,
+  `FECHA_ACTIVO_MAS_VIEJO`, `FECHA_ACTIVO_MAS_NUEVO`,
+  `PROM_CANT_MODIFICACIONES`, `SAIDI`, `SAIFI` ya calculados)
+
+**Salidas (objetos R):** `centroides_cuadrante_real`, `ndvi_semanal`,
+`data_final` (con NDVI, SAIDI/SAIFI, composición de estrato real y
+variables de activos ya unidas)
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `infraestructura_cuadrantes_reales.gpkg` | 3 capas: `fallas_eventos`, `cuadrantes_infra_reales`, `centroides_cuadrantes_reales` |
+| `mapa_infraestructura_cuadrantes_reales.html` | Mapa interactivo: infraestructura + NDVI promedio por cuadrante |
+| `infraestructura_por_cuadrante_real.csv` | Tabla de infraestructura, sin geometría |
+| `ndvi_semanal_por_cuadrante_real.csv` | NDVI semanal, 344 cuadrantes |
+| `centroides_cuadrantes_reales.csv` | Lat/lon del centroide real de cada cuadrante |
+| `data_final_modelo_cuadrantes_reales.rds` / `.csv` | **Panel maestro**, se actualiza en cada documento posterior |
+
+**Caché local (no en Downloads, en el directorio de trabajo de R):**
+`ndvi_por_cuadrante_real_modis.csv` — evita re-descargar NDVI de MODIS
+en cada ejecución (tarda ~30-60 min la primera vez).
+
+**Variables generadas:**
+
+| Variable | Tipo | Varía en tiempo | Descripción |
+|---|---|---|---|
+| `ndvi_semanal` | Numérica (-1 a 1) | Sí | NDVI medio del cuadrante en la semana |
+| `log_ndvi` | Numérica | Sí | `log1p(ndvi_semanal + 1)` |
+| `cat_ndvi` | Categórica | Sí | Terciles: Baja/Media/Alta |
+| `usuarios_totales` | Numérica | No (constante) | Usuarios del SISTEMA completo — solo contexto, NO denominador de SAIDI/SAIFI |
+| `cantidad_usuarios_cuadrante` | Numérica | Sí | Usuarios reales servidos POR CUADRANTE — denominador correcto de SAIDI/SAIFI |
+| `SAIDI` | Numérica | Sí | `duracion_total / cantidad_usuarios_cuadrante` — verificado por recálculo manual |
+| `SAIFI` | Numérica | Sí | `usuarios_afectados / cantidad_usuarios_cuadrante` — puede superar 1 |
+| `hubo_falla` | Binaria | Sí | 1 si `n_eventos > 0` esa semana |
+| `prop_estrato_1`...`prop_estrato_6` | Numérica (0-1) | No (estático) | Proporción real de usuarios por estrato, DENTRO del cuadrante |
+| `prop_industrial`, `prop_comercial`, `prop_oficial`, `prop_provisional`, `prop_alumbrado` | Numérica (0-1) | No | Proporción de usuarios por tipo de uso |
+| `estrato_modal_real` | Categórica (1-6) | No | Estrato de mayor conteo DENTRO del cuadrante (reemplaza `estrato_predominante_municipal`) |
+| `prop_no_residencial` | Numérica (0-1) | No | Suma de industrial+comercial+oficial |
+| `edad_activo_mas_viejo_anios` / `edad_activo_mas_nuevo_anios` | Numérica | Sí (relativa a cada semana) | Antigüedad del activo más viejo/nuevo en operación en el cuadrante |
+| `rango_edad_activos_anios` | Numérica | Sí | Diferencia entre el activo más viejo y el más nuevo (heterogeneidad de edad de la red) |
+| `PROM_CANT_MODIFICACIONES` | Numérica | No (estático en esta entrega) | Promedio de modificaciones por elemento en el cuadrante — proxy de intensidad de mantenimiento |
+
+**✅ SAIDI/SAIFI en su versión final.** Cuarta iteración de esta
+variable: (1) proxy con máximo histórico → (2) denominador único del
+sistema → (3) nombre provisional `usuarios_totales_cuadrante` → (4)
+**`cantidad_usuarios_cuadrante`** (nombre final, entrega definitiva del
+compañero de tesis). El documento 2 verifica la consistencia por
+recálculo manual.
+
+**✅ Estrato municipal reemplazado por composición real de cuadrante.**
+El documento 3 (`estratificacion_municipal_cuadrantes_reales.Rmd`)
+**queda como fuente secundaria/histórica** — sus variables ya no se
+usan en el modelo, porque la entrega final trae la composición
+socioeconómica exacta a nivel de cuadrante, con mucha mayor precisión
+que el estrato predominante del municipio.
+
+**✅ Variables de mantenimiento/activos incorporadas.** Resuelve el
+hueco identificado frente a los objetivos de tesis (variables
+"operativas" y de condición de la red, no solo cantidad/topología).
+
+```{r ref-2, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "panel_saidi_saifi_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# 3. `estratificacion_municipal_cuadrantes_reales.Rmd` — parcialmente superado
+
+**⚠️ Variable de estrato superada, pero el documento sigue siendo
+necesario.** `estrato_predominante_municipal` fue reemplazada en el
+modelo por la composición real de estrato **por cuadrante**
+(`prop_estrato_1..6`, `estrato_modal_real`) que ahora trae la fuente
+directamente en el documento 2 — precisión de cuadrante en vez de
+precisión municipal. **Sin embargo**, este documento sigue siendo
+parte obligatoria del pipeline porque genera `estratificacion_cuadrante`
+(el mapeo cuadrante → municipio), que **usan los documentos 4
+(desastres UNGRD) y 5 (sismicidad)** para asignar eventos municipales
+a cada cuadrante. No se puede omitir su ejecución.
+
+**Qué hace:** asigna el **estrato socioeconómico predominante
+municipal** a cada cuadrante real, por intersección espacial con la
+capa oficial de estratificación (`Estr_Capa.gdb`), con resolución por
+centroide para cuadrantes que caen sobre límites municipales.
+
+**Entradas:**
+
+- `Estr_Capa.gdb.zip` → descomprime en carpeta local `estratificacion/`
+- `cuadrantes_infra` (documento 1)
+
+**Salidas (objetos R):** `cuadrantes_infra_estrato`,
+`estratificacion_cuadrante` (mapeo cuadrante → municipio, **necesario**
+para los documentos 4 y 5)
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `infraestructura_cuadrantes_reales.gpkg` | Se **actualiza** la capa `cuadrantes_infra_reales` (ya incluye municipio/estrato) |
+| `estratificacion_municipal_por_cuadrante.csv` | Tabla de estratificación, sin geometría |
+| `data_final_modelo_cuadrantes_reales.rds` / `.csv` | Panel actualizado |
+
+**Variables generadas (por cuadrante, estáticas, nivel municipal):**
+
+| Variable | Descripción | Uso actual |
+|---|---|---|
+| `codigo_municipio`, `municipio` | Identificador y nombre del municipio | **Necesario** — usado por Doc. 4 y 5 |
+| `codigo_departamento`, `departamento` | Debe ser siempre Norte de Santander (54) | Contexto |
+| `metodologia_estratificacion` | Tipo de metodología de estratificación aplicada | Histórico |
+| `n_estratos_municipio` | N° de estratos presentes en el municipio | Histórico |
+| `estrato_predominante_municipal` | Estrato 1-6 predominante del **municipio** | ⚠️ Superado — ya no se usa en el modelo (ver `prop_estrato_*` del Doc. 2) |
+
+```{r ref-3, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "estratificacion_municipal_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# 4. `desastres_naturales_cuadrantes_reales.Rmd`
+
+**Qué hace:** incorpora eventos catastróficos (inundaciones,
+deslizamientos, vendavales, granizadas, etc.) reportados por la UNGRD,
+agregados a nivel municipio-semana y expandidos a todos los cuadrantes
+del municipio correspondiente.
+
+**Entradas:**
+
+- Descarga automática: `https://www.datos.gov.co/api/views/wwkg-r6te/rows.csv` → `emergencias_ungrd.csv`
+- `estratificacion_cuadrante` (documento 3, mapeo cuadrante → municipio)
+
+**Salidas (objetos R):** `emergencias_nds`, `eventos_municipio_semana`,
+`desastres_cuadrante_semana`
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `eventos_catastroficos_municipio_semana.csv` | Eventos agregados por municipio-semana |
+| `eventos_catastroficos_cuadrante_semana.csv` | Expandido a cuadrante-semana |
+| `data_final_modelo_cuadrantes_reales.rds` / `.csv` | Panel actualizado |
+
+**Caché local:** `emergencias_ungrd.csv` (dataset nacional completo, no
+se re-descarga si ya existe).
+
+**Variables generadas (por cuadrante-semana):**
+
+| Variable | Descripción |
+|---|---|
+| `n_eventos_catastroficos` | N° de eventos reportados en el municipio del cuadrante, esa semana |
+| `hubo_evento_catastrofico` | Binaria: 1 si `n_eventos_catastroficos > 0` |
+| `hubo_inundacion`, `hubo_movimiento_masa`, `hubo_vendaval` | Binarias por tipo de evento |
+| `personas_afectadas_evt`, `familias_afectadas_evt` | Suma municipal de personas/familias afectadas esa semana |
+| `tipos_evento` | Texto: tipos distintos de evento ocurridos esa semana |
+
+**⚠️ Precisión metodológica:** igual que estrato — asignación
+**municipal**, no específica del cuadrante. A diferencia de estrato,
+**sí varía en el tiempo**.
+
+**Pendiente dentro de este mismo documento:** sección "Parte 7 —
+Sismos" quedó con placeholder inicial; **ya fue reemplazada** por el
+documento 5 (`sismicidad_cuadrantes_reales.Rmd`), que usa una fuente
+distinta (SGC) con asignación por distancia real, más precisa que la
+municipal.
+
+```{r ref-4, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "desastres_naturales_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# 5. `sismicidad_cuadrantes_reales.Rmd`
+
+**Qué hace:** incorpora sismicidad del catálogo del Servicio Geológico
+Colombiano (SGC), 2019-2026. A diferencia de estrato y UNGRD, la
+asignación a cuadrante es por **distancia real** epicentro↔centroide
+(no por municipio), probando tres radios de influencia (25/50/100 km).
+
+**Entradas:**
+
+- `sismos_sgc.geojson` (descarga manual desde el portal del SGC)
+- `centroides_cuadrante_real` (documento 2)
+- `cuadrantes_infra` (documento 1, opcional, para el mapa combinado)
+
+**Salidas (objetos R):** `sismos_NS` (catálogo depurado preliminar),
+`sismos_r25`, `sismos_r50`, `sismos_r100`
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `sismos_cuadrante_semana_r25km.csv` | Variables sísmicas, radio 25 km |
+| `sismos_cuadrante_semana_r50km.csv` | Variables sísmicas, radio 50 km (variable principal en el panel) |
+| `sismos_cuadrante_semana_r100km.csv` | Variables sísmicas, radio 100 km |
+| `data_final_modelo_cuadrantes_reales.rds` / `.csv` | **Panel final completo** |
+
+**Caché local:** `sismos_NS_preliminar.rds` (catálogo filtrado, sin
+depurar todavía).
+
+**Variables generadas (por cuadrante-semana, para cada radio R ∈ {25, 50, 100}):**
+
+| Variable | Descripción |
+|---|---|
+| `n_sismos_r{R}` | N° de sismos con epicentro dentro de R km del centroide, esa semana |
+| `n_sismos_m2_r{R}` / `m3` / `m4` | Ídem, filtrado por magnitud ≥ 2 / ≥ 3 / ≥ 4 |
+| `magnitud_max_r{R}` | Magnitud máxima dentro del radio, esa semana |
+| `dist_sismo_min_km_r{R}` | Distancia al epicentro más cercano (dentro del radio) |
+| `hubo_sismo_r50` | Binaria: 1 si `n_sismos_r50 > 0` |
+
+**Nota:** las tres versiones de radio se dejan disponibles para
+pruebas de sensibilidad — no usar las tres simultáneamente en el mismo
+modelo (alta correlación esperable entre ellas).
+
+```{r ref-5, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "sismicidad_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# 6. `topologia_red_electrica_cuadrantes_reales.Rmd`
+
+**Qué hace:** incorpora la **topología real de la red eléctrica**
+(`secciones_linea_estructuras`, ~157,511 filas de tramos/estructuras),
+resolviendo la limitación de vecindad puramente geográfica usada
+hasta entonces. Construye un grafo eléctrico real, calcula longitud
+de línea y nodos terminales por cuadrante, y compara la
+autocorrelación espacial de SAIDI bajo vecindad geográfica vs.
+eléctrica (Moran's I).
+
+**Hallazgo metodológico clave documentado en el propio archivo:** el
+grafo debe construirse con `CODIGO_ESTRUCTURA_INICIO`/
+`CODIGO_ESTRUCTURA_FIN` como identificador de nodo físico, **no** con
+`NODO1_ID`/`NODO2_ID` (estos últimos producen un grafo extremadamente
+fragmentado — 12,683 componentes, el mayor con solo 832 nodos, 0.5%
+del total; con `CODIGO_ESTRUCTURA` el componente principal cubre 57.3%
+de los nodos). Además, `CODIGO_ESTRUCTURA_FIN = NA` no es dato
+faltante: marca un **nodo terminal** (fin de ramal), y se trata como
+capa propia (`nodos_terminales_sf`), no se descarta.
+
+**Entradas:**
+
+- `secciones_linea_estructuras` (CSV con separador `;`, formato es-CO — usar `read_delim(delim=";")`, no `read_csv()`)
+- `cuadrantes_infra` (documento 1)
+- `centroides_cuadrante_real` (documento 2)
+- `data_final_modelo_cuadrantes_reales.rds` (documento 5, panel a la fecha)
+
+**Salidas (objetos R):** `tramos_sf`, `nodos_terminales_sf`, `grafo_red`,
+`distancias_electricas`, `pesos_electricos`, `longitud_por_cuadrante`
+
+**Salidas (archivos en Downloads):**
+
+| Archivo | Contenido |
+|---|---|
+| `mapa_red_electrica_tension_nodos_terminales.html` | Mapa interactivo: red por tensión + nodos terminales |
+| `mapa_longitud_red_por_cuadrante.html` | Mapa interactivo: longitud de red por cuadrante |
+| `longitud_red_por_cuadrante.csv` | Longitud/circuitos por cuadrante (solo con red intersectada) |
+| `nodos_terminales_por_cuadrante.csv` | Conteo de nodos terminales por cuadrante |
+| `red_electrica_resumen_por_cuadrante.csv` | Tabla consolidada, los 344 cuadrantes (ceros explícitos donde no hay red) |
+| `tramos_red_electrica.gpkg` | 2 capas: `tramos_sf`, `nodos_terminales_sf` (evita reconstruir geometría) |
+| `grafo_red_electrica.rds` | Grafo eléctrico completo (`igraph`) |
+| `distancias_electricas_cuadrante.rds` | Matriz de distancia eléctrica entre cuadrantes |
+| `pesos_vecindad_electrica.rds` | Objeto `listw` de vecindad eléctrica |
+| `data_final_modelo_cuadrantes_reales.rds` / `.csv` | Panel actualizado |
+
+**Variables generadas (por cuadrante, estáticas):**
+
+| Variable | Descripción |
+|---|---|
+| `longitud_red_km` | Kilómetros de línea eléctrica dentro del cuadrante |
+| `n_circuitos_cuadrante` | N° de circuitos/alimentadores distintos que atraviesan el cuadrante |
+| `n_nodos_terminales` | N° de puntos donde termina un ramal (proxy de posición topológica extrema) |
+| `densidad_terminales` | `n_nodos_terminales / longitud_red_km` |
+| `tension_predominante` | Nivel de tensión (kV) más frecuente en el cuadrante |
+
+**Umbral de vecindad eléctrica:** calibrado dinámicamente como la
+**mediana** de la distancia eléctrica mínima observada entre
+cuadrantes (~9,680 m), no un valor fijo arbitrario — un umbral de 2 km
+probado inicialmente resultó menor que la distancia mínima de
+cualquier cuadrante y dejaba la matriz de vecindad vacía. El chunk de
+Moran's I usa además una función protegida (`calcular_moran_seguro()`)
+que reporta `NA` en vez de fallar si alguna vecindad queda sin
+enlaces.
+
+**⚠️ Precisión metodológica:** `longitud_red_km`, `n_nodos_terminales`,
+etc. son **estáticas** (topología no cambia semana a semana en este
+panel) — mismo tratamiento que infraestructura/estrato frente a
+efectos fijos de cuadrante.
+
+```{r ref-6, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "topologia_red_electrica_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# 7. `modelo_saidi_saifi_cuadrantes_reales.Rmd`
+
+**Qué hace:** construye, evalúa y compara modelos predictivos de
+SAIDI/SAIFI usando el panel completo (documentos 1-6). No genera
+nuevas variables para `data_final` — es el documento de análisis
+final, no de construcción de datos.
+
+**Entradas:** `data_final_modelo_cuadrantes_reales.rds` (documento 6),
+`cuadrantes_infra` (documento 1, para la matriz de vecindad geográfica).
+
+**Contenido:**
+
+| Parte | Contenido |
+|---|---|
+| Feature engineering | Rezagos (`SAIDI_lag1/lag4`), medias móviles climáticas, interacciones estático×dinámico |
+| 1b — Dimensión espacial | Matriz de vecindad geográfica (`poly2nb`), test de Moran's I, rezago espacial de vecinos (`SAIDI_vecinos_lag1`, `n_eventos_vecinos`, `ndvi_vecinos`) |
+| 2 — Exploratorio | Relaciones SAIDI/SAIFI vs. clima, NDVI, sismicidad |
+| 3 — Split temporal | Últimas semanas como *holdout* (no aleatorio, evita fuga de información) |
+| 4 — Especificaciones | Pooled OLS, FE cuadrante, FE cuadrante+semana, Random Forest |
+| 5 — Evaluación | RMSE/MAE/R² en test, aporte marginal del rezago espacial |
+| 6 — SAIFI | Mismo esquema para SAIFI |
+| 7 — Diagnóstico | Residuos, QQ-plot, comparación de especificaciones |
+| 8 — SAR/SEM | Corte transversal ponderado por suma de dígitos (más peso a semanas recientes), tests LM, comparación AIC/LR |
+
+**Variables de red incorporadas en este documento** (desde el
+documento 6): `longitud_red_km`, `densidad_terminales` — se agregaron
+a `vars_candidatas`/`vars_modelo` y a la fórmula del modelo SAR/SEM
+(`formula_espacial`).
+
+**Pendiente:** modelo de conteo (Poisson/binomial negativo) para
+`n_eventos`/`usuarios_afectados`, dado que son variables de naturaleza
+discreta — mencionado en las conclusiones como próximo paso, aún no
+implementado.
+
+```{r ref-7, eval=FALSE}
+# file.edit(file.path(Sys.getenv("UBICACION_DATA"), "modelo_saidi_saifi_cuadrantes_reales.Rmd"))
+```
+
+---
+
+# Diccionario consolidado del panel final
+
+`data_final_modelo_cuadrantes_reales.rds` / `.csv` — unidad: cuadrante x semana.
+
+```{r diccionario-consolidado, eval=FALSE}
+# Este chunk sí se puede correr (eval=TRUE) para generar la tabla
+# real desde el .rds actual, en vez de la lista estática de abajo:
+#
+# data_final <- readRDS(file.path(Sys.getenv("UBICACION_DATA"), "data_final_modelo_cuadrantes_reales.rds"))
+# dplyr::glimpse(data_final)
+```
+
+| Bloque | Variables | Varía en tiempo | Documento de origen |
+|---|---|---|---|
+| Identificación | `id_cuadrante`, `semana` | — | Original |
+| Clima | `temp_media/max/min_semana`, `humedad_media_semana`, `viento_medio/max_semana`, `precip_total_semana` | Sí | Original |
+| Fallas / indicadores | `usuarios_afectados`, `elementos_afectados`, `usuarios_totales` (sistema, constante), `cantidad_usuarios_cuadrante` (denominador real), `n_eventos`, `duracion_total`, `hubo_falla`, `SAIDI`, `SAIFI` | Sí | Original + verificado en Doc. 2 |
+| Vegetación | `ndvi_semanal`, `log_ndvi`, `cat_ndvi` | Sí | Doc. 2 |
+| Infraestructura | `n_elementos`, `n_tipos_infraestructura`, `n_transformadores`, `n_aisladeros`, `n_cuchillas`, `n_interruptores`, `n_reconectadores`, `prop_*` | No | Doc. 1 (unido en Doc. 2) |
+| Estrato y tipo de uso (real, por cuadrante) | `prop_estrato_1..6`, `prop_industrial`, `prop_comercial`, `prop_oficial`, `prop_provisional`, `prop_alumbrado`, `estrato_modal_real`, `prop_no_residencial` | No | Doc. 2 (reemplaza estrato municipal) |
+| Activos y mantenimiento | `edad_activo_mas_viejo_anios`, `edad_activo_mas_nuevo_anios`, `rango_edad_activos_anios`, `PROM_CANT_MODIFICACIONES` | Parcial | Doc. 2 |
+| Estratificación municipal (histórico) | `codigo_municipio`, `municipio`, `estrato_predominante_municipal` (superado), `n_estratos_municipio` | No | Doc. 3 — `codigo_municipio`/`municipio` siguen usándose para Doc. 4-5 |
+| Desastres UNGRD | `n_eventos_catastroficos`, `hubo_evento_catastrofico`, `hubo_inundacion`, `hubo_movimiento_masa`, `hubo_vendaval`, `personas_afectadas_evt` | Sí | Doc. 4 |
+| Sismicidad | `n_sismos_r{25,50,100}`, `n_sismos_m{2,3,4}_r{...}`, `magnitud_max_r{...}`, `dist_sismo_min_km_r{...}`, `hubo_sismo_r50` | Sí | Doc. 5 |
+| Topología de red | `longitud_red_km`, `n_circuitos_cuadrante`, `n_nodos_terminales`, `densidad_terminales`, `tension_predominante` | No | Doc. 6 |
+
+---
+
+# Mapa de archivos en la carpeta UBICACION_DATA
+
+```{r entorno, eval=TRUE, include=FALSE}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+```
+
+```{r listar-archivos, eval=TRUE, echo=FALSE, results='asis'}
+# Este chunk SÍ se ejecuta al knitear (eval=TRUE): lista en vivo qué
+# archivos existen realmente en la carpeta, para detectar si falta
+# generar alguno.
+ruta_downloads <- Sys.getenv("UBICACION_DATA")
+
+archivos_esperados <- c(
+  "fallas_eventos.gpkg",
+  "infraestructura_cuadrantes_reales.gpkg",
+  "mapa_infraestructura_cuadrantes_reales.html",
+  "infraestructura_por_cuadrante_real.csv",
+  "ndvi_semanal_por_cuadrante_real.csv",
+  "centroides_cuadrantes_reales.csv",
+  "estratificacion_municipal_por_cuadrante.csv",
+  "eventos_catastroficos_municipio_semana.csv",
+  "eventos_catastroficos_cuadrante_semana.csv",
+  "sismos_sgc.geojson",
+  "sismos_cuadrante_semana_r25km.csv",
+  "sismos_cuadrante_semana_r50km.csv",
+  "sismos_cuadrante_semana_r100km.csv",
+  "tramos_red_electrica.gpkg",
+  "longitud_red_por_cuadrante.csv",
+  "nodos_terminales_por_cuadrante.csv",
+  "red_electrica_resumen_por_cuadrante.csv",
+  "mapa_red_electrica_tension_nodos_terminales.html",
+  "mapa_longitud_red_por_cuadrante.html",
+  "grafo_red_electrica.rds",
+  "distancias_electricas_cuadrante.rds",
+  "pesos_vecindad_electrica.rds",
+  "data_final_modelo_cuadrantes_reales.rds",
+  "data_final_modelo_cuadrantes_reales.csv"
+)
+
+if (dir.exists(ruta_downloads)) {
+  estado <- data.frame(
+    archivo = archivos_esperados,
+    existe  = ifelse(file.exists(file.path(ruta_downloads, archivos_esperados)), "✅", "❌")
+  )
+  knitr::kable(estado, caption = "Estado actual de los archivos esperados en Downloads")
+} else {
+  cat("La carpeta Downloads no es accesible desde esta sesión de knit.")
+}
+```
+
+---
+
+# Pendientes y advertencias abiertas
+
+1. **~~SAIDI/SAIFI eran proxy~~ — Resuelto (versión final).** Cuatro
+   iteraciones hasta llegar a `cantidad_usuarios_cuadrante` (denominador
+   real por cuadrante, entrega definitiva del compañero de tesis).
+   Verificado por recálculo manual (documento 2).
+2. **~~Mantenimiento preventivo — pendiente~~ — Resuelto.**
+   `FECHA_ACTIVO_MAS_VIEJO`, `FECHA_ACTIVO_MAS_NUEVO` y
+   `PROM_CANT_MODIFICACIONES` incorporadas en el documento 2, con las
+   variables derivadas `edad_activo_mas_viejo_anios`,
+   `edad_activo_mas_nuevo_anios`, `rango_edad_activos_anios`. Resuelve
+   el hueco de variables "operativas"/condición de la red frente a los
+   objetivos de tesis. Incorporadas también al modelo (Parte 4, 8, 10).
+3. **~~Estrato municipal — precisión limitada~~ — Resuelto con
+   composición real.** `prop_estrato_1..6` y `estrato_modal_real`
+   reemplazan a `estrato_predominante_municipal` con precisión de
+   cuadrante en vez de municipio. El documento 3 pasa a rol secundario
+   (sigue siendo necesario solo para el mapeo cuadrante→municipio que
+   usan los documentos 4 y 5).
+4. **Sismos:** el catálogo `sismos_NS` se conserva sin depurar
+   (magnitudes pequeñas y profundidades negativas incluidas a
+   propósito). La decisión de qué umbral de magnitud usar en el
+   modelo final queda abierta — comparar `n_sismos` vs. `n_sismos_m3`
+   vs. `dist_sismo_min_km` por capacidad explicativa.
+5. **Variables estáticas vs. efectos fijos:** infraestructura,
+   composición de estrato/tipo de uso y topología de red son
+   time-invariant — no usar como término aditivo simple en modelos con
+   efectos fijos de cuadrante (colinealidad perfecta; se identifican en
+   Pooled OLS y en el modelo SAR/SEM de corte transversal). Las
+   variables de edad de activos SÍ varían en el tiempo (relativas a
+   cada semana) y pueden identificarse en modelos FE.
+6. **~~Dimensión espacial no explícita~~ — Resuelto.** Doc. 7 (Parte
+   1b) incorpora rezago espacial de vecinos geográficos
+   (`SAIDI_vecinos_lag1`, `n_eventos_vecinos`, `ndvi_vecinos`) con
+   test de Moran's I previo. Doc. 6 agrega la **vecindad eléctrica
+   real** (grafo de circuitos) y la compara contra la geográfica. Doc.
+   7 (Parte 8) estima formalmente SAR/SEM sobre corte transversal.
+7. **Radios de sismicidad (25/50/100 km):** decidir cuál usar como
+   variable principal del modelo final tras evaluar poder explicativo;
+   por ahora `r50` es el default en el panel, pero es una elección
+   provisional.
+8. **~~Modelo de conteo pendiente~~ — Resuelto.** Doc. 7 (Parte 10)
+   implementa Poisson y Binomial Negativo sobre `usuarios_afectados`,
+   con test de sobredispersión y comparación formal contra el enfoque
+   continuo de SAIDI/SAIFI.
+9. **Catálogo de datos formal:** esta guía documenta entradas/salidas
+   por script, pero falta un documento único tipo tabla (fuente,
+   sistema de origen, período, granularidad, % completitud,
+   limitaciones) que sistematice todo lo ya disperso en cada
+   documento — requerido explícitamente por el objetivo específico 1
+   de la tesis.

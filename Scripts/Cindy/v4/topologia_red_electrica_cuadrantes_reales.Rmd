@@ -1,0 +1,982 @@
+---
+title: "Topología de la red eléctrica: grafo, vecindad eléctrica y exposición por cuadrante"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introducción
+
+Este documento incorpora la **topología real de la red eléctrica**
+(`secciones_linea_estructuras`) al panel semana x cuadrante,
+resolviendo una limitación que quedó documentada en el modelo
+predictivo: la vecindad usada hasta ahora entre cuadrantes era
+**geográfica** (`spdep::poly2nb()`, contigüidad de polígonos), pero dos
+cuadrantes pueden estar lejos en el mapa y sin embargo compartir el
+mismo circuito eléctrico — o estar geográficamente pegados y no tener
+ninguna relación eléctrica entre sí.
+
+**Qué aporta esta fuente, en tres niveles:**
+
+1. **Longitud de red por cuadrante** — variable de exposición física
+   más precisa que el conteo de elementos (`n_elementos`): más
+   kilómetros de línea expuestos a intemperie/vegetación/sismos.
+2. **Grafo eléctrico real** (`CODIGO_ESTRUCTURA_INICIO`/`CODIGO_ESTRUCTURA_FIN`
+   como aristas) — permite
+   calcular **distancia eléctrica** (metros de cable) entre dos puntos
+   cualesquiera de la red, no solo distancia geográfica en línea recta.
+3. **Vecindad eléctrica entre cuadrantes** — reemplaza/complementa la
+   matriz de vecindad geográfica usada en el modelo SAR/SEM: dos
+   cuadrantes son vecinos eléctricos si están conectados en el mismo
+   circuito dentro de un radio de cable dado, independientemente de su
+   distancia geográfica real.
+
+**Hallazgo estructural importante de la fuente:** las filas con
+`CODIGO_ESTRUCTURA_FIN = NA` no son datos faltantes — marcan **nodos
+terminales de la red** (el punto donde termina un ramal: típicamente
+un transformador de distribución final o un remate de línea). En
+redes de distribución radiales, los tramos terminales suelen acumular
+más fallas que los tramos cercanos a la subestación (menor
+redundancia, mayor exposición acumulada de cable). Por eso se separan
+en una capa propia en vez de descartarse.
+
+## Paquetes
+
+```{r red-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+paquetes_red <- c("sf", "dplyr", "tidyr", "ggplot2", "knitr", "kableExtra",
+                  "scales", "leaflet", "igraph", "spdep", "purrr", "readr")
+
+invisible(lapply(paquetes_red, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+```
+
+```{r entorno}
+# Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+## Carga de insumos previos
+
+```{r red-recargar-insumos}
+if (!exists("cuadrantes_infra")) {
+  cuadrantes_infra <- st_read(
+    file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg"),
+    layer = "cuadrantes_infra_reales", quiet = TRUE
+  )
+  cat("cuadrantes_infra recargado desde el .gpkg exportado.\n")
+}
+
+cuadrantes_infra <- cuadrantes_infra %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE)) %>%
+  st_transform(4326)
+
+if (!exists("centroides_cuadrante_real")) {
+  ruta_centroides <- file.path(UBICACION_DATA, "centroides_cuadrantes_reales.csv")
+  centroides_cuadrante_real <- readr::read_csv(ruta_centroides, show_col_types = FALSE)
+  cat("centroides_cuadrante_real recargado desde CSV.\n")
+}
+
+if (!exists("data_final")) {
+  data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds")) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante))
+  cat("data_final recargado desde el .rds exportado.\n")
+}
+
+cat(sprintf("cuadrantes_infra: %d polígonos | data_final: %d filas\n",
+            nrow(cuadrantes_infra), nrow(data_final)))
+```
+
+## Carga de la red eléctrica
+
+Ajusta la ruta si `secciones_linea_estructuras` no está ya en el
+entorno de esta sesión. El archivo fuente usa `;` como separador de
+columnas (formato regional es-CO), no `,` — por eso se usa
+`read_delim()` en vez de `read_csv()`.
+
+```{r red-cargar-secciones}
+recargar_secciones <- !exists("secciones_linea_estructuras") ||
+  ncol(secciones_linea_estructuras) < 5   # detecta si quedó mal parseado en un intento previo (todo en 1 columna)
+
+if (recargar_secciones) {
+  ruta_red <- file.path(UBICACION_DATA, "secciones_linea_estructuras.csv")   # ajustar si el nombre real es distinto
+
+  if (!file.exists(ruta_red)) {
+    stop(
+      "No se encontró el archivo en: ", ruta_red,
+      "\nBusca la ruta real con:\n",
+      "  list.files(UBICACION_DATA, pattern = 'secciones|linea|estructura', ignore.case = TRUE, full.names = TRUE)"
+    )
+  }
+
+  secciones_linea_estructuras <- readr::read_delim(
+    ruta_red,
+    delim = ";",
+    locale = readr::locale(decimal_mark = "."),
+    show_col_types = FALSE
+  )
+}
+
+cat(sprintf("Secciones de línea cargadas: %d filas, %d columnas\n",
+            nrow(secciones_linea_estructuras), ncol(secciones_linea_estructuras)))
+
+if (ncol(secciones_linea_estructuras) < 5) {
+  stop(
+    "El archivo quedó mal parseado (menos de 5 columnas). Verifica el ",
+    "separador real abriendo el archivo en un editor de texto plano, y ",
+    "ajusta 'delim' en este chunk (';', ',', '\\t')."
+  )
+}
+
+str(secciones_linea_estructuras)
+```
+
+---
+
+# Parte 1 — Separación: tramos de línea vs. nodos terminales
+
+Como se estableció en la exploración inicial, `CODIGO_ESTRUCTURA_FIN`
+en `NA` indica **fin de ramal**, no dato faltante. Se separan ambos
+tipos de registro porque cumplen roles distintos en el análisis.
+
+```{r red-separar-tramos-terminales}
+tramos_linea <- secciones_linea_estructuras %>%
+  filter(!is.na(LON_FIN), !is.na(LAT_FIN))
+
+nodos_terminales <- secciones_linea_estructuras %>%
+  filter(is.na(LON_FIN) | is.na(LAT_FIN)) %>%
+  select(
+    NOMBRE_CIRCUITO, CODIGO_SECCION_LINEA,
+    CODIGO_ESTRUCTURA_INICIO, LON_INICIO, LAT_INICIO,
+    NODO1_ID, TENSION, FASES
+  )
+
+cat(sprintf(
+  "Tramos de línea: %d | Nodos terminales (fin de ramal): %d de %d totales (%.1f%%)\n",
+  nrow(tramos_linea), nrow(nodos_terminales), nrow(secciones_linea_estructuras),
+  100 * nrow(nodos_terminales) / nrow(secciones_linea_estructuras)
+))
+```
+
+## Distribución de tensión y fases
+
+```{r red-distribucion-tension, fig.width=8, fig.height=4}
+secciones_linea_estructuras %>%
+  count(TENSION, sort = TRUE) %>%
+  ggplot(aes(x = factor(TENSION), y = n)) +
+  geom_col(fill = "#3182bd") +
+  geom_text(aes(label = n), vjust = -0.3, size = 3) +
+  labs(title = "Distribución de niveles de tensión en la red", x = "Tensión (kV)", y = "N° de tramos/nodos") +
+  theme_minimal(base_size = 12)
+```
+
+## Circuitos con más tramos (los alimentadores más grandes)
+
+```{r red-top-circuitos, fig.width=8, fig.height=5}
+secciones_linea_estructuras %>%
+  count(NOMBRE_CIRCUITO, sort = TRUE) %>%
+  slice_max(n, n = 15) %>%
+  ggplot(aes(x = reorder(NOMBRE_CIRCUITO, n), y = n)) +
+  geom_col(fill = "#31a354") +
+  coord_flip() +
+  labs(title = "Circuitos con más tramos registrados (top 15)", x = NULL, y = "N° de tramos") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 2 — Construcción de la geometría de línea
+
+```{r red-construir-geometria}
+# ------------------------------------------------------------------
+# Versión vectorizada: en vez de rowwise() + mutate() (una llamada a
+# st_linestring por fila, ~35,000 veces), se construyen todas las
+# geometrías en un solo paso usando lapply + do.call, mucho más rápido
+# porque evita el overhead de crear un objeto sf por fila individual.
+# ------------------------------------------------------------------
+
+datos_validos <- tramos_linea %>%
+  filter(
+    !is.na(LON_INICIO), !is.na(LAT_INICIO),
+    !is.na(LON_FIN), !is.na(LAT_FIN),
+    !(LON_INICIO == LON_FIN & LAT_INICIO == LAT_FIN)
+  )
+
+cat(sprintf("Construyendo geometría para %d tramos...\n", nrow(datos_validos)))
+
+# Lista de matrices 2x2 (inicio, fin) — sigue siendo un loop, pero
+# sin la sobrecarga de rowwise()/mutate() creando un sf incremental
+lista_geometrias <- lapply(seq_len(nrow(datos_validos)), function(i) {
+  st_linestring(matrix(
+    c(datos_validos$LON_INICIO[i], datos_validos$LAT_INICIO[i],
+      datos_validos$LON_FIN[i],    datos_validos$LAT_FIN[i]),
+    ncol = 2, byrow = TRUE
+  ))
+})
+
+tramos_sf <- datos_validos %>%
+  st_sf(geometry = st_sfc(lista_geometrias, crs = 4326))
+
+cat(sprintf(
+  "Tramos con geometría construida: %d de %d (%.1f%% descartados por coordenadas incompletas o longitud 0)\n",
+  nrow(tramos_sf), nrow(tramos_linea),
+  100 * (1 - nrow(tramos_sf) / nrow(tramos_linea))
+))
+```
+
+```{r red-nodos-terminales-sf}
+nodos_terminales_sf <- nodos_terminales %>%
+  filter(!is.na(LON_INICIO), !is.na(LAT_INICIO)) %>%
+  st_as_sf(coords = c("LON_INICIO", "LAT_INICIO"), crs = 4326, remove = FALSE)
+```
+
+## Mapa exploratorio: red y nodos terminales
+
+```{r red-mapa-exploratorio, fig.width=9, fig.height=7}
+
+set.seed(123)
+
+# Muestra de tramos (ajusta el tamaño según qué tan rápido lo quieras)
+tramos_muestra <- tramos_sf %>% slice_sample(n = min(4000, nrow(tramos_sf)))
+
+# Muestra proporcional de nodos terminales (menos elementos, pero
+# igual pueden ser muchos)
+nodos_muestra <- nodos_terminales_sf %>% slice_sample(n = min(1000, nrow(nodos_terminales_sf)))
+
+cat(sprintf("Mostrando muestra: %d de %d tramos | %d de %d nodos terminales\n",
+            nrow(tramos_muestra), nrow(tramos_sf),
+            nrow(nodos_muestra), nrow(nodos_terminales_sf)))
+
+pal_tension <- colorNumeric("viridis", domain = tramos_sf$TENSION)  # dominio de color con los datos completos, para que la escala sea representativa
+
+leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    data = cuadrantes_infra, fillColor = "transparent",
+    color = "gray50", weight = 0.5, opacity = 0.5
+  ) %>%
+  addPolylines(
+    data = tramos_muestra, color = ~pal_tension(TENSION), weight = 1.2, opacity = 0.7,
+    label = ~paste0(NOMBRE_CIRCUITO, " — ", TENSION, " kV")
+  ) %>%
+  addCircleMarkers(
+    data = nodos_muestra, radius = 2, color = "#de2d26",
+    stroke = FALSE, fillOpacity = 0.8,
+    label = ~paste0("Nodo terminal — ", NOMBRE_CIRCUITO)
+  ) %>%
+  addLegend(pal = pal_tension, values = tramos_sf$TENSION, title = "Tensión (kV)", position = "bottomright")
+
+# pal_tension <- colorNumeric("viridis", domain = tramos_sf$TENSION)
+# 
+# leaflet() %>%
+#   addProviderTiles(providers$CartoDB.Positron) %>%
+#   addPolygons(
+#     data = cuadrantes_infra, fillColor = "transparent",
+#     color = "gray50", weight = 0.5, opacity = 0.5
+#   ) %>%
+#   addPolylines(
+#     data = tramos_sf, color = ~pal_tension(TENSION), weight = 1.2, opacity = 0.7,
+#     label = ~paste0(NOMBRE_CIRCUITO, " — ", TENSION, " kV")
+#   ) %>%
+#   addCircleMarkers(
+#     data = nodos_terminales_sf, radius = 2, color = "#de2d26",
+#     stroke = FALSE, fillOpacity = 0.8,
+#     label = ~paste0("Nodo terminal — ", NOMBRE_CIRCUITO)
+#   ) %>%
+#   addLegend(pal = pal_tension, values = tramos_sf$TENSION, title = "Tensión (kV)", position = "bottomright")
+```
+
+---
+
+# Parte 3 — Longitud de red y nodos terminales por cuadrante
+
+```{r red-longitud-por-cuadrante}
+# ------------------------------------------------------------------
+# Versión optimizada: separa tramos "internos" (dentro de un solo
+# cuadrante, mayoría de los casos) de tramos "fronterizos" (cruzan un
+# límite y sí necesitan el corte geométrico real de st_intersection).
+# Evita aplicar la operación más costosa (st_intersection) a los
+# 38,044 tramos completos — solo se usa sobre los que de verdad
+# cruzan un límite de cuadrante.
+# ------------------------------------------------------------------
+
+# 1) Proyectar UNA vez, antes de cualquier operación geométrica
+#    (mucho más rápido que transformar después de fragmentar)
+tramos_proj     <- st_transform(tramos_sf, 3116)
+cuadrantes_proj <- st_transform(cuadrantes_infra, 3116)
+
+# 2) Asignar cada tramo a TODOS los cuadrantes que toca (st_intersects
+#    es mucho más barato que st_intersection: no calcula geometría de
+#    corte, solo pregunta sí/no)
+tramo_cuadrantes <- st_intersects(tramos_proj, cuadrantes_proj)
+n_cuadrantes_por_tramo <- lengths(tramo_cuadrantes)
+
+cat(sprintf(
+  "Tramos dentro de un solo cuadrante: %d | Tramos que cruzan límites: %d | Sin cuadrante: %d\n",
+  sum(n_cuadrantes_por_tramo == 1), sum(n_cuadrantes_por_tramo > 1), sum(n_cuadrantes_por_tramo == 0)
+))
+
+# 3) Tramos internos (mayoría): longitud completa, sin intersección
+idx_internos <- which(n_cuadrantes_por_tramo == 1)
+
+tramos_internos <- tramos_proj[idx_internos, ] %>%
+  mutate(id_cuadrante = cuadrantes_proj$id_cuadrante[sapply(tramo_cuadrantes[idx_internos], `[`, 1)]) %>%
+  st_drop_geometry() %>%
+  mutate(longitud_km = LONGITUD_M / 1000) %>%
+  select(id_cuadrante, longitud_km, NOMBRE_CIRCUITO, TENSION)
+
+# 4) Tramos fronterizos (minoría): SOLO estos pasan por la operación
+#    costosa de corte geométrico real
+idx_fronterizos <- which(n_cuadrantes_por_tramo > 1)
+
+if (length(idx_fronterizos) > 0) {
+  tramos_fronterizos <- st_intersection(
+    tramos_proj[idx_fronterizos, ],
+    cuadrantes_proj
+  ) %>%
+    mutate(longitud_km = as.numeric(st_length(.)) / 1000) %>%
+    st_drop_geometry() %>%
+    select(id_cuadrante, longitud_km, NOMBRE_CIRCUITO, TENSION)
+} else {
+  tramos_fronterizos <- tramos_internos[0, ]
+}
+
+# 5) Unir ambos resultados y agregar por cuadrante
+longitud_por_cuadrante <- bind_rows(tramos_internos, tramos_fronterizos) %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    longitud_red_km       = sum(longitud_km, na.rm = TRUE),
+    n_circuitos_cuadrante = n_distinct(NOMBRE_CIRCUITO),
+    n_tramos_cuadrante    = n(),
+    tension_predominante  = as.numeric(names(sort(table(TENSION), decreasing = TRUE))[1]),
+    .groups = "drop"
+  )
+
+cat(sprintf("Cuadrantes con red intersectada: %d de %d\n",
+            nrow(longitud_por_cuadrante), nrow(cuadrantes_infra)))
+
+kable(head(longitud_por_cuadrante, 10), digits = 2,
+      caption = "Vista previa — longitud de red por cuadrante") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+```{r red-nodos-terminales-por-cuadrante}
+nodos_terminales_por_cuadrante <- st_join(
+  nodos_terminales_sf,
+  cuadrantes_infra %>% select(id_cuadrante),
+  join = st_within
+) %>%
+  st_drop_geometry() %>%
+  filter(!is.na(id_cuadrante)) %>%
+  group_by(id_cuadrante) %>%
+  summarise(n_nodos_terminales = n(), .groups = "drop")
+
+cat(sprintf("Cuadrantes con al menos un nodo terminal: %d\n",
+            nrow(nodos_terminales_por_cuadrante)))
+```
+
+## Distribución de longitud de red por cuadrante
+
+```{r red-plot-longitud-distribucion, fig.width=8, fig.height=5}
+ggplot(longitud_por_cuadrante, aes(x = longitud_red_km)) +
+  geom_histogram(bins = 40, fill = "#3182bd", color = "white") +
+  labs(title = "Distribución de la longitud de red por cuadrante", x = "Longitud de red (km)", y = "N° de cuadrantes") +
+  theme_minimal(base_size = 12)
+```
+
+## Mapa: longitud de red por cuadrante
+
+```{r red-mapa-longitud, fig.width=9, fig.height=7}
+mapa_longitud_datos <- cuadrantes_infra %>%
+  left_join(longitud_por_cuadrante, by = "id_cuadrante") %>%
+  left_join(nodos_terminales_por_cuadrante, by = "id_cuadrante")
+
+pal_longitud <- colorNumeric("YlOrRd", domain = mapa_longitud_datos$longitud_red_km, na.color = "grey85")
+
+leaflet(mapa_longitud_datos) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    fillColor = ~pal_longitud(longitud_red_km), fillOpacity = 0.7,
+    color = "gray40", weight = 0.6, opacity = 0.8,
+    label = ~paste0("Cuadrante ", id_cuadrante, ": ", round(longitud_red_km, 2),
+                    " km | ", ifelse(is.na(n_nodos_terminales), 0, n_nodos_terminales), " nodos terminales")
+  ) %>%
+  addLegend(pal = pal_longitud, values = ~longitud_red_km, title = "Longitud de red\n(km)", position = "bottomright")
+```
+
+---
+
+# Parte 4 — Grafo eléctrico
+
+## Construcción y control de calidad
+
+**Nota metodológica importante:** el grafo se construye con
+`CODIGO_ESTRUCTURA_INICIO`/`CODIGO_ESTRUCTURA_FIN` como identificador
+de nodo físico, **no** con `NODO1_ID`/`NODO2_ID`. Se probaron ambas
+opciones: `NODO1_ID`/`NODO2_ID` producían un grafo extremadamente
+fragmentado (12,683 componentes, el mayor con solo 832 nodos — 0.5%
+del total), mientras que `CODIGO_ESTRUCTURA` da una tasa de
+coincidencia INICIO=FIN de 91.3% (vs. 70.1% del otro esquema) y un
+componente principal de 54,082 nodos (57.3% del total). Esto sugiere
+que `NODO1_ID`/`NODO2_ID` son identificadores de otro sistema (modelo
+de flujo de carga / SCADA) que no necesariamente se preservan entre
+tramos consecutivos de la digitalización física de la red.
+
+```{r red-construir-grafo}
+grafo_red <- secciones_linea_estructuras %>%
+  filter(!is.na(CODIGO_ESTRUCTURA_INICIO), !is.na(CODIGO_ESTRUCTURA_FIN)) %>%
+  select(CODIGO_ESTRUCTURA_INICIO, CODIGO_ESTRUCTURA_FIN, LONGITUD_M, NOMBRE_CIRCUITO) %>%
+  igraph::graph_from_data_frame(directed = FALSE)
+
+n_componentes <- igraph::components(grafo_red)$no
+tamanos_componentes <- igraph::components(grafo_red)$csize
+
+cat(sprintf(
+  "Grafo construido: %d nodos, %d aristas, %d componentes conectados\n",
+  igraph::vcount(grafo_red), igraph::ecount(grafo_red), n_componentes
+))
+cat(sprintf(
+  "Componente más grande: %d nodos (%.1f%% del total)\n",
+  max(tamanos_componentes), 100 * max(tamanos_componentes) / sum(tamanos_componentes)
+))
+```
+
+## Control de calidad: componentes vs. circuitos declarados
+
+Con 613 componentes frente a ~174 circuitos declarados (~3.5
+componentes por circuito en promedio), sigue habiendo cierta
+fragmentación — normal y manejable, probablemente por tramos con
+`CODIGO_ESTRUCTURA` mal digitalizado o extremos de red reales sin
+continuación registrada. No se busca un único componente global: cada
+`NOMBRE_CIRCUITO` es una red eléctricamente independiente de las
+demás, así que lo correcto es identificar el **componente principal
+dentro de cada circuito**, no un solo componente para toda la base.
+
+```{r red-diagnostico-componentes}
+n_circuitos_distintos <- n_distinct(secciones_linea_estructuras$NOMBRE_CIRCUITO)
+
+cat(sprintf(
+  "Circuitos distintos declarados: %d | Componentes conectados en el grafo: %d (%.1f componentes/circuito)\n",
+  n_circuitos_distintos, n_componentes, n_componentes / n_circuitos_distintos
+))
+```
+
+## Tamaño de los componentes
+
+```{r red-plot-tamano-componentes, fig.width=8, fig.height=5}
+data.frame(tamano = tamanos_componentes) %>%
+  ggplot(aes(x = tamano)) +
+  geom_histogram(bins = 40, fill = "#756bb1", color = "white") +
+  scale_x_log10() +
+  labs(
+    title = "Tamaño de los componentes conectados del grafo (escala log)",
+    subtitle = "Se espera un componente grande por circuito principal, y componentes pequeños residuales",
+    x = "N° de nodos en el componente (log)", y = "N° de componentes"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 5 — Vecindad eléctrica entre cuadrantes
+
+## Nodo representativo de cada cuadrante
+
+El nodo representativo se busca como el más cercano geográficamente
+al centroide real del cuadrante, usando `CODIGO_ESTRUCTURA_INICIO`
+(coherente con el identificador usado para construir el grafo) y sus
+coordenadas propias.
+
+```{r red-nodo-representativo}
+estructura_coords <- secciones_linea_estructuras %>%
+  select(CODIGO_ESTRUCTURA_INICIO, LON_INICIO, LAT_INICIO) %>%
+  filter(!is.na(CODIGO_ESTRUCTURA_INICIO), !is.na(LON_INICIO), !is.na(LAT_INICIO)) %>%
+  distinct(CODIGO_ESTRUCTURA_INICIO, .keep_all = TRUE) %>%
+  st_as_sf(coords = c("LON_INICIO", "LAT_INICIO"), crs = 4326) %>%
+  st_transform(3116)
+
+cat(sprintf("Estructuras únicas con coordenadas: %d\n", nrow(estructura_coords)))
+
+centroides_sf <- centroides_cuadrante_real %>%
+  rename(id_cuadrante = CUADRANTE) %>%
+  mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE) %>%
+  st_transform(3116)
+
+cuadrante_a_nodo <- st_join(centroides_sf, estructura_coords, join = st_nearest_feature)
+
+cat(sprintf("Cuadrantes asignados a nodo representativo: %d\n", nrow(cuadrante_a_nodo)))
+```
+
+## Componente principal por circuito
+
+Se identifica, para cada circuito, cuál de sus componentes conectados
+es el más grande — ese es el que se considera "la red real" de ese
+circuito; los demás fragmentos del mismo circuito se tratan como no
+válidos para el cálculo de distancia eléctrica.
+
+```{r red-componente-por-circuito}
+membresia_global <- igraph::components(grafo_red)$membership
+
+estructura_circuito <- secciones_linea_estructuras %>%
+  filter(!is.na(CODIGO_ESTRUCTURA_INICIO)) %>%
+  distinct(CODIGO_ESTRUCTURA_INICIO, NOMBRE_CIRCUITO)
+
+componente_por_circuito <- estructura_circuito %>%
+  mutate(componente = membresia_global[CODIGO_ESTRUCTURA_INICIO]) %>%
+  filter(!is.na(componente)) %>%
+  count(NOMBRE_CIRCUITO, componente, name = "n_nodos") %>%
+  group_by(NOMBRE_CIRCUITO) %>%
+  slice_max(n_nodos, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+cat(sprintf("Circuitos con componente principal identificado: %d de %d\n",
+            nrow(componente_por_circuito), n_circuitos_distintos))
+
+nodos_validos_por_circuito <- estructura_circuito %>%
+  mutate(componente = membresia_global[CODIGO_ESTRUCTURA_INICIO]) %>%
+  inner_join(componente_por_circuito, by = c("NOMBRE_CIRCUITO", "componente")) %>%
+  pull(CODIGO_ESTRUCTURA_INICIO) %>%
+  unique()
+
+cat(sprintf("Nodos válidos (componente principal de su propio circuito): %d de %d totales en el grafo\n",
+            length(nodos_validos_por_circuito), igraph::vcount(grafo_red)))
+```
+
+## Distancia eléctrica entre cuadrantes
+
+Solo se calcula entre cuadrantes cuyo nodo representativo cae dentro
+del componente principal **de su propio circuito** (no un único
+componente global, ya que circuitos distintos son redes eléctricamente
+independientes entre sí).
+
+```{r red-distancia-electrica}
+cuadrante_a_nodo_valido <- cuadrante_a_nodo %>%
+  filter(CODIGO_ESTRUCTURA_INICIO %in% nodos_validos_por_circuito)
+
+cat(sprintf("Cuadrantes con nodo válido para distancia eléctrica: %d de %d\n",
+            nrow(cuadrante_a_nodo_valido), nrow(cuadrante_a_nodo)))
+
+distancias_electricas <- igraph::distances(
+  grafo_red,
+  v = cuadrante_a_nodo_valido$CODIGO_ESTRUCTURA_INICIO,
+  to = cuadrante_a_nodo_valido$CODIGO_ESTRUCTURA_INICIO,
+  weights = igraph::E(grafo_red)$LONGITUD_M
+)
+
+rownames(distancias_electricas) <- cuadrante_a_nodo_valido$id_cuadrante
+colnames(distancias_electricas) <- cuadrante_a_nodo_valido$id_cuadrante
+
+cat(sprintf("Matriz de distancia eléctrica: %d x %d cuadrantes\n",
+            nrow(distancias_electricas), ncol(distancias_electricas)))
+```
+
+**Nota:** cuadrantes en circuitos distintos tendrán distancia `Inf`
+entre sí (no existe camino en el grafo) — esto es correcto
+eléctricamente, no un error. La matriz de vecindad (siguiente paso)
+solo conecta cuadrantes dentro del mismo circuito.
+
+## Distribución de la distancia eléctrica al vecino más cercano
+
+```{r red-plot-distancia-electrica, fig.width=8, fig.height=5}
+diag(distancias_electricas) <- Inf   # excluir la distancia de un cuadrante a sí mismo
+dist_min_electrica <- apply(distancias_electricas, 1, min)
+
+cat(sprintf("Cuadrantes sin ningún otro cuadrante alcanzable en su circuito: %d de %d\n",
+            sum(!is.finite(dist_min_electrica)), length(dist_min_electrica)))
+
+data.frame(dist_min_m = dist_min_electrica) %>%
+  filter(is.finite(dist_min_m)) %>%
+  ggplot(aes(x = dist_min_m / 1000)) +
+  geom_histogram(bins = 40, fill = "#31a354", color = "white") +
+  labs(
+    title = "Distancia eléctrica al cuadrante vecino más cercano (por cable)",
+    subtitle = "Solo cuadrantes con al menos otro cuadrante en el mismo circuito",
+    x = "Distancia (km de cable)", y = "N° de cuadrantes"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Construcción de la matriz de vecindad eléctrica
+
+```{r red-matriz-vecindad-electrica}
+UMBRAL_M <- as.numeric(quantile(dist_min_electrica[is.finite(dist_min_electrica)], 0.5, na.rm = TRUE))
+# UMBRAL_M ≈ 9680 m
+
+cat(sprintf("Nuevo umbral ajustado (mediana de distancia mínima): %.0f m\n", UMBRAL_M))
+
+vecindad_electrica_bin <- (distancias_electricas <= UMBRAL_M) & is.finite(distancias_electricas)
+diag(vecindad_electrica_bin) <- FALSE
+
+n_vecinos_electricos <- rowSums(vecindad_electrica_bin)
+cat(sprintf(
+  "Umbral: %.0f m | Cuadrantes sin ningún vecino eléctrico dentro del umbral: %d de %d\n",
+  UMBRAL_M, sum(n_vecinos_electricos == 0), length(n_vecinos_electricos)
+))
+
+pesos_electricos <- spdep::mat2listw(vecindad_electrica_bin * 1, style = "W", zero.policy = TRUE)
+```
+
+---
+
+# Parte 6 — Comparación: vecindad geográfica vs. eléctrica
+
+## Matriz de vecindad geográfica (referencia, ya usada en el modelo)
+
+```{r red-vecindad-geografica-referencia}
+if (sum(!st_is_valid(cuadrantes_infra)) > 0) {
+  cuadrantes_infra <- st_make_valid(cuadrantes_infra)
+}
+
+vecinos_nb_geo <- spdep::poly2nb(cuadrantes_infra, queen = TRUE, row.names = cuadrantes_infra$id_cuadrante)
+pesos_geograficos <- spdep::nb2listw(vecinos_nb_geo, style = "W", zero.policy = TRUE)
+```
+
+## ¿Cuánto se solapan ambas vecindades?
+
+```{r red-comparar-vecindades}
+ids_comunes <- intersect(cuadrante_a_nodo_valido$id_cuadrante, cuadrantes_infra$id_cuadrante)
+
+# Para cada cuadrante común, ¿sus vecinos geográficos son también
+# vecinos eléctricos?
+comparacion_vecindad <- purrr::map_dfr(ids_comunes, function(id) {
+  idx_geo <- which(cuadrantes_infra$id_cuadrante == id)
+  vecinos_geo <- cuadrantes_infra$id_cuadrante[vecinos_nb_geo[[idx_geo]]]
+
+  idx_elec <- which(rownames(vecindad_electrica_bin) == id)
+  if (length(idx_elec) == 0) return(NULL)
+  vecinos_elec <- colnames(vecindad_electrica_bin)[vecindad_electrica_bin[idx_elec, ]]
+
+  data.frame(
+    id_cuadrante   = id,
+    n_vecinos_geo  = length(vecinos_geo),
+    n_vecinos_elec = length(vecinos_elec),
+    n_comunes      = length(intersect(vecinos_geo, vecinos_elec))
+  )
+})
+
+resumen_comparacion <- comparacion_vecindad %>%
+  summarise(
+    prom_vecinos_geo  = mean(n_vecinos_geo),
+    prom_vecinos_elec = mean(n_vecinos_elec),
+    prom_comunes      = mean(n_comunes),
+    pct_solape        = round(100 * mean(n_comunes / pmax(n_vecinos_geo, 1)), 1)
+  )
+
+kable(resumen_comparacion, digits = 2,
+      caption = "Solape entre vecindad geográfica y vecindad eléctrica") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+cat(sprintf(
+  "\n%s\n",
+  if (resumen_comparacion$pct_solape < 60) {
+    "Solape bajo: confirma que la vecindad eléctrica captura relaciones distintas a la geográfica — vale la pena usarla en el modelo espacial, no es redundante."
+  } else {
+    "Solape alto: la vecindad eléctrica se parece bastante a la geográfica en este caso — su aporte marginal al modelo espacial puede ser menor."
+  }
+))
+```
+
+## Moran's I: geográfica vs. eléctrica, sobre SAIDI promedio
+
+```{r red-moran-comparacion}
+saidi_promedio_cuadrante <- data_final %>%
+  filter(hubo_falla == 1) %>%
+  group_by(id_cuadrante) %>%
+  summarise(SAIDI_promedio = mean(SAIDI, na.rm = TRUE), .groups = "drop")
+
+saidi_geo <- cuadrantes_infra %>%
+  st_drop_geometry() %>%
+  select(id_cuadrante) %>%
+  left_join(saidi_promedio_cuadrante, by = "id_cuadrante") %>%
+  mutate(SAIDI_promedio = if_else(is.na(SAIDI_promedio), 0, SAIDI_promedio))
+
+moran_geografico <- spdep::moran.test(saidi_geo$SAIDI_promedio, pesos_geograficos, zero.policy = TRUE)
+
+saidi_elec <- data.frame(id_cuadrante = rownames(distancias_electricas)) %>%
+  left_join(saidi_promedio_cuadrante, by = "id_cuadrante") %>%
+  mutate(SAIDI_promedio = if_else(is.na(SAIDI_promedio), 0, SAIDI_promedio))
+
+moran_electrico <- spdep::moran.test(saidi_elec$SAIDI_promedio, pesos_electricos, zero.policy = TRUE)
+
+comparacion_moran <- tibble(
+  vecindad = c("Geográfica (contigüidad)", "Eléctrica (grafo, ≤2km cable)"),
+  moran_I  = c(moran_geografico$estimate[1], moran_electrico$estimate[1]),
+  p_valor  = c(moran_geografico$p.value, moran_electrico$p.value)
+)
+
+kable(comparacion_moran, digits = 4,
+      caption = "Comparación de autocorrelación espacial: vecindad geográfica vs. eléctrica") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+cat(sprintf(
+  "\n%s\n",
+  if (moran_electrico$estimate[1] > moran_geografico$estimate[1]) {
+    "La vecindad ELÉCTRICA muestra mayor autocorrelación espacial que la geográfica — sugiere que la propagación de fallas sigue más la topología del circuito que la cercanía física."
+  } else {
+    "La vecindad GEOGRÁFICA muestra mayor (o similar) autocorrelación que la eléctrica en este corte — la cercanía física explica al menos tanto como la topología de circuito."
+  }
+))
+```
+
+---
+
+# Parte 7 — Integración al panel
+
+```{r red-integrar-panel}
+data_final <- data_final %>%
+  select(-any_of(c("longitud_red_km", "n_circuitos_cuadrante", "n_tramos_cuadrante",
+                    "tension_predominante", "n_nodos_terminales"))) %>%
+  left_join(longitud_por_cuadrante, by = "id_cuadrante") %>%
+  left_join(nodos_terminales_por_cuadrante, by = "id_cuadrante") %>%
+  mutate(
+    n_nodos_terminales = replace_na(n_nodos_terminales, 0),
+    densidad_terminales = n_nodos_terminales / pmax(longitud_red_km, 0.01)
+  )
+
+cobertura_red <- data_final %>%
+  summarise(
+    filas_total          = n(),
+    cuadrantes_con_red     = n_distinct(id_cuadrante[!is.na(longitud_red_km)]),
+    pct_cuadrantes_con_red = round(100 * mean(!is.na(longitud_red_km)), 1)
+  )
+
+kable(t(cobertura_red), col.names = "Valor", caption = "Cobertura de variables de red en el panel") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## SAIDI vs. longitud de red y nodos terminales
+
+```{r red-plot-saidi-vs-red, fig.width=9, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  select(SAIDI, longitud_red_km, n_nodos_terminales) %>%
+  pivot_longer(-SAIDI, names_to = "variable", values_to = "valor") %>%
+  ggplot(aes(x = valor, y = SAIDI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#e34a33", se = TRUE) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "SAIDI vs. longitud de red y nodos terminales", x = NULL, y = "SAIDI") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 8 — Exportaciones
+
+Se exportan, en orden: (1) los dos mapas interactivos construidos en
+este documento, (2) las tablas de longitud de red y nodos terminales
+por cuadrante, (3) los insumos espaciales grandes (`tramos_sf`,
+`nodos_terminales_sf`) en un `.gpkg` con dos capas, y (4) el grafo
+eléctrico junto con las matrices de distancia/vecindad, para no tener
+que reconstruirlos desde cero en la próxima sesión (recuerda que
+`tramos_sf` y el grafo tardan varios minutos en construirse a partir
+de las 38,044 filas originales).
+
+## Mapas interactivos
+
+```{r red-exportar-mapas}
+library(htmlwidgets)
+
+# Mapa 1: red eléctrica por tensión + nodos terminales
+pal_tension <- colorNumeric("viridis", domain = tramos_sf$TENSION)
+
+mapa_red_tension <- leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    data = cuadrantes_infra, fillColor = "transparent",
+    color = "gray50", weight = 0.5, opacity = 0.5
+  ) %>%
+  addPolylines(
+    data = tramos_sf, color = ~pal_tension(TENSION), weight = 1.2, opacity = 0.7,
+    label = ~paste0(NOMBRE_CIRCUITO, " — ", TENSION, " kV")
+  ) %>%
+  addCircleMarkers(
+    data = nodos_terminales_sf, radius = 2, color = "#de2d26",
+    stroke = FALSE, fillOpacity = 0.8,
+    label = ~paste0("Nodo terminal — ", NOMBRE_CIRCUITO)
+  ) %>%
+  addLegend(pal = pal_tension, values = tramos_sf$TENSION, title = "Tensión (kV)", position = "bottomright")
+
+saveWidget(
+  mapa_red_tension,
+  file = file.path(UBICACION_DATA, "mapa_red_electrica_tension_nodos_terminales.html"),
+  selfcontained = TRUE
+)
+
+# Mapa 2: longitud de red y nodos terminales por cuadrante
+mapa_longitud_datos <- cuadrantes_infra %>%
+  left_join(longitud_por_cuadrante, by = "id_cuadrante") %>%
+  left_join(nodos_terminales_por_cuadrante, by = "id_cuadrante")
+
+pal_longitud <- colorNumeric("YlOrRd", domain = mapa_longitud_datos$longitud_red_km, na.color = "grey85")
+
+mapa_longitud_red <- leaflet(mapa_longitud_datos) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addPolygons(
+    fillColor = ~pal_longitud(longitud_red_km), fillOpacity = 0.7,
+    color = "gray40", weight = 0.6, opacity = 0.8,
+    label = ~paste0("Cuadrante ", id_cuadrante, ": ", round(longitud_red_km, 2),
+                    " km | ", ifelse(is.na(n_nodos_terminales), 0, n_nodos_terminales), " nodos terminales")
+  ) %>%
+  addLegend(pal = pal_longitud, values = ~longitud_red_km, title = "Longitud de red\n(km)", position = "bottomright")
+
+saveWidget(
+  mapa_longitud_red,
+  file = file.path(UBICACION_DATA, "mapa_longitud_red_por_cuadrante.html"),
+  selfcontained = TRUE
+)
+
+cat("Mapas exportados:\n  mapa_red_electrica_tension_nodos_terminales.html\n  mapa_longitud_red_por_cuadrante.html\n")
+```
+
+## Tablas por cuadrante
+
+```{r red-exportar-tablas}
+write_csv(longitud_por_cuadrante, file.path(UBICACION_DATA, "longitud_red_por_cuadrante.csv"))
+write_csv(nodos_terminales_por_cuadrante, file.path(UBICACION_DATA, "nodos_terminales_por_cuadrante.csv"))
+
+# Tabla consolidada: los 344 cuadrantes, con 0 explícito donde no hay
+# red o nodos terminales (útil para revisar cobertura completa)
+tabla_completa_red <- cuadrantes_infra %>%
+  st_drop_geometry() %>%
+  select(id_cuadrante) %>%
+  left_join(longitud_por_cuadrante, by = "id_cuadrante") %>%
+  left_join(nodos_terminales_por_cuadrante, by = "id_cuadrante") %>%
+  mutate(
+    longitud_red_km    = replace_na(longitud_red_km, 0),
+    n_nodos_terminales = replace_na(n_nodos_terminales, 0)
+  )
+
+write_csv(tabla_completa_red, file.path(UBICACION_DATA, "red_electrica_resumen_por_cuadrante.csv"))
+
+cat(sprintf(
+  "Tablas exportadas:\n  longitud_red_por_cuadrante.csv (%d filas)\n  nodos_terminales_por_cuadrante.csv (%d filas)\n  red_electrica_resumen_por_cuadrante.csv (%d filas, incluye cuadrantes sin red)\n",
+  nrow(longitud_por_cuadrante), nrow(nodos_terminales_por_cuadrante), nrow(tabla_completa_red)
+))
+```
+
+## Insumos espaciales grandes (`tramos_sf`, `nodos_terminales_sf`)
+
+Se guardan en un `.gpkg` con dos capas, para no tener que reconstruir
+la geometría de línea (proceso más lento del documento) en la próxima
+sesión.
+
+```{r red-exportar-insumos-espaciales}
+ruta_gpkg_red <- file.path(UBICACION_DATA, "tramos_red_electrica.gpkg")
+
+st_write(tramos_sf, ruta_gpkg_red, layer = "tramos_sf", delete_layer = TRUE)
+st_write(nodos_terminales_sf, ruta_gpkg_red, layer = "nodos_terminales_sf", delete_layer = TRUE)
+
+st_layers(ruta_gpkg_red)
+
+cat(sprintf(
+  "Insumos espaciales exportados a %s:\n  tramos_sf (%d tramos)\n  nodos_terminales_sf (%d nodos)\n",
+  ruta_gpkg_red, nrow(tramos_sf), nrow(nodos_terminales_sf)
+))
+```
+
+## Grafo eléctrico y matrices de distancia/vecindad
+
+```{r red-exportar-grafo}
+saveRDS(grafo_red, file.path(UBICACION_DATA, "grafo_red_electrica.rds"))
+saveRDS(distancias_electricas, file.path(UBICACION_DATA, "distancias_electricas_cuadrante.rds"))
+saveRDS(pesos_electricos, file.path(UBICACION_DATA, "pesos_vecindad_electrica.rds"))
+saveRDS(cuadrante_a_nodo_valido, file.path(UBICACION_DATA, "cuadrante_a_nodo_valido.rds"))
+
+cat("Grafo y matrices exportados como .rds a Downloads:\n  grafo_red_electrica.rds\n  distancias_electricas_cuadrante.rds\n  pesos_vecindad_electrica.rds\n  cuadrante_a_nodo_valido.rds\n")
+```
+
+## Panel actualizado
+
+```{r red-exportar}
+saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
+
+cat(sprintf("Panel actualizado guardado: %d filas x %d columnas (incluye variables de red)\n",
+            nrow(data_final), ncol(data_final)))
+```
+
+**Así se recargan estos insumos en otra sesión**, sin reconstruir nada:
+
+```{r red-como-recargar, eval=FALSE}
+tramos_sf           <- st_read(file.path(UBICACION_DATA, "tramos_red_electrica.gpkg"), layer = "tramos_sf")
+nodos_terminales_sf <- st_read(file.path(UBICACION_DATA, "tramos_red_electrica.gpkg"), layer = "nodos_terminales_sf")
+
+grafo_red              <- readRDS(file.path(UBICACION_DATA, "grafo_red_electrica.rds"))
+distancias_electricas  <- readRDS(file.path(UBICACION_DATA, "distancias_electricas_cuadrante.rds"))
+pesos_electricos       <- readRDS(file.path(UBICACION_DATA, "pesos_vecindad_electrica.rds"))
+cuadrante_a_nodo_valido <- readRDS(file.path(UBICACION_DATA, "cuadrante_a_nodo_valido.rds"))
+
+data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+```
+
+---
+
+# Diccionario de variables incorporadas
+
+```{r red-diccionario}
+tribble(
+  ~Variable, ~Tipo, ~Variacion, ~Descripcion,
+
+  "longitud_red_km", "Numérica", "Cuadrante (estático)",
+    "Kilómetros de línea eléctrica dentro del cuadrante. Variable de exposición física, más precisa que el conteo de elementos.",
+
+  "n_circuitos_cuadrante", "Numérica", "Cuadrante (estático)",
+    "Número de circuitos/alimentadores distintos que atraviesan el cuadrante.",
+
+  "n_nodos_terminales", "Numérica", "Cuadrante (estático)",
+    "Número de puntos donde termina un ramal dentro del cuadrante (transformadores finales/remates). Proxy de posición topológica extrema (mayor riesgo esperado en redes radiales).",
+
+  "densidad_terminales", "Numérica", "Cuadrante (estático)",
+    "n_nodos_terminales / longitud_red_km — concentración de puntas de ramal por km de red.",
+
+  "tension_predominante", "Categórica", "Cuadrante (estático)",
+    "Nivel de tensión (kV) más frecuente entre los tramos del cuadrante."
+) %>%
+  kable(caption = "Diccionario — variables de topología de red eléctrica") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
+  column_spec(4, width = "45%")
+```
+
+**Nota metodológica:** estas variables son estáticas (topología no
+cambia semana a semana en este panel), por lo que — igual que
+infraestructura y estratificación — quedan colineales con efectos
+fijos de cuadrante en modelos *within*. Son apropiadas para modelos
+*pooled*/RE, para reemplazar la matriz de vecindad geográfica por la
+eléctrica en el modelo SAR/SEM (comparación hecha en la Parte 6), o
+como interacciones con variables temporales (p. ej.
+`longitud_red_km * ndvi_semanal`, para explorar si más kilómetros de
+red expuesta amplifica el efecto de vegetación activa sobre SAIDI).
+
+**Próximo paso sugerido:** si logras identificar el nodo de
+subestación de origen de cada circuito (candidato: el nodo con mayor
+grado de conectividad, o el que nunca aparece como `NODO2_ID`), se
+puede calcular `distancia_a_subestacion_km` por cuadrante — variable
+clásica en la literatura de confiabilidad de redes radiales, que no
+se incluyó aquí por no tener aún ese nodo de origen identificado con
+certeza.
