@@ -38,3 +38,17 @@ data_consolidada_anio
 
 
 
+# consultar y ver la data data_agrupada_mod.csv.
+data_agrupada_mod <- read_csv(file.path(UBICACION_DATA, "data_agrupada_mod.csv"))
+
+dim(data_agrupada_mod)
+head(data_agrupada_mod)
+view(data_agrupada_mod)
+
+# filtrar donde usuarios_afectados > 0
+data_agrupada_mod_usuarios_afectados <- data_agrupada_mod |>
+  filter(usuarios_afectados > 0)
+
+dim(data_agrupada_mod_usuarios_afectados)
+head(data_agrupada_mod_usuarios_afectados)
+view(data_agrupada_mod_usuarios_afectados)

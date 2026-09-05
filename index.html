@@ -218,7 +218,10 @@
             <span class="report-title">Dataset de modelado D_mod (2024–2025)</span>
             <span class="report-meta">Scripts/Edwin/consolidado_data_mod.html</span>
             <span class="report-desc">
-              Sección 5.3.5 (cierre) — Filtra <code>data_agrupada.csv</code> a 2024–2025 y exporta
+              Sección 5.3.5 (cierre) — Filtra <code>data_agrupada.csv</code> a 2024–2025, asigna
+              <code>usuarios_totales</code> mensual desde
+              <code>data_usuarios_totales_sistema.csv</code>, construye
+              <code>SAIFI</code> y <code>SAIDI</code> y exporta
               <code>data_agrupada_mod.csv</code> sin sobrescribir <em>D<sub>EDA</sub></em>; insumo para
               las secciones 5.3.6+ y Etapa 4 (entrenamiento 2024 / prueba 2025).
             </span>
@@ -382,6 +385,30 @@
               sobre <code>data_agrupada_mod.csv</code> (<em>D<sub>mod</sub></em>).
             </span>
             <span class="tag">segmentacion_exploratoria.Rmd</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <section id="etapa-4">
+      <h2>Etapa 4 — Ingeniería de variables y preparación del modelo</h2>
+      <p class="section-desc">
+        Construcción del conjunto candidato <em>ex ante</em>, depuración de covariables y matriz de diseño.
+      </p>
+      <ul class="reports">
+        <li class="report-card">
+          <a href="Scripts/Edwin/asociacion_depuracion_cuantitativas.html">
+            <span class="report-title">Asociación y depuración de variables cuantitativas</span>
+            <span class="report-meta">Scripts/Edwin/asociacion_depuracion_cuantitativas.html</span>
+            <span class="report-desc">
+              Sección 5.4.3 — Conjunto candidato <em>ex ante</em> sobre <code>data_agrupada_mod.csv</code>
+              (<em>D<sub>mod</sub></em>): clima rezagado, histórico de eventos, rasgos del cuadrante,
+              exposición y estacionalidad. Asociación Spearman con <code>SAIFI</code> y <code>SAIDI</code>
+              (FDR), redundancia (|ρ| ≥ 0,70) y VIF iterativo. Exporta
+              <code>data_modelado_cuanti.csv</code> (respuestas SAIDI/SAIFI) y la bitácora
+              <code>decision_variables_cuanti.csv</code> sin eliminar variables del panel.
+            </span>
+            <span class="tag">asociacion_depuracion_cuantitativas.Rmd</span>
           </a>
         </li>
       </ul>

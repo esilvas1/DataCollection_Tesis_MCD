@@ -1,0 +1,798 @@
+---
+title: "Asociacion y depuracion de variables cuantitativas (Etapa 4)"
+author: "Edwin Silva Salas & Edwin Henao Ochoa"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+# Etapa 4 — Asociacion y depuracion de variables cuantitativas
+
+Dataset de entrada: **$D_{\mathrm{mod}}$** (`data_agrupada_mod.csv`, cuadrante × semana, 2024–2025).
+
+Este informe operacionaliza la depuracion cuantitativa de la Etapa 4. A diferencia del EDA
+(Secciones 5.3.7 y 5.3.8, informes `analisis_correlacion.html` y `analisis_multivariado.html`),
+que caracteriza asociaciones sobre las variables *tal como fueron observadas*, aqui se evalua el
+**conjunto candidato de predictoras *ex ante***: solo variables cuyo valor esta disponible
+antes del inicio de la semana $t$ que se pronostica.
+
+Criterio rector: evitar **fuga de informacion**. Por construccion se excluyen del conjunto
+candidato las variables contemporaneas de impacto posterior
+(`usuarios_afectados`$_t$, `elementos_afectados`$_t$) y la respuesta alterna contemporanea.
+La depuracion **no elimina filas ni columnas de $D_{\mathrm{mod}}$**: descarta variables de la
+matriz de diseño y deja constancia del motivo.
+
+Secuencia aplicada:
+
+1. Construccion del conjunto candidato *ex ante* (clima rezagado, historico de eventos, rasgos
+   del cuadrante, exposicion y estacionalidad).
+2. Filtro de varianza casi nula y de cobertura.
+3. Asociacion monotona (Spearman) con `SAIFI` y `SAIDI`, con correccion FDR.
+4. Depuracion por redundancia (agrupamiento por $1-|\rho|$) y por multicolinealidad (VIF iterativo).
+5. Bitacora de decisiones y exportacion de la matriz de diseño depurada.
+
+Todas las decisiones se toman **solo con el conjunto de entrenamiento (2024)**; 2025 se reserva
+para la prueba final y no interviene en la seleccion de variables.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+```
+
+```{r entorno}
+env_path <- file.path("..", "..", ".env")
+if (file.exists(".env")) {
+  readRenviron(".env")
+} else if (file.exists(env_path)) {
+  readRenviron(env_path)
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+
+path_mod <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
+if (!file.exists(path_mod)) {
+  stop("No se encontro: ", path_mod)
+}
+
+path_elementos <- file.path(
+  UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls"
+)
+
+path_salida_datos <- file.path(UBICACION_DATA, "data_modelado_cuanti.csv")
+path_salida_bitacora <- file.path(UBICACION_DATA, "decision_variables_cuanti.csv")
+
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+
+ANIO_TRAIN <- 2024
+ANIO_TEST <- 2025
+UMBRAL_RHO_REDUNDANTE <- 0.70
+UMBRAL_VIF <- 5
+UMBRAL_ALPHA_FDR <- 0.05
+```
+
+```{r funcion-guardar}
+guardar_plot <- function(plot, archivo, width, height) {
+  ggsave(
+    file.path(UBICACION_DATA, archivo),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      file.path(UBICACION_DATA, archivo),
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+```{r lectura}
+d_mod <- read_csv(path_mod, show_col_types = FALSE)
+
+if (!inherits(d_mod$semana, "Date")) {
+  d_mod <- d_mod %>% mutate(semana = as.Date(semana))
+}
+
+# Si D_mod aun no trae UT mensual, se reasigna desde data_usuarios_totales_sistema.csv
+# por mes calendario de la semana.
+path_ut <- file.path(UBICACION_DATA, "data_usuarios_totales_sistema.csv")
+necesita_ut <- !all(c("usuarios_totales", "SAIFI", "SAIDI") %in% names(d_mod)) ||
+  (n_distinct(d_mod$usuarios_totales) <= 1)
+
+if (necesita_ut) {
+  if (!file.exists(path_ut)) {
+    stop("No se encontro: ", path_ut)
+  }
+  ut_mensual <- read_csv(path_ut, show_col_types = FALSE) %>%
+    rename(periodo_op = CS1_PERIODO_OP, usuarios_totales = CS1_UT_M) %>%
+    mutate(
+      periodo_op = as.Date(periodo_op, format = "%d/%m/%y"),
+      anio_mes = floor_date(periodo_op, "month")
+    ) %>%
+    select(anio_mes, usuarios_totales) %>%
+    distinct(anio_mes, .keep_all = TRUE)
+
+  d_mod <- d_mod %>%
+    select(-any_of(c("usuarios_totales", "SAIFI", "SAIDI"))) %>%
+    mutate(anio_mes = floor_date(semana, "month")) %>%
+    left_join(ut_mensual, by = "anio_mes") %>%
+    select(-anio_mes) %>%
+    mutate(
+      SAIFI = usuarios_afectados / usuarios_totales,
+      SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
+    )
+}
+
+if (any(is.na(d_mod$usuarios_totales))) {
+  stop("Hay semanas sin UT mensual. Revisar data_usuarios_totales_sistema.csv.")
+}
+
+d_mod <- d_mod %>% arrange(id_cuadrante, semana)
+
+resumen_panel <- tibble(
+  metrica = c("Filas", "Cuadrantes", "Semanas", "Semana min", "Semana max", "Total eventos"),
+  valor = c(
+    format(nrow(d_mod), big.mark = ","),
+    as.character(n_distinct(d_mod$id_cuadrante)),
+    as.character(n_distinct(d_mod$semana)),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana)),
+    format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ",")
+  )
+)
+
+kable(resumen_panel, col.names = c("Metrica", "Valor"),
+      caption = "Panel de entrada D_mod")
+```
+
+## 1. Construccion del conjunto candidato *ex ante*
+
+Rezagos y acumulados se calculan **dentro de cada cuadrante** sobre la serie semanal ordenada.
+La exposicion (`n_activos`) proviene del inventario de elementos por cuadrante y es constante en
+el tiempo; se incorpora en escala logaritmica como candidata a *offset*.
+
+```{r exposicion}
+exposicion <- NULL
+
+if (file.exists(path_elementos) && requireNamespace("readxl", quietly = TRUE)) {
+  exposicion <- readxl::read_excel(path_elementos) %>%
+    select(ELEMENTO, CUADRANTE_1) %>%
+    distinct() %>%
+    rename(id_cuadrante = CUADRANTE_1) %>%
+    filter(!is.na(id_cuadrante)) %>%
+    count(id_cuadrante, name = "n_activos")
+}
+
+if (is.null(exposicion)) {
+  warning("Inventario de elementos no disponible; se omite la exposicion n_activos.")
+  d_base <- d_mod %>% mutate(n_activos = NA_real_)
+} else {
+  d_base <- d_mod %>%
+    mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+    left_join(
+      exposicion %>% mutate(id_cuadrante = as.character(id_cuadrante)),
+      by = "id_cuadrante"
+    )
+
+  kable(
+    tibble(
+      metrica = c("Cuadrantes con exposicion", "Cuadrantes sin exposicion",
+                  "Activos por cuadrante (mediana)", "Activos por cuadrante (max)"),
+      valor = c(
+        sum(!is.na(unique(d_base$n_activos))),
+        n_distinct(d_base$id_cuadrante[is.na(d_base$n_activos)]),
+        median(exposicion$n_activos),
+        max(exposicion$n_activos)
+      )
+    ),
+    col.names = c("Metrica", "Valor"),
+    caption = "Exposicion por cuadrante (numero de activos del inventario)"
+  )
+}
+```
+
+```{r construccion-candidatas}
+vars_clima <- c(
+  "temp_media_semana", "temp_max_semana", "temp_min_semana",
+  "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+  "precip_total_semana"
+)
+
+d_feat <- d_base %>%
+  group_by(id_cuadrante) %>%
+  mutate(
+    across(all_of(vars_clima), ~ lag(.x, 1), .names = "{.col}_lag1"),
+    across(all_of(vars_clima), ~ lag(.x, 2), .names = "{.col}_lag2"),
+    precip_acum4_lag = lag(precip_total_semana, 1) + lag(precip_total_semana, 2) +
+      lag(precip_total_semana, 3) + lag(precip_total_semana, 4),
+    eventos_lag1 = lag(n_eventos, 1),
+    eventos_lag2 = lag(n_eventos, 2),
+    eventos_lag3 = lag(n_eventos, 3),
+    eventos_ma4_lag = (lag(n_eventos, 1) + lag(n_eventos, 2) +
+      lag(n_eventos, 3) + lag(n_eventos, 4)) / 4,
+    duracion_lag1 = lag(duracion_total, 1),
+    duracion_ma4_lag = (lag(duracion_total, 1) + lag(duracion_total, 2) +
+      lag(duracion_total, 3) + lag(duracion_total, 4)) / 4
+  ) %>%
+  ungroup() %>%
+  mutate(
+    anio = year(semana),
+    semana_anio = isoweek(semana),
+    estacion_sin = sin(2 * pi * semana_anio / 52),
+    estacion_cos = cos(2 * pi * semana_anio / 52),
+    log_activos = if (all(is.na(n_activos))) NA_real_ else log(n_activos + 1),
+    particion = if_else(anio == ANIO_TRAIN, "entrenamiento", "prueba")
+  )
+
+vars_clima_lag <- c(paste0(vars_clima, "_lag1"), paste0(vars_clima, "_lag2"), "precip_acum4_lag")
+vars_historico <- c("eventos_lag1", "eventos_lag2", "eventos_lag3", "eventos_ma4_lag",
+                    "duracion_lag1", "duracion_ma4_lag")
+vars_cuadrante <- c("altitud", "latitud", "longitud", "log_activos")
+vars_estacion <- c("estacion_sin", "estacion_cos")
+
+candidatas <- c(vars_clima_lag, vars_historico, vars_cuadrante, vars_estacion)
+candidatas <- candidatas[candidatas %in% names(d_feat)]
+
+grupo_candidata <- function(v) {
+  case_when(
+    v %in% vars_clima_lag ~ "Clima rezagado",
+    v %in% vars_historico ~ "Historico de eventos",
+    v %in% vars_cuadrante ~ "Rasgo del cuadrante / exposicion",
+    v %in% vars_estacion ~ "Estacionalidad",
+    TRUE ~ "Otro"
+  )
+}
+
+kable(
+  tibble(variable = candidatas, grupo = grupo_candidata(candidatas)) %>%
+    count(grupo, name = "n_variables"),
+  col.names = c("Grupo", "Numero de candidatas"),
+  caption = "Conjunto candidato ex ante por grupo"
+)
+```
+
+```{r excluidas-por-diseno}
+excluidas_diseno <- tibble(
+  variable = c("usuarios_afectados", "elementos_afectados",
+               "SAIFI (contemporanea)", "SAIDI (contemporanea)",
+               "n_eventos (contemporanea)", "duracion_total (contemporanea)",
+               vars_clima),
+  motivo = c(
+    "Insumo de SAIFI/SAIDI; no disponible ex ante como predictora",
+    "Impacto posterior: no disponible ex ante",
+    "Variable respuesta contemporanea",
+    "Variable respuesta contemporanea",
+    "Insumo de construccion; no es la respuesta a predecir",
+    "Insumo de construccion; no es la respuesta a predecir",
+    rep("Clima contemporaneo: se sustituye por su version rezagada", length(vars_clima))
+  )
+)
+
+kable(excluidas_diseno, col.names = c("Variable", "Motivo de exclusion"),
+      caption = "Variables excluidas del conjunto candidato por diseño (previo a cualquier prueba)")
+```
+
+## 2. Cobertura y varianza casi nula
+
+Los rezagos generan valores faltantes en las primeras semanas de cada cuadrante (perdida
+esperada de cuatro semanas por cuadrante). Una candidata con cobertura inferior al 90 % se
+descarta antes de filtrar filas, para no perder cuadrantes completos por una sola variable
+(por ejemplo, cuadrantes sin correspondencia en el inventario de activos).
+
+```{r cobertura}
+UMBRAL_COBERTURA <- 0.90
+
+cobertura <- d_feat %>%
+  summarise(across(all_of(candidatas), ~ mean(!is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "cobertura_prop") %>%
+  mutate(
+    grupo = grupo_candidata(variable),
+    cobertura = round(100 * cobertura_prop, 2),
+    suficiente = cobertura_prop >= UMBRAL_COBERTURA
+  ) %>%
+  arrange(cobertura)
+
+kable(cobertura %>% slice_head(n = 10) %>% select(variable, cobertura, grupo, suficiente),
+      col.names = c("Variable", "Cobertura (%)", "Grupo", "Cobertura suficiente"),
+      caption = "Diez candidatas con menor cobertura")
+
+vars_cobertura_baja <- cobertura %>% filter(!suficiente) %>% pull(variable)
+candidatas <- setdiff(candidatas, vars_cobertura_baja)
+
+if (length(vars_cobertura_baja) > 0) {
+  kable(
+    cobertura %>%
+      filter(variable %in% vars_cobertura_baja) %>%
+      select(variable, grupo, cobertura),
+    col.names = c("Variable", "Grupo", "Cobertura (%)"),
+    caption = paste0("Candidatas descartadas por cobertura < ", UMBRAL_COBERTURA * 100, "%")
+  )
+}
+
+d_completo <- d_feat %>% drop_na(all_of(candidatas))
+
+d_train <- d_completo %>% filter(particion == "entrenamiento")
+d_test <- d_completo %>% filter(particion == "prueba")
+
+kable(
+  tibble(
+    conjunto = c("D_mod original", "Con candidatas completas",
+                 paste0("Entrenamiento (", ANIO_TRAIN, ")"),
+                 paste0("Prueba (", ANIO_TEST, ")")),
+    filas = format(c(nrow(d_feat), nrow(d_completo), nrow(d_train), nrow(d_test)),
+                   big.mark = ",")
+  ),
+  col.names = c("Conjunto", "Filas"),
+  caption = "Efecto de los rezagos sobre el numero de filas utilizables"
+)
+```
+
+```{r varianza-nula}
+diagnostico_varianza <- tibble(variable = candidatas) %>%
+  rowwise() %>%
+  mutate(
+    desv_est = sd(d_train[[variable]], na.rm = TRUE),
+    frec_modal = max(table(d_train[[variable]])) / nrow(d_train),
+    valores_unicos = n_distinct(d_train[[variable]])
+  ) %>%
+  ungroup() %>%
+  mutate(
+    varianza_casi_nula = desv_est == 0 | frec_modal > 0.99 | valores_unicos < 3
+  )
+
+vars_varianza_nula <- diagnostico_varianza %>%
+  filter(varianza_casi_nula) %>%
+  pull(variable)
+
+kable(
+  diagnostico_varianza %>%
+    mutate(desv_est = signif(desv_est, 3), frec_modal = round(frec_modal, 3)) %>%
+    select(variable, desv_est, frec_modal, valores_unicos, varianza_casi_nula) %>%
+    arrange(desv_est),
+  col.names = c("Variable", "Desv. est.", "Frec. modal", "Valores unicos", "Varianza casi nula"),
+  caption = "Filtro de varianza casi nula (entrenamiento 2024)"
+)
+```
+
+## 3. Asociacion con las variables respuesta
+
+Se usa **Spearman** por la asimetria y exceso de ceros documentados en el EDA. Los $p$-valores se
+corrigen por comparaciones multiples con el procedimiento de Benjamini--Hochberg (FDR).
+
+```{r asociacion}
+spearman_vs <- function(data, variables, respuesta) {
+  map_dfr(variables, function(v) {
+    x <- data[[v]]
+    y <- data[[respuesta]]
+    ok <- complete.cases(x, y)
+    if (sum(ok) < 3 || sd(x[ok]) == 0) {
+      return(tibble(variable = v, rho = NA_real_, p_value = NA_real_))
+    }
+    ct <- suppressWarnings(
+      cor.test(x[ok], y[ok], method = "spearman", exact = FALSE)
+    )
+    tibble(variable = v, rho = unname(ct$estimate), p_value = ct$p.value)
+  }) %>%
+    mutate(p_fdr = p.adjust(p_value, method = "BH"))
+}
+
+asoc_saifi <- spearman_vs(d_train, candidatas, "SAIFI") %>%
+  rename(rho_saifi = rho, p_saifi = p_value, fdr_saifi = p_fdr)
+
+asoc_saidi <- spearman_vs(d_train, candidatas, "SAIDI") %>%
+  rename(rho_saidi = rho, p_saidi = p_value, fdr_saidi = p_fdr)
+
+asociacion <- asoc_saifi %>%
+  left_join(asoc_saidi, by = "variable") %>%
+  mutate(
+    grupo = grupo_candidata(variable),
+    signif_alguna = (fdr_saifi < UMBRAL_ALPHA_FDR) | (fdr_saidi < UMBRAL_ALPHA_FDR)
+  ) %>%
+  arrange(desc(abs(rho_saifi)))
+
+kable(
+  asociacion %>%
+    transmute(
+      variable, grupo,
+      rho_saifi = round(rho_saifi, 3),
+      fdr_saifi = signif(fdr_saifi, 3),
+      rho_saidi = round(rho_saidi, 3),
+      fdr_saidi = signif(fdr_saidi, 3),
+      signif_alguna = if_else(signif_alguna, "Si", "No")
+    ),
+  col.names = c("Variable", "Grupo", "rho (SAIFI)", "FDR", "rho (SAIDI)", "FDR",
+                "Sig. FDR 5%"),
+  caption = "Asociacion Spearman de las candidatas ex ante con SAIFI y SAIDI (entrenamiento 2024)"
+)
+```
+
+```{r grafico-asociacion, fig.width=10, fig.height=7}
+df_plot_asoc <- asociacion %>%
+  filter(!is.na(rho_saifi)) %>%
+  mutate(variable = fct_reorder(variable, abs(rho_saifi)))
+
+p_asoc <- ggplot(df_plot_asoc, aes(x = variable, y = rho_saifi, fill = grupo)) +
+  geom_col(width = 0.72) +
+  geom_hline(yintercept = 0, linewidth = 0.3) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set2", name = "Grupo") +
+  labs(
+    title = "Asociacion Spearman: candidatas ex ante vs. SAIFI",
+    subtitle = paste0("Entrenamiento ", ANIO_TRAIN, ", n = ", format(nrow(d_train), big.mark = ","),
+                      " filas cuadrante x semana"),
+    x = NULL, y = expression(Spearman~rho)
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"), legend.position = "bottom")
+
+p_asoc
+guardar_plot(p_asoc, "asociacion_candidatas_exante_mod.png", 10, 7)
+```
+
+```{r sin-asociacion}
+vars_sin_asociacion <- asociacion %>%
+  filter(!signif_alguna | is.na(rho_saifi)) %>%
+  pull(variable)
+
+if (length(vars_sin_asociacion) == 0) {
+  cat("Todas las candidatas presentan asociacion significativa (FDR 5%) con al menos una respuesta.\n")
+} else {
+  kable(
+    asociacion %>%
+      filter(variable %in% vars_sin_asociacion) %>%
+      transmute(variable, grupo,
+                rho_saifi = round(rho_saifi, 3),
+                fdr_saifi = signif(fdr_saifi, 3),
+                fdr_saidi = signif(fdr_saidi, 3)),
+    col.names = c("Variable", "Grupo", "rho (SAIFI)", "FDR SAIFI", "FDR SAIDI"),
+    caption = "Candidatas sin asociacion significativa con ninguna respuesta (FDR 5%)"
+  )
+}
+```
+
+## 4. Depuracion por redundancia
+
+Se agrupan las candidatas con la distancia $d = 1-|\rho_{\text{Spearman}}|$ y enlace completo.
+Cada grupo con $|\rho| \geq `r UMBRAL_RHO_REDUNDANTE`$ se representa por la variable de mayor
+$|\rho|$ con `SAIFI`; las demas se marcan como redundantes.
+
+```{r redundancia}
+vars_para_redundancia <- setdiff(candidatas, c(vars_varianza_nula, vars_sin_asociacion))
+
+mat_train <- as.matrix(d_train[, vars_para_redundancia])
+rho_cand <- cor(mat_train, method = "spearman")
+
+dist_cand <- as.dist(1 - abs(rho_cand))
+hc_cand <- hclust(dist_cand, method = "complete")
+grupos_red <- cutree(hc_cand, h = 1 - UMBRAL_RHO_REDUNDANTE)
+
+prioridad <- asociacion %>%
+  filter(variable %in% vars_para_redundancia) %>%
+  transmute(variable, fuerza = abs(rho_saifi))
+
+tabla_redundancia <- tibble(
+  variable = names(grupos_red),
+  grupo_redundancia = as.integer(grupos_red)
+) %>%
+  left_join(prioridad, by = "variable") %>%
+  group_by(grupo_redundancia) %>%
+  arrange(desc(fuerza), .by_group = TRUE) %>%
+  mutate(
+    representante = first(variable),
+    conservada_redundancia = variable == representante,
+    tamano_grupo = n()
+  ) %>%
+  ungroup()
+
+kable(
+  tabla_redundancia %>%
+    filter(tamano_grupo > 1) %>%
+    transmute(
+      grupo_redundancia, variable,
+      fuerza = round(fuerza, 3),
+      representante,
+      decision = if_else(conservada_redundancia, "Conservar", "Eliminar por redundancia")
+    ) %>%
+    arrange(grupo_redundancia, desc(fuerza)),
+  col.names = c("Grupo", "Variable", "|rho| con SAIFI", "Representante", "Decision"),
+  caption = paste0("Grupos redundantes (|rho| >= ", UMBRAL_RHO_REDUNDANTE, ")")
+)
+```
+
+```{r dendrograma, fig.width=10, fig.height=6.5}
+png_dendro <- file.path(UBICACION_DATA, "dendrograma_candidatas_exante_mod.png")
+plot_dendro <- function() {
+  plot(hc_cand, main = "Agrupamiento de candidatas ex ante (1 - |rho| Spearman)",
+       xlab = "", sub = "", cex = 0.75)
+  abline(h = 1 - UMBRAL_RHO_REDUNDANTE, col = "#E84855", lty = 2, lwd = 1.5)
+}
+
+plot_dendro()
+
+png(png_dendro, width = 10, height = 6.5, units = "in", res = 300, bg = "white")
+plot_dendro()
+invisible(dev.off())
+
+if (dir.exists(path_img_tesis)) {
+  file.copy(png_dendro, file.path(path_img_tesis, basename(png_dendro)), overwrite = TRUE)
+}
+```
+
+## 5. Depuracion por multicolinealidad (VIF iterativo)
+
+Sobre las representantes de cada grupo se calcula el VIF y se elimina de forma iterativa la
+variable con VIF mas alto hasta que todas queden por debajo de `r UMBRAL_VIF`.
+
+```{r vif}
+vif_manual <- function(data, variables) {
+  map_dfr(variables, function(v) {
+    otras <- setdiff(variables, v)
+    if (length(otras) == 0) {
+      return(tibble(variable = v, vif = 1))
+    }
+    fmla <- as.formula(paste0("`", v, "` ~ ", paste0("`", otras, "`", collapse = " + ")))
+    r2 <- summary(lm(fmla, data = data))$r.squared
+    tibble(variable = v, vif = if (r2 >= 1) Inf else 1 / (1 - r2))
+  }) %>%
+    arrange(desc(vif))
+}
+
+vars_vif <- tabla_redundancia %>%
+  filter(conservada_redundancia) %>%
+  pull(variable)
+
+vif_traza <- tibble()
+eliminadas_vif <- character(0)
+
+repeat {
+  vif_actual <- vif_manual(d_train, vars_vif)
+  peor <- vif_actual %>% slice_head(n = 1)
+
+  vif_traza <- bind_rows(
+    vif_traza,
+    vif_actual %>% mutate(iteracion = length(eliminadas_vif) + 1)
+  )
+
+  if (!is.finite(peor$vif) || peor$vif < UMBRAL_VIF || length(vars_vif) <= 2) {
+    break
+  }
+
+  eliminadas_vif <- c(eliminadas_vif, peor$variable)
+  vars_vif <- setdiff(vars_vif, peor$variable)
+}
+
+vif_final <- vif_manual(d_train, vars_vif) %>%
+  mutate(
+    grupo = grupo_candidata(variable),
+    vif = round(vif, 2),
+    nivel = case_when(vif >= 10 ~ "Alta (>=10)", vif >= 5 ~ "Moderada (>=5)",
+                      TRUE ~ "Baja (<5)")
+  )
+
+kable(vif_final %>% select(variable, grupo, vif, nivel),
+      col.names = c("Variable", "Grupo", "VIF", "Nivel"),
+      caption = "VIF del conjunto retenido tras la depuracion iterativa")
+
+if (length(eliminadas_vif) == 0) {
+  cat("Ninguna variable requirio eliminacion por VIF.\n")
+} else {
+  kable(
+    vif_traza %>%
+      filter(variable %in% eliminadas_vif) %>%
+      group_by(variable) %>%
+      slice_min(iteracion, with_ties = FALSE) %>%
+      ungroup() %>%
+      transmute(iteracion, variable, vif = round(vif, 2)) %>%
+      arrange(iteracion),
+    col.names = c("Iteracion", "Variable eliminada", "VIF al eliminarse"),
+    caption = "Traza de eliminacion por multicolinealidad"
+  )
+}
+```
+
+```{r grafico-vif, fig.width=9, fig.height=6}
+p_vif <- ggplot(vif_final, aes(x = fct_reorder(variable, vif), y = vif, fill = nivel)) +
+  geom_col(width = 0.7) +
+  geom_hline(yintercept = UMBRAL_VIF, linetype = "dashed", color = "#E84855", linewidth = 0.7) +
+  coord_flip() +
+  scale_fill_manual(values = c("Baja (<5)" = "#2A9D8F", "Moderada (>=5)" = "#F4A261",
+                               "Alta (>=10)" = "#E84855"), name = "Nivel") +
+  labs(
+    title = "VIF del conjunto cuantitativo retenido",
+    subtitle = paste0("Entrenamiento ", ANIO_TRAIN, "; linea punteada: umbral ", UMBRAL_VIF),
+    x = NULL, y = "VIF"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(face = "bold"), legend.position = "bottom")
+
+p_vif
+guardar_plot(p_vif, "vif_cuanti_depurado_mod.png", 9, 6)
+```
+
+## 6. Bitacora de decisiones
+
+```{r bitacora}
+bitacora <- asociacion %>%
+  select(variable, grupo, rho_saifi, fdr_saifi, rho_saidi, fdr_saidi) %>%
+  left_join(
+    tabla_redundancia %>% select(variable, grupo_redundancia, representante, tamano_grupo),
+    by = "variable"
+  ) %>%
+  left_join(vif_final %>% select(variable, vif), by = "variable") %>%
+  mutate(
+    decision = case_when(
+      variable %in% vars_varianza_nula ~ "Eliminar",
+      variable %in% vars_sin_asociacion ~ "Eliminar",
+      variable %in% eliminadas_vif ~ "Eliminar",
+      !is.na(representante) & variable != representante ~ "Eliminar",
+      variable %in% vars_vif ~ "Conservar",
+      TRUE ~ "Eliminar"
+    ),
+    motivo = case_when(
+      variable %in% vars_varianza_nula ~ "Varianza casi nula en entrenamiento",
+      variable %in% vars_sin_asociacion ~
+        paste0("Sin asociacion significativa con las respuestas (FDR ",
+               UMBRAL_ALPHA_FDR * 100, "%)"),
+      variable %in% eliminadas_vif ~ paste0("Multicolinealidad (VIF >= ", UMBRAL_VIF, ")"),
+      !is.na(representante) & variable != representante ~
+        paste0("Redundante con ", representante, " (|rho| >= ", UMBRAL_RHO_REDUNDANTE, ")"),
+      variable %in% vars_vif ~ "Aporta señal ex ante, sin redundancia ni VIF alto",
+      TRUE ~ "No retenida"
+    )
+  ) %>%
+  arrange(decision, grupo, desc(abs(rho_saifi)))
+
+bitacora_export <- bitacora %>%
+  transmute(
+    variable, grupo, decision, motivo,
+    rho_SAIFI = round(rho_saifi, 4),
+    fdr_SAIFI = signif(fdr_saifi, 4),
+    rho_SAIDI = round(rho_saidi, 4),
+    fdr_SAIDI = signif(fdr_saidi, 4),
+    vif_final = round(vif, 3),
+    grupo_redundancia, representante_redundancia = representante
+  ) %>%
+  bind_rows(
+    excluidas_diseno %>%
+      transmute(
+        variable, grupo = "Excluida por diseño",
+        decision = "Eliminar", motivo
+      )
+  ) %>%
+  bind_rows(
+    cobertura %>%
+      filter(variable %in% vars_cobertura_baja) %>%
+      transmute(
+        variable, grupo,
+        decision = "Eliminar",
+        motivo = paste0("Cobertura insuficiente (", cobertura, "%)")
+      )
+  )
+
+kable(
+  bitacora %>%
+    transmute(variable, grupo, decision, motivo,
+              rho_saifi = round(rho_saifi, 3),
+              vif = round(vif, 2)),
+  col.names = c("Variable", "Grupo", "Decision", "Motivo", "rho (SAIFI)", "VIF"),
+  caption = "Bitacora de depuracion cuantitativa"
+)
+
+kable(
+  bitacora %>% count(decision, grupo, name = "n"),
+  col.names = c("Decision", "Grupo", "Variables"),
+  caption = "Resumen de decisiones por grupo"
+)
+```
+
+## 7. Matriz de diseño depurada
+
+Se exporta la matriz de diseño con las llaves (`id_cuadrante`, `semana`), la marca de particion
+temporal, las respuestas `SAIFI` y `SAIDI`, el divisor `usuarios_totales`, el *offset* de
+exposicion y las predictoras cuantitativas retenidas. `n_eventos` y `duracion_total` se conservan
+como insumos de construccion e historico, no como variables a predecir. Las metricas de impacto
+posterior no entran como predictoras: permanecen en `data_agrupada_mod.csv`.
+
+```{r exportar}
+vars_retenidas <- bitacora %>% filter(decision == "Conservar") %>% pull(variable)
+
+vars_offset <- intersect("log_activos", vars_retenidas)
+
+d_diseno <- d_completo %>%
+  select(
+    id_cuadrante, semana, anio, particion,
+    SAIFI, SAIDI, usuarios_totales,
+    n_eventos, duracion_total,
+    any_of(vars_offset),
+    all_of(setdiff(vars_retenidas, vars_offset))
+  )
+
+write_csv(d_diseno, path_salida_datos)
+write_csv(bitacora_export, path_salida_bitacora)
+
+kable(
+  tibble(
+    archivo = c(basename(path_salida_datos), basename(path_salida_bitacora)),
+    filas = format(c(nrow(d_diseno), nrow(bitacora_export)), big.mark = ","),
+    columnas = c(ncol(d_diseno), ncol(bitacora_export))
+  ),
+  col.names = c("Archivo exportado", "Filas", "Columnas"),
+  caption = "Salidas del proceso de depuracion cuantitativa"
+)
+
+kable(
+  d_diseno %>%
+    count(particion, anio, name = "filas") %>%
+    mutate(filas = format(filas, big.mark = ",")),
+  col.names = c("Particion", "Año", "Filas"),
+  caption = "Particion temporal de la matriz de diseño"
+)
+
+kable(
+  tibble(columna = names(d_diseno), tipo = map_chr(d_diseno, ~ class(.x)[1])),
+  col.names = c("Columna", "Tipo"),
+  caption = "Estructura de data_modelado_cuanti.csv"
+)
+
+head(d_diseno)
+```
+
+## 8. Sintesis
+
+```{r sintesis}
+mejor_clima <- asociacion %>%
+  filter(grupo == "Clima rezagado", !is.na(rho_saifi)) %>%
+  slice_max(abs(rho_saifi), n = 1, with_ties = FALSE)
+
+mejor_historico <- asociacion %>%
+  filter(grupo == "Historico de eventos", !is.na(rho_saifi)) %>%
+  slice_max(abs(rho_saifi), n = 1, with_ties = FALSE)
+
+sintesis <- tibble(
+  aspecto = c(
+    "Candidatas ex ante evaluadas",
+    "Retenidas para la matriz de diseño",
+    "Eliminadas por redundancia",
+    "Eliminadas por VIF",
+    "Eliminadas por asociacion no significativa",
+    "Mayor senal climatica rezagada",
+    "Mayor senal del historico",
+    "Filas utilizables tras rezagos"
+  ),
+  valor = c(
+    as.character(length(candidatas)),
+    as.character(length(vars_retenidas)),
+    as.character(sum(bitacora$decision == "Eliminar" &
+                       grepl("^Redundante", bitacora$motivo))),
+    as.character(length(eliminadas_vif)),
+    as.character(length(vars_sin_asociacion)),
+    paste0(mejor_clima$variable, " (rho = ", round(mejor_clima$rho_saifi, 3), ")"),
+    paste0(mejor_historico$variable, " (rho = ", round(mejor_historico$rho_saifi, 3), ")"),
+    paste0(format(nrow(d_completo), big.mark = ","), " de ",
+           format(nrow(d_feat), big.mark = ","))
+  )
+)
+
+kable(sintesis, col.names = c("Aspecto", "Valor"),
+      caption = "Sintesis de la depuracion cuantitativa")
+```
+
+El conjunto retenido constituye el bloque cuantitativo de la matriz de diseño de la Etapa 4.
+La depuracion respeta la taxonomia de tres grupos: solo entran variables disponibles antes de la
+semana pronosticada; `SAIFI` y `SAIDI` son las respuestas; y las metricas de impacto posterior
+quedan fuera de la matriz de diseño como predictoras, sin ser eliminadas del panel.
+
+Pendiente en la misma etapa: depuracion de variables **cualitativas** (codificacion de factores
+*ex ante* y agrupamiento de niveles), estandarizacion de las continuas retenidas y validacion
+cruzada de origen movil dentro de `r ANIO_TRAIN`.

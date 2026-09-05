@@ -36,10 +36,26 @@ if (UBICACION_DATA == "") {
 }
 
 path_agrupada <- file.path(UBICACION_DATA, "data_agrupada.csv")
+path_ut <- file.path(UBICACION_DATA, "data_usuarios_totales_sistema.csv")
+path_usuarios_cuad <- file.path(UBICACION_DATA, "cant_usuarios_x_transformador.csv")
+path_estrato <- file.path(UBICACION_DATA, "DATA_ESTRATO_SECTOR.csv")
+path_fechas_trafo <- file.path(UBICACION_DATA, "Fecha_transformadores.csv")
 path_salida <- file.path(UBICACION_DATA, "data_agrupada_mod.csv")
 
 if (!file.exists(path_agrupada)) {
   stop("No se encontro: ", path_agrupada)
+}
+if (!file.exists(path_ut)) {
+  stop("No se encontro: ", path_ut)
+}
+if (!file.exists(path_usuarios_cuad)) {
+  stop("No se encontro: ", path_usuarios_cuad)
+}
+if (!file.exists(path_estrato)) {
+  stop("No se encontro: ", path_estrato)
+}
+if (!file.exists(path_fechas_trafo)) {
+  stop("No se encontro: ", path_fechas_trafo)
 }
 ```
 
@@ -57,10 +73,303 @@ if ("semana" %in% names(tabla_agrupada) &&
 
 dim(tabla_agrupada)
 
+vars_estrato <- c(
+  "ESTRATO_1", "ESTRATO_2", "ESTRATO_3", "ESTRATO_4", "ESTRATO_5", "ESTRATO_6",
+  "INDUSTRIAL", "COMERCIAL", "OFICIAL", "PROVISIONAL", "ALUMBRADO_PUBLICO"
+)
+cuad_moda <- c("258", "273")
+cuad_cero <- c("68", "140", "333", "344")
+
+# Usuarios totales del sistema por mes (CS1_PERIODO_OP = 01/MM/YY, CS1_UT_M).
+# Cada semana se asocia al UT del mes calendario de la fecha de inicio de semana.
+ut_mensual <- read_csv(path_ut, show_col_types = FALSE) %>%
+  rename(
+    periodo_op = CS1_PERIODO_OP,
+    usuarios_totales = CS1_UT_M
+  ) %>%
+  mutate(
+    periodo_op = as.Date(periodo_op, format = "%d/%m/%y"),
+    anio_mes = floor_date(periodo_op, "month")
+  ) %>%
+  select(anio_mes, usuarios_totales) %>%
+  distinct(anio_mes, .keep_all = TRUE)
+
+kable(
+  ut_mensual %>%
+    mutate(anio_mes = format(anio_mes, "%Y-%m"),
+           usuarios_totales = format(usuarios_totales, big.mark = ",")) %>%
+    arrange(anio_mes),
+  col.names = c("Mes", "Usuarios totales (UT)"),
+  caption = "Usuarios totales del sistema por mes (data_usuarios_totales_sistema.csv)"
+)
+
+# Usuarios por cuadrante y mes: suma de CANTIDAD_USUARIOS de todos los
+# transformadores (TC1_CODCONEX) del cuadrante en ese ANIO-MES.
+usuarios_cuadrante_mes <- read_csv(path_usuarios_cuad, show_col_types = FALSE) %>%
+  mutate(
+    id_cuadrante = as.character(CUADRANTE),
+    anio = as.integer(ANIO),
+    mes = as.integer(MES)
+  ) %>%
+  group_by(id_cuadrante, anio, mes) %>%
+  summarise(
+    cantidad_usuarios_cuadrante = sum(CANTIDAD_USUARIOS, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(
+  usuarios_cuadrante_mes %>%
+    summarise(
+      filas = n(),
+      cuadrantes = n_distinct(id_cuadrante),
+      meses = n_distinct(paste(anio, mes)),
+      usuarios_min = min(cantidad_usuarios_cuadrante),
+      usuarios_mediana = median(cantidad_usuarios_cuadrante),
+      usuarios_max = max(cantidad_usuarios_cuadrante)
+    ) %>%
+    mutate(across(where(is.numeric), ~ format(.x, big.mark = ","))),
+  caption = "Resumen de cantidad_usuarios_cuadrante (suma por cuadrante-mes)"
+)
+
+# Estrato / sector por cuadrante y mes: suma de usuarios por categoria
+# sobre todos los transformadores del cuadrante en ese ANIO-MES.
+estrato_cuadrante_mes <- read_csv(path_estrato, show_col_types = FALSE) %>%
+  mutate(
+    id_cuadrante = as.character(CUADRANTE),
+    anio = as.integer(ANIO),
+    mes = as.integer(MES)
+  ) %>%
+  group_by(id_cuadrante, anio, mes) %>%
+  summarise(across(all_of(vars_estrato), ~ sum(.x, na.rm = TRUE)), .groups = "drop")
+
+kable(
+  estrato_cuadrante_mes %>%
+    summarise(
+      filas = n(),
+      cuadrantes = n_distinct(id_cuadrante),
+      meses = n_distinct(paste(anio, mes)),
+      across(all_of(vars_estrato), ~ round(mean(.x), 1), .names = "media_{.col}")
+    ) %>%
+    mutate(across(where(is.numeric), ~ format(.x, big.mark = ","))),
+  caption = "Resumen de estrato/sector agregado por cuadrante-mes"
+)
+
+# Reposiciones / fechas de transformadores por cuadrante.
+# Por elemento: se cuentan todas las filas (reposiciones) y se toma la ultima
+# TT2_FMODIFICACION en estado OPERACION (si no hay, la maxima fecha del elemento).
+# Por cuadrante: fecha del activo mas viejo, del mas nuevo y promedio de
+# cantidad de modificaciones.
+fechas_trafo <- read_csv(path_fechas_trafo, show_col_types = FALSE)
+names(fechas_trafo) <- gsub("^\ufeff", "", names(fechas_trafo))
+
+fechas_trafo <- fechas_trafo %>%
+  mutate(
+    id_cuadrante = as.character(ID_CUADRANTE),
+    codigo_elemento = as.character(TT2_CODIGOELEMENTO),
+    estado = toupper(trimws(as.character(TT2_ESTADO))),
+    fecha_mod = as.Date(TT2_FMODIFICACION, format = "%d/%m/%Y")
+  )
+
+fecha_ultima_elemento <- function(fecha, estado) {
+  f_op <- fecha[estado == "OPERACION" & !is.na(fecha)]
+  if (length(f_op) > 0) {
+    return(max(f_op))
+  }
+  f_all <- fecha[!is.na(fecha)]
+  if (length(f_all) == 0) {
+    return(as.Date(NA))
+  }
+  max(f_all)
+}
+
+por_elemento <- fechas_trafo %>%
+  group_by(id_cuadrante, codigo_elemento) %>%
+  summarise(
+    cant_modificaciones = n(),
+    fecha_ultima_operacion = fecha_ultima_elemento(fecha_mod, estado),
+    en_operacion = any(estado == "OPERACION", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+repos_cuadrante <- por_elemento %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    FECHA_ACTIVO_MAS_VIEJO = {
+      f <- fecha_ultima_operacion[en_operacion & !is.na(fecha_ultima_operacion)]
+      if (length(f) == 0) {
+        f2 <- fecha_ultima_operacion[!is.na(fecha_ultima_operacion)]
+        if (length(f2) == 0) as.Date(NA) else min(f2)
+      } else {
+        min(f)
+      }
+    },
+    FECHA_ACTIVO_MAS_NUEVO = {
+      f <- fecha_ultima_operacion[en_operacion & !is.na(fecha_ultima_operacion)]
+      if (length(f) == 0) {
+        f2 <- fecha_ultima_operacion[!is.na(fecha_ultima_operacion)]
+        if (length(f2) == 0) as.Date(NA) else max(f2)
+      } else {
+        max(f)
+      }
+    },
+    PROM_CANT_MODIFICACIONES = round(mean(cant_modificaciones, na.rm = TRUE), 3),
+    n_elementos = n(),
+    n_elementos_operacion = sum(en_operacion, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(
+  repos_cuadrante %>%
+    summarise(
+      cuadrantes = n(),
+      elementos_total = sum(n_elementos),
+      fecha_min = as.character(min(FECHA_ACTIVO_MAS_VIEJO, na.rm = TRUE)),
+      fecha_max = as.character(max(FECHA_ACTIVO_MAS_NUEVO, na.rm = TRUE)),
+      prom_mod_medio = round(mean(PROM_CANT_MODIFICACIONES, na.rm = TRUE), 3)
+    ),
+  caption = "Resumen de fechas y reposiciones por cuadrante (Fecha_transformadores.csv)"
+)
+
 d_mod <- tabla_agrupada %>%
   mutate(anio = year(semana)) %>%
   filter(anio %in% 2024:2025) %>%
-  select(-anio)
+  mutate(
+    anio_mes = floor_date(semana, "month"),
+    mes = month(semana),
+    id_cuadrante = as.character(id_cuadrante)
+  ) %>%
+  left_join(ut_mensual, by = "anio_mes") %>%
+  left_join(usuarios_cuadrante_mes, by = c("id_cuadrante", "anio", "mes")) %>%
+  left_join(estrato_cuadrante_mes, by = c("id_cuadrante", "anio", "mes")) %>%
+  left_join(
+    repos_cuadrante %>%
+      select(
+        id_cuadrante,
+        FECHA_ACTIVO_MAS_VIEJO,
+        FECHA_ACTIVO_MAS_NUEVO,
+        PROM_CANT_MODIFICACIONES
+      ),
+    by = "id_cuadrante"
+  ) %>%
+  select(-anio, -anio_mes, -mes)
+
+n_sin_ut <- sum(is.na(d_mod$usuarios_totales))
+if (n_sin_ut > 0) {
+  stop(
+    "Hay ", n_sin_ut,
+    " filas sin UT mensual. Revisar cobertura de data_usuarios_totales_sistema.csv."
+  )
+}
+
+n_sin_cuad_antes <- sum(is.na(d_mod$cantidad_usuarios_cuadrante))
+n_sin_estrato_antes <- sum(!complete.cases(d_mod[, vars_estrato]))
+
+# Imputacion de faltantes (usuarios y estrato/sector):
+# - 258 y 273: moda mensual del propio cuadrante
+# - 68, 140, 333 y 344: sin inventario en la fuente -> 0
+moda_usuarios <- usuarios_cuadrante_mes %>%
+  filter(id_cuadrante %in% cuad_moda) %>%
+  count(id_cuadrante, cantidad_usuarios_cuadrante, name = "n_meses") %>%
+  group_by(id_cuadrante) %>%
+  slice_max(n_meses, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  transmute(id_cuadrante, cantidad_usuarios_moda = cantidad_usuarios_cuadrante, n_meses)
+
+moda_estrato <- estrato_cuadrante_mes %>%
+  filter(id_cuadrante %in% cuad_moda) %>%
+  group_by(id_cuadrante, across(all_of(vars_estrato))) %>%
+  summarise(n_meses = n(), .groups = "drop") %>%
+  group_by(id_cuadrante) %>%
+  slice_max(n_meses, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  rename_with(~ paste0(.x, "_moda"), all_of(vars_estrato))
+
+kable(
+  moda_usuarios %>%
+    mutate(cantidad_usuarios_moda = format(cantidad_usuarios_moda, big.mark = ",")),
+  col.names = c("Cuadrante", "Moda (usuarios)", "Meses con ese valor"),
+  caption = "Moda de cantidad_usuarios_cuadrante para imputar meses faltantes (258, 273)"
+)
+
+kable(
+  moda_estrato %>% select(id_cuadrante, n_meses, ends_with("_moda")),
+  caption = "Perfil modal de estrato/sector para imputar meses faltantes (258, 273)"
+)
+
+d_mod <- d_mod %>%
+  left_join(moda_usuarios %>% select(id_cuadrante, cantidad_usuarios_moda),
+            by = "id_cuadrante") %>%
+  left_join(moda_estrato %>% select(id_cuadrante, ends_with("_moda")),
+            by = "id_cuadrante") %>%
+  mutate(
+    cantidad_usuarios_cuadrante = case_when(
+      is.na(cantidad_usuarios_cuadrante) & id_cuadrante %in% cuad_moda ~
+        cantidad_usuarios_moda,
+      is.na(cantidad_usuarios_cuadrante) & id_cuadrante %in% cuad_cero ~ 0,
+      TRUE ~ cantidad_usuarios_cuadrante
+    )
+  )
+
+for (v in vars_estrato) {
+  moda_col <- paste0(v, "_moda")
+  d_mod[[v]] <- dplyr::case_when(
+    is.na(d_mod[[v]]) & d_mod$id_cuadrante %in% cuad_moda ~ d_mod[[moda_col]],
+    is.na(d_mod[[v]]) & d_mod$id_cuadrante %in% cuad_cero ~ 0,
+    TRUE ~ d_mod[[v]]
+  )
+}
+
+d_mod <- d_mod %>%
+  select(-cantidad_usuarios_moda, -ends_with("_moda"))
+
+n_sin_cuad <- sum(is.na(d_mod$cantidad_usuarios_cuadrante))
+n_sin_estrato <- sum(!complete.cases(d_mod[, vars_estrato]))
+
+cobertura <- tibble(
+  metrica = c(
+    "NA usuarios (antes)",
+    "NA usuarios (despues)",
+    "Filas incompletas estrato (antes)",
+    "Filas incompletas estrato (despues)",
+    "% cobertura final usuarios",
+    "% cobertura final estrato"
+  ),
+  valor = c(
+    format(n_sin_cuad_antes, big.mark = ","),
+    format(n_sin_cuad, big.mark = ","),
+    format(n_sin_estrato_antes, big.mark = ","),
+    format(n_sin_estrato, big.mark = ","),
+    paste0(round(100 * (1 - n_sin_cuad / nrow(d_mod)), 2), "%"),
+    paste0(round(100 * (1 - n_sin_estrato / nrow(d_mod)), 2), "%")
+  )
+)
+kable(cobertura, col.names = c("Metrica", "Valor"),
+      caption = "Cobertura tras emparejamiento e imputacion")
+
+if (n_sin_cuad > 0 || n_sin_estrato > 0) {
+  stop("Quedan faltantes tras imputacion de usuarios/estrato.")
+}
+
+cobertura_repos <- tibble(
+  metrica = c(
+    "Cuadrantes con fechas de reposicion",
+    "Filas D_mod sin FECHA_ACTIVO_MAS_VIEJO",
+    "Filas D_mod sin PROM_CANT_MODIFICACIONES"
+  ),
+  valor = c(
+    as.character(n_distinct(repos_cuadrante$id_cuadrante)),
+    format(sum(is.na(d_mod$FECHA_ACTIVO_MAS_VIEJO)), big.mark = ","),
+    format(sum(is.na(d_mod$PROM_CANT_MODIFICACIONES)), big.mark = ",")
+  )
+)
+kable(cobertura_repos, col.names = c("Metrica", "Valor"),
+      caption = "Cobertura de columnas de reposicion/fechas de transformadores")
+
+d_mod <- d_mod %>%
+  mutate(
+    SAIFI = usuarios_afectados / usuarios_totales,
+    SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales
+  )
 
 dim(d_mod)
 range(d_mod$semana)
@@ -77,6 +386,12 @@ resumen_d_mod <- tibble(
     "Total n_eventos",
     "Total usuarios_afectados",
     "Total duracion_total (horas)",
+    "UT minimo",
+    "UT mediano",
+    "UT maximo",
+    "Meses UT distintos",
+    "SAIFI medio",
+    "SAIDI medio",
     "Semana inicio",
     "Semana fin"
   ),
@@ -87,12 +402,39 @@ resumen_d_mod <- tibble(
     format(sum(d_mod$n_eventos, na.rm = TRUE), big.mark = ","),
     format(sum(d_mod$usuarios_afectados, na.rm = TRUE), big.mark = ","),
     format(round(sum(d_mod$duracion_total, na.rm = TRUE), 1), big.mark = ","),
+    format(min(d_mod$usuarios_totales), big.mark = ","),
+    format(median(d_mod$usuarios_totales), big.mark = ","),
+    format(max(d_mod$usuarios_totales), big.mark = ","),
+    as.character(n_distinct(d_mod$usuarios_totales)),
+    signif(mean(d_mod$SAIFI, na.rm = TRUE), 3),
+    signif(mean(d_mod$SAIDI, na.rm = TRUE), 3),
     as.character(min(d_mod$semana)),
     as.character(max(d_mod$semana))
   )
 )
 
 kable(resumen_d_mod, col.names = c("Metrica", "Valor"))
+
+resumen_ut_mes <- d_mod %>%
+  mutate(mes = format(floor_date(semana, "month"), "%Y-%m")) %>%
+  group_by(mes) %>%
+  summarise(
+    n_filas = n(),
+    usuarios_totales = first(usuarios_totales),
+    saifi_medio = mean(SAIFI, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(
+  resumen_ut_mes %>%
+    mutate(
+      n_filas = format(n_filas, big.mark = ","),
+      usuarios_totales = format(usuarios_totales, big.mark = ","),
+      saifi_medio = signif(saifi_medio, 3)
+    ),
+  col.names = c("Mes", "Filas", "UT", "SAIFI medio"),
+  caption = "Asignacion de UT mensual a las semanas de D_mod"
+)
 
 resumen_anio <- d_mod %>%
   mutate(anio = year(semana)) %>%
@@ -116,6 +458,28 @@ message("Exportado: ", path_salida)
 
 head(d_mod)
 ```
+
+Las respuestas de modelado se construyen en el grano cuadrante × semana:
+
+- `SAIFI = usuarios_afectados / usuarios_totales`
+- `SAIDI = (duracion_total * usuarios_afectados) / usuarios_totales`
+
+donde `usuarios_totales` proviene de `data_usuarios_totales_sistema.csv` (`CS1_UT_M`)
+asignado segun el **mes calendario** de la fecha de inicio de cada `semana`.
+La columna `cantidad_usuarios_cuadrante` suma `CANTIDAD_USUARIOS` de todos los
+transformadores del cuadrante en ese mismo anio-mes
+(`cant_usuarios_x_transformador.csv`). Las columnas de estrato/sector
+(`ESTRATO_1` ... `ESTRATO_6`, `INDUSTRIAL`, `COMERCIAL`, `OFICIAL`,
+`PROVISIONAL`, `ALUMBRADO_PUBLICO`) se agregan igual desde
+`DATA_ESTRATO_SECTOR.csv`. Los meses faltantes de los cuadrantes 258 y 273
+se imputan con la moda mensual del propio cuadrante; los cuadrantes 68, 140, 333 y 344,
+ausentes en la fuente, se asignan en 0.
+Desde `Fecha_transformadores.csv` se agregan, por cuadrante:
+`FECHA_ACTIVO_MAS_VIEJO`, `FECHA_ACTIVO_MAS_NUEVO` (ultima
+`TT2_FMODIFICACION` en estado `OPERACION` de cada elemento) y
+`PROM_CANT_MODIFICACIONES` (promedio de filas/reposiciones por elemento).
+`n_eventos` y `duracion_total` permanecen como insumos de construccion e historico;
+no son las variables a predecir.
 
 **Uso:** `data_agrupada_mod.csv` es el insumo para las secciones 5.3.6 en adelante y la Etapa 4
 (entrenamiento 2024 / prueba 2025). La agregacion original desde `data_consolidada.csv` sigue
