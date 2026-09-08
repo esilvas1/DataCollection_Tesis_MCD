@@ -33,6 +33,7 @@ library(knitr)
 ```
 
 ```{r entorno}
+<<<<<<< Updated upstream
 # Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
 # Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
 env_path <- file.path("..", "..", "..", ".env")
@@ -45,6 +46,58 @@ if (file.exists(".env")) {
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") {
   stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+=======
+# ============================================================
+# CONFIGURACION DE ENTORNO (portable entre computadores)
+# ============================================================
+#
+# Cada persona que corra este documento define su propia ruta de
+# datos en un archivo ".env" (no versionado / no compartido), con
+# una linea como:
+#
+#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
+#
+# El .env se busca en la carpeta actual y hasta dos niveles arriba,
+# para que funcione sin importar si el .Rmd esta en la raiz del
+# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
+# ajusta la ruta antes de correr este documento.
+# ============================================================
+
+buscar_env <- function() {
+  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
+  # .Rmd esta en la raiz del proyecto como si esta varios niveles
+  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
+  # ajustar manualmente cuantos "../" usar.
+  candidatos <- c(
+    ".env",
+    file.path("..", ".env"),
+    file.path("..", "..", ".env"),
+    file.path("..", "..", "..", ".env"),
+    file.path("..", "..", "..", "..", ".env")
+  )
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+
+ruta_env <- buscar_env()
+
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+
+if (UBICACION_DATA == "") {
+  stop(
+    "UBICACION_DATA no esta definida.\n",
+    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
+    "proyecto, con una linea:\n",
+    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
+  )
+>>>>>>> Stashed changes
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))

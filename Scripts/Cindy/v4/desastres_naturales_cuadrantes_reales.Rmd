@@ -58,6 +58,7 @@ invisible(lapply(paquetes_desastres, function(p) {
 ```
 
 ```{r entorno}
+<<<<<<< Updated upstream
 # Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
 # Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
 env_path <- file.path("..", "..", "..", ".env")
@@ -70,11 +71,64 @@ if (file.exists(".env")) {
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") {
   stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+=======
+# ============================================================
+# CONFIGURACION DE ENTORNO (portable entre computadores)
+# ============================================================
+#
+# Cada persona que corra este documento define su propia ruta de
+# datos en un archivo ".env" (no versionado / no compartido), con
+# una linea como:
+#
+#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
+#
+# El .env se busca en la carpeta actual y hasta dos niveles arriba,
+# para que funcione sin importar si el .Rmd esta en la raiz del
+# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
+# ajusta la ruta antes de correr este documento.
+# ============================================================
+
+buscar_env <- function() {
+  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
+  # .Rmd esta en la raiz del proyecto como si esta varios niveles
+  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
+  # ajustar manualmente cuantos "../" usar.
+  candidatos <- c(
+    ".env",
+    file.path("..", ".env"),
+    file.path("..", "..", ".env"),
+    file.path("..", "..", "..", ".env"),
+    file.path("..", "..", "..", "..", ".env")
+  )
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+
+ruta_env <- buscar_env()
+
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+
+if (UBICACION_DATA == "") {
+  stop(
+    "UBICACION_DATA no esta definida.\n",
+    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
+    "proyecto, con una linea:\n",
+    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
+  )
+>>>>>>> Stashed changes
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
 ```
 
+<<<<<<< Updated upstream
 Si vienes de continuar la sesión anterior, `data_final` y
 `estratificacion_cuadrante` (que ya trae `codigo_municipio` por
 cuadrante) existen en el entorno. Si es sesión nueva, se recargan.
@@ -83,6 +137,21 @@ cuadrante) existen en el entorno. Si es sesión nueva, se recargan.
 if (!exists("data_final")) {
   data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
   cat("data_final recargado desde el .rds exportado.\n")
+=======
+Este documento **lee** el panel base (documento 2) y la tabla de
+estratificación (documento 3) — pero **ya no reescribe ningún panel
+combinado**: exporta únicamente su propia tabla,
+`eventos_catastroficos_cuadrante_semana`.
+
+```{r desastres-recargar-insumos}
+if (!exists("data_final")) {
+  ruta_panel_base <- file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds")
+  if (!file.exists(ruta_panel_base)) {
+    stop("No se encontró panel_base_cuadrante_semana.rds. Corre primero el documento 2 (panel base).")
+  }
+  data_final <- readRDS(ruta_panel_base)
+  cat("Panel base recargado (solo lectura) desde panel_base_cuadrante_semana.rds.\n")
+>>>>>>> Stashed changes
 }
 
 if (!exists("estratificacion_cuadrante")) {
@@ -386,10 +455,24 @@ if (exists("cuadrantes_infra")) {
 
 ---
 
+<<<<<<< Updated upstream
 # Parte 5 — Integración al panel
 
 ```{r desastres-union-panel}
 data_final <- data_final %>%
+=======
+# Parte 5 — Vista previa (solo para el gráfico exploratorio, no se guarda)
+
+```{r desastres-union-panel}
+# ------------------------------------------------------------------
+# CAMBIO DE ARQUITECTURA: esta unión es SOLO para el gráfico
+# exploratorio de esta sección. NO se reescribe ningún panel
+# combinado. La integración real ocurre en
+# 00b_integracion_panel_final.Rmd, a partir de
+# eventos_catastroficos_cuadrante_semana.csv (exportado en Parte 6).
+# ------------------------------------------------------------------
+vista_previa_desastres <- data_final %>%
+>>>>>>> Stashed changes
   select(-any_of(c("n_eventos_catastroficos", "tipos_evento",
                     "personas_afectadas_evt", "familias_afectadas_evt",
                     "hubo_inundacion", "hubo_movimiento_masa", "hubo_vendaval"))) %>%
@@ -401,8 +484,11 @@ data_final <- data_final %>%
     by = c("id_cuadrante", "semana")
   ) %>%
   mutate(
+<<<<<<< Updated upstream
     # NA significa "sin evento registrado esa semana", no dato faltante:
     # se recodifica explícitamente a 0 para las variables de conteo/binarias
+=======
+>>>>>>> Stashed changes
     n_eventos_catastroficos = replace_na(n_eventos_catastroficos, 0),
     hubo_inundacion         = replace_na(hubo_inundacion, 0L),
     hubo_movimiento_masa    = replace_na(hubo_movimiento_masa, 0L),
@@ -410,6 +496,7 @@ data_final <- data_final %>%
     hubo_evento_catastrofico = as.integer(n_eventos_catastroficos > 0)
   )
 
+<<<<<<< Updated upstream
 cat(sprintf("Panel actualizado: %d filas x %d columnas\n", nrow(data_final), ncol(data_final)))
 
 cobertura_desastres <- data_final %>%
@@ -421,17 +508,40 @@ cobertura_desastres <- data_final %>%
 
 kable(t(cobertura_desastres), col.names = "Valor",
       caption = "Cobertura de eventos catastróficos en el panel") %>%
+=======
+cat(sprintf("Vista previa (solo en memoria, no se guarda): %d filas x %d columnas\n",
+            nrow(vista_previa_desastres), ncol(vista_previa_desastres)))
+
+cobertura_desastres <- vista_previa_desastres %>%
+  summarise(
+    filas_total            = n(),
+    semanas_con_evento      = sum(hubo_evento_catastrofico),
+    pct_semanas_con_evento  = round(100 * mean(hubo_evento_catastrofico), 2)
+  )
+
+kable(t(cobertura_desastres), col.names = "Valor",
+      caption = "Cobertura de eventos catastróficos (vista previa)") %>%
+>>>>>>> Stashed changes
   kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
 ```
 
 ## SAIDI/SAIFI en semanas con vs. sin evento catastrófico
 
+<<<<<<< Updated upstream
 Condicional: solo corre si `SAIDI`/`SAIFI` ya están en `data_final`.
 
 ```{r desastres-saidi-vs-evento, fig.width=8, fig.height=5}
 if (all(c("SAIDI", "SAIFI") %in% names(data_final))) {
 
   datos_plot <- data_final %>%
+=======
+Condicional: solo corre si `SAIDI`/`SAIFI` ya están en el panel base.
+
+```{r desastres-saidi-vs-evento, fig.width=8, fig.height=5}
+if (all(c("SAIDI", "SAIFI") %in% names(vista_previa_desastres))) {
+
+  datos_plot <- vista_previa_desastres %>%
+>>>>>>> Stashed changes
     filter(hubo_falla == 1) %>%
     mutate(evento_f = factor(
       hubo_evento_catastrofico,
@@ -462,13 +572,21 @@ if (all(c("SAIDI", "SAIFI") %in% names(data_final))) {
   }
 
 } else {
+<<<<<<< Updated upstream
   message("SAIDI/SAIFI no están en data_final todavía — se omite este gráfico.")
+=======
+  message("SAIDI/SAIFI no disponibles en el panel base — se omite este gráfico.")
+>>>>>>> Stashed changes
 }
 ```
 
 ---
 
+<<<<<<< Updated upstream
 # Parte 6 — Exportaciones
+=======
+# Parte 6 — Exportaciones (tabla propia únicamente)
+>>>>>>> Stashed changes
 
 ```{r desastres-exportar}
 write_csv(
@@ -481,11 +599,19 @@ write_csv(
   file.path(UBICACION_DATA, "eventos_catastroficos_cuadrante_semana.csv")
 )
 
+<<<<<<< Updated upstream
 saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
 write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
 
 cat(sprintf("Panel final guardado: %d filas x %d columnas (incluye eventos catastróficos)\n",
             nrow(data_final), ncol(data_final)))
+=======
+cat(sprintf(
+  "Tabla propia exportada: eventos_catastroficos_cuadrante_semana.csv (%d filas x %d columnas)\n",
+  nrow(desastres_cuadrante_semana), ncol(desastres_cuadrante_semana)
+))
+cat("Este documento YA NO sobreescribe el panel combinado. La integración final se hace en 00b_integracion_panel_final.Rmd.\n")
+>>>>>>> Stashed changes
 ```
 
 ---

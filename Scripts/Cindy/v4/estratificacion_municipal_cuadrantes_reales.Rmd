@@ -49,6 +49,7 @@ invisible(lapply(paquetes_estrato, function(p) {
 ```
 
 ```{r entorno}
+<<<<<<< Updated upstream
 # Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
 # Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
 env_path <- file.path("..", "..", "..", ".env")
@@ -61,14 +62,73 @@ if (file.exists(".env")) {
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") {
   stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+=======
+# ============================================================
+# CONFIGURACION DE ENTORNO (portable entre computadores)
+# ============================================================
+#
+# Cada persona que corra este documento define su propia ruta de
+# datos en un archivo ".env" (no versionado / no compartido), con
+# una linea como:
+#
+#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
+#
+# El .env se busca en la carpeta actual y hasta dos niveles arriba,
+# para que funcione sin importar si el .Rmd esta en la raiz del
+# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
+# ajusta la ruta antes de correr este documento.
+# ============================================================
+
+buscar_env <- function() {
+  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
+  # .Rmd esta en la raiz del proyecto como si esta varios niveles
+  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
+  # ajustar manualmente cuantos "../" usar.
+  candidatos <- c(
+    ".env",
+    file.path("..", ".env"),
+    file.path("..", "..", ".env"),
+    file.path("..", "..", "..", ".env"),
+    file.path("..", "..", "..", "..", ".env")
+  )
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+
+ruta_env <- buscar_env()
+
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+
+if (UBICACION_DATA == "") {
+  stop(
+    "UBICACION_DATA no esta definida.\n",
+    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
+    "proyecto, con una linea:\n",
+    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
+  )
+>>>>>>> Stashed changes
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
 ```
 
+<<<<<<< Updated upstream
 Si vienes de continuar la sesión anterior, `cuadrantes_infra` y
 `data_final` ya existen en el entorno. Si es una sesión nueva, se
 recargan desde las exportaciones previas.
+=======
+Si vienes de continuar la sesión anterior, `cuadrantes_infra` ya existe
+en el entorno. Si es una sesión nueva, se recarga desde el `.gpkg`
+exportado por el documento 1. Este documento **ya no depende del panel
+combinado** — solo necesita la geometría de cuadrantes.
+>>>>>>> Stashed changes
 
 ```{r estrato-recargar-insumos}
 ruta_gpkg_export <- file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg")
@@ -78,6 +138,7 @@ if (!exists("cuadrantes_infra")) {
   cat("cuadrantes_infra recargado desde el .gpkg exportado.\n")
 }
 
+<<<<<<< Updated upstream
 if (!exists("data_final")) {
   data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
   cat("data_final recargado desde el .rds exportado.\n")
@@ -91,6 +152,13 @@ data_final <- data_final %>%
 
 cat(sprintf("cuadrantes_infra: %d polígonos | data_final: %d filas, %d cuadrantes únicos\n",
             nrow(cuadrantes_infra), nrow(data_final), n_distinct(data_final$id_cuadrante)))
+=======
+cuadrantes_infra <- cuadrantes_infra %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE))
+
+cat(sprintf("cuadrantes_infra: %d polígonos, %d cuadrantes únicos\n",
+            nrow(cuadrantes_infra), n_distinct(cuadrantes_infra$id_cuadrante)))
+>>>>>>> Stashed changes
 ```
 
 ---
@@ -472,9 +540,21 @@ st_write(
 st_layers(ruta_gpkg_export)
 ```
 
+<<<<<<< Updated upstream
 ## Incorporar al panel `data_final`
 
 ```{r estrato-agregar-al-panel}
+=======
+## Tabla propia de estratificación municipal por cuadrante
+
+```{r estrato-construir-tabla-propia}
+# ------------------------------------------------------------------
+# CAMBIO DE ARQUITECTURA: este documento ya NO carga ni reescribe el
+# panel combinado. Construye y exporta SOLO su propia tabla (estatica,
+# por id_cuadrante), que luego el documento de integracion
+# (00b_integracion_panel_final.Rmd) une al panel base.
+# ------------------------------------------------------------------
+>>>>>>> Stashed changes
 estratificacion_cuadrante <- cuadrantes_infra_estrato %>%
   st_drop_geometry() %>%
   select(
@@ -485,6 +565,7 @@ estratificacion_cuadrante <- cuadrantes_infra_estrato %>%
   ) %>%
   distinct()
 
+<<<<<<< Updated upstream
 # Se descarta cualquier columna previa de estratificación municipal,
 # para que correr el chunk más de una vez no genere duplicados .x/.y
 data_final <- data_final %>%
@@ -508,6 +589,24 @@ cobertura_estrato <- data_final %>%
 
 kable(t(cobertura_estrato), col.names = "Valor",
       caption = "Cobertura de estratificación municipal en el panel") %>%
+=======
+cat(sprintf("Tabla de estratificación municipal: %d cuadrantes\n", nrow(estratificacion_cuadrante)))
+```
+
+### Cobertura
+
+```{r estrato-cobertura-panel}
+cobertura_estrato <- estratificacion_cuadrante %>%
+  summarise(
+    filas_total            = n(),
+    filas_con_estrato       = sum(!is.na(estrato_predominante_municipal)),
+    pct_cobertura           = round(100 * mean(!is.na(estrato_predominante_municipal)), 2),
+    cuadrantes_sin_estrato  = n_distinct(id_cuadrante[is.na(estrato_predominante_municipal)])
+  )
+
+kable(t(cobertura_estrato), col.names = "Valor",
+      caption = "Cobertura de estratificación municipal (tabla propia)") %>%
+>>>>>>> Stashed changes
   kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
 ```
 
@@ -515,10 +614,36 @@ kable(t(cobertura_estrato), col.names = "Valor",
 
 # Parte 7 — Análisis exploratorio: estrato municipal y fallas
 
+<<<<<<< Updated upstream
 ```{r estrato-saidi-por-estrato-municipal, fig.width=8, fig.height=5}
 if (all(c("SAIDI", "hubo_falla") %in% names(data_final))) {
 
   data_final %>%
+=======
+Este análisis exploratorio necesita `SAIDI`/`hubo_falla`, que viven en
+el panel BASE (documento 2), no en la tabla propia de este documento.
+Se carga el panel base **solo para graficar** — no se modifica ni se
+vuelve a guardar aquí.
+
+```{r estrato-cargar-panel-base-solo-lectura}
+panel_base_lectura <- NULL
+ruta_panel_base <- file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds")
+
+if (file.exists(ruta_panel_base)) {
+  panel_base_lectura <- readRDS(ruta_panel_base) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+    left_join(estratificacion_cuadrante, by = "id_cuadrante")
+  cat("Panel base cargado (solo lectura, para el gráfico exploratorio).\n")
+} else {
+  message("panel_base_cuadrante_semana.rds no encontrado - corre primero el documento 2. Se omite el gráfico exploratorio.")
+}
+```
+
+```{r estrato-saidi-por-estrato-municipal, fig.width=8, fig.height=5}
+if (!is.null(panel_base_lectura) && all(c("SAIDI", "hubo_falla") %in% names(panel_base_lectura))) {
+
+  panel_base_lectura %>%
+>>>>>>> Stashed changes
     filter(hubo_falla == 1, !is.na(estrato_predominante_municipal)) %>%
     ggplot(aes(x = factor(estrato_predominante_municipal), y = SAIDI,
                fill = factor(estrato_predominante_municipal))) +
@@ -533,12 +658,17 @@ if (all(c("SAIDI", "hubo_falla") %in% names(data_final))) {
     theme(legend.position = "none")
 
 } else {
+<<<<<<< Updated upstream
   message("SAIDI / hubo_falla no están en data_final: corre primero el pipeline de SAIDI/SAIFI.")
+=======
+  message("SAIDI / hubo_falla no disponibles: corre primero el documento 2 (panel base).")
+>>>>>>> Stashed changes
 }
 ```
 
 ---
 
+<<<<<<< Updated upstream
 # Parte 8 — Guardado final del panel
 
 ```{r estrato-export-panel}
@@ -549,6 +679,20 @@ cat(sprintf(
   "Panel final guardado: %d filas x %d columnas (incluye estratificación municipal)\n",
   nrow(data_final), ncol(data_final)
 ))
+=======
+# Parte 8 — Guardado final (tabla propia, no el panel combinado)
+
+```{r estrato-export-panel}
+# Ya exportada como estratificacion_municipal_por_cuadrante.csv más
+# arriba en el documento. Este chunk queda solo como resumen final —
+# NO se guarda ningún panel combinado desde aquí.
+cat(sprintf(
+  "Tabla de estratificación municipal lista: %d filas x %d columnas.\n",
+  nrow(estratificacion_cuadrante), ncol(estratificacion_cuadrante)
+))
+cat("Archivo: estratificacion_municipal_por_cuadrante.csv (ver Parte 6).\n")
+cat("Este documento YA NO sobreescribe el panel combinado. La integración final se hace en 00b_integracion_panel_final.Rmd.\n")
+>>>>>>> Stashed changes
 ```
 
 ## Exportación adicional: tabla de estratificación sola
@@ -568,8 +712,11 @@ st_layers(ruta_gpkg_export)
 
 cuadrantes_infra_estrato <- st_read(ruta_gpkg_export, layer = "cuadrantes_infra_reales")
 
+<<<<<<< Updated upstream
 data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
 
+=======
+>>>>>>> Stashed changes
 estratificacion_cuadrante <- read_csv(
   file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv")
 )

@@ -1,0 +1,354 @@
+---
+title: "Integración final del panel — SAIDI/SAIFI por cuadrante-semana"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Qué hace este documento
+
+Este es el **único documento que produce el panel final**
+(`data_final_modelo_cuadrantes_reales.rds`/`.csv`), el que consume
+`modelo_saidi_saifi_cuadrantes_reales.Rmd`.
+
+**Por qué existe:** en la arquitectura anterior, cada documento (2 a 6)
+cargaba el panel combinado, le agregaba sus columnas, y volvía a
+guardar el mismo archivo. Si los documentos se corrían en otro orden,
+o alguno se recorría por separado, ese guardado **sobrescribía el
+trabajo de los demás** — exactamente el problema que motivó este
+cambio de arquitectura.
+
+**Cómo funciona ahora:** cada documento (2 a 6) guarda **solo su
+propia tabla**, con nombre propio, sin tocar ningún archivo
+compartido. Este documento las **lee todas** (sin modificarlas) y las
+une en un único panel final. Correr este documento las veces que
+quieras nunca destruye el trabajo de los demás — siempre parte de las
+tablas propias intactas.
+
+```text
+Doc 1 (infraestructura)  -> infraestructura_por_cuadrante_real.csv, .gpkg   [estatica, por cuadrante]
+Doc 2 (panel base)       -> panel_base_cuadrante_semana.rds                 [dinamica, cuadrante x semana]
+Doc 3 (estratificacion)  -> estratificacion_municipal_por_cuadrante.csv     [estatica, por cuadrante]
+Doc 4 (desastres)        -> eventos_catastroficos_cuadrante_semana.csv     [dinamica, cuadrante x semana]
+Doc 5 (sismicidad)       -> sismos_cuadrante_semana_r{25,50,100}km.csv     [dinamica, cuadrante x semana]
+Doc 6 (topologia)        -> longitud_red_por_cuadrante.csv,
+                             nodos_terminales_por_cuadrante.csv            [estatica, por cuadrante]
+                                    |
+                                    v
+                    ESTE DOCUMENTO (00b_integracion_panel_final.Rmd)
+                                    |
+                                    v
+                data_final_modelo_cuadrantes_reales.rds / .csv
+                (el que lee modelo_saidi_saifi_cuadrantes_reales.Rmd)
+```
+
+## Paquetes y entorno
+
+```{r entorno}
+buscar_env <- function() {
+  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
+  # .Rmd esta en la raiz del proyecto como si esta varios niveles
+  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
+  # ajustar manualmente cuantos "../" usar.
+  candidatos <- c(
+    ".env",
+    file.path("..", ".env"),
+    file.path("..", "..", ".env"),
+    file.path("..", "..", "..", ".env"),
+    file.path("..", "..", "..", "..", ".env")
+  )
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop(
+    "UBICACION_DATA no esta definida.\n",
+    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
+    "proyecto, con una linea:\n",
+    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
+  )
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+paquetes <- c("dplyr", "readr", "tidyr", "knitr", "kableExtra")
+invisible(lapply(paquetes, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+
+select <- dplyr::select
+filter <- dplyr::filter
+```
+
+---
+
+# Chequeo de disponibilidad de tablas fuente
+
+Antes de cargar nada, se verifica qué tablas existen. Las que falten
+se omiten de la integración con un aviso — **el panel final siempre
+se genera con lo que haya disponible**, sin necesitar que los 6
+documentos estén completos.
+
+```{r chequeo-disponibilidad}
+archivos_fuente <- list(
+  "Doc 2 - Panel base (OBLIGATORIO)"    = "panel_base_cuadrante_semana.rds",
+  "Doc 3 - Estratificación municipal"   = "estratificacion_municipal_por_cuadrante.csv",
+  "Doc 4 - Desastres UNGRD"             = "eventos_catastroficos_cuadrante_semana.csv",
+  "Doc 5 - Sismicidad (r50)"            = "sismos_cuadrante_semana_r50km.csv",
+  "Doc 6a - Topología: longitud de red" = "longitud_red_por_cuadrante.csv",
+  "Doc 6b - Topología: nodos terminales" = "nodos_terminales_por_cuadrante.csv"
+)
+
+disponibilidad <- sapply(archivos_fuente, function(archivo) {
+  file.exists(file.path(UBICACION_DATA, archivo))
+})
+
+tabla_disponibilidad <- data.frame(
+  fuente   = names(archivos_fuente),
+  archivo  = unlist(archivos_fuente),
+  disponible = ifelse(disponibilidad, "SI", "NO - se omite")
+)
+
+kable(tabla_disponibilidad, row.names = FALSE,
+      caption = "Disponibilidad de tablas fuente para la integración") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"))
+
+if (!disponibilidad["Doc 2 - Panel base (OBLIGATORIO)"]) {
+  stop(
+    "panel_base_cuadrante_semana.rds no existe en UBICACION_DATA.\n",
+    "Este archivo es OBLIGATORIO — corre primero el documento 2 (panel_saidi_saifi_cuadrantes_reales.Rmd)."
+  )
+}
+```
+
+---
+
+# Carga de la tabla base (obligatoria)
+
+```{r cargar-base}
+panel <- readRDS(file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds")) %>%
+  mutate(id_cuadrante = as.character(id_cuadrante))
+
+cat(sprintf("Panel base cargado: %d filas | %d cuadrantes | %d semanas | %d columnas\n",
+            nrow(panel), n_distinct(panel$id_cuadrante), n_distinct(panel$semana), ncol(panel)))
+```
+
+---
+
+# Integración de tablas estáticas (por cuadrante)
+
+## Doc 3 — Estratificación municipal
+
+```{r integrar-estratificacion}
+if (file.exists(file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv"))) {
+
+  estratificacion_cuadrante <- read_csv(
+    file.path(UBICACION_DATA, "estratificacion_municipal_por_cuadrante.csv"),
+    show_col_types = FALSE
+  ) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante))
+
+  panel <- panel %>%
+    select(-any_of(setdiff(names(estratificacion_cuadrante), "id_cuadrante"))) %>%
+    left_join(estratificacion_cuadrante, by = "id_cuadrante")
+
+  cat(sprintf("Estratificación municipal integrada: %d columnas nuevas\n",
+              ncol(estratificacion_cuadrante) - 1))
+} else {
+  cat("OMITIDO: estratificacion_municipal_por_cuadrante.csv no encontrado (corre el documento 3).\n")
+}
+```
+
+## Doc 6 — Topología de red (longitud + nodos terminales)
+
+```{r integrar-topologia}
+if (file.exists(file.path(UBICACION_DATA, "longitud_red_por_cuadrante.csv"))) {
+
+  longitud_por_cuadrante <- read_csv(
+    file.path(UBICACION_DATA, "longitud_red_por_cuadrante.csv"),
+    show_col_types = FALSE
+  ) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante))
+
+  panel <- panel %>%
+    select(-any_of(setdiff(names(longitud_por_cuadrante), "id_cuadrante"))) %>%
+    left_join(longitud_por_cuadrante, by = "id_cuadrante")
+
+  cat(sprintf("Longitud de red integrada: %d columnas nuevas\n", ncol(longitud_por_cuadrante) - 1))
+} else {
+  cat("OMITIDO: longitud_red_por_cuadrante.csv no encontrado (corre el documento 6).\n")
+}
+
+if (file.exists(file.path(UBICACION_DATA, "nodos_terminales_por_cuadrante.csv"))) {
+
+  nodos_terminales_por_cuadrante <- read_csv(
+    file.path(UBICACION_DATA, "nodos_terminales_por_cuadrante.csv"),
+    show_col_types = FALSE
+  ) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante))
+
+  panel <- panel %>%
+    select(-any_of(setdiff(names(nodos_terminales_por_cuadrante), "id_cuadrante"))) %>%
+    left_join(nodos_terminales_por_cuadrante, by = "id_cuadrante") %>%
+    mutate(
+      n_nodos_terminales  = replace_na(n_nodos_terminales, 0),
+      densidad_terminales = if_else(
+        !is.na(longitud_red_km),
+        n_nodos_terminales / pmax(longitud_red_km, 0.01),
+        NA_real_
+      )
+    )
+
+  cat("Nodos terminales integrados; densidad_terminales recalculada.\n")
+} else {
+  cat("OMITIDO: nodos_terminales_por_cuadrante.csv no encontrado (corre el documento 6).\n")
+}
+```
+
+---
+
+# Integración de tablas dinámicas (cuadrante × semana)
+
+## Doc 4 — Desastres UNGRD
+
+```{r integrar-desastres}
+if (file.exists(file.path(UBICACION_DATA, "eventos_catastroficos_cuadrante_semana.csv"))) {
+
+  desastres_cuadrante_semana <- read_csv(
+    file.path(UBICACION_DATA, "eventos_catastroficos_cuadrante_semana.csv"),
+    show_col_types = FALSE
+  ) %>%
+    mutate(id_cuadrante = as.character(id_cuadrante))
+
+  cols_desastres <- setdiff(names(desastres_cuadrante_semana), c("id_cuadrante", "semana"))
+
+  panel <- panel %>%
+    select(-any_of(cols_desastres)) %>%
+    left_join(
+      desastres_cuadrante_semana %>%
+        select(id_cuadrante, semana, all_of(cols_desastres)),
+      by = c("id_cuadrante", "semana")
+    ) %>%
+    mutate(
+      n_eventos_catastroficos = replace_na(n_eventos_catastroficos, 0),
+      across(any_of(c("hubo_inundacion", "hubo_movimiento_masa", "hubo_vendaval")), ~replace_na(., 0L)),
+      hubo_evento_catastrofico = as.integer(n_eventos_catastroficos > 0)
+    )
+
+  cat(sprintf("Desastres UNGRD integrados: %d columnas nuevas\n", length(cols_desastres)))
+} else {
+  cat("OMITIDO: eventos_catastroficos_cuadrante_semana.csv no encontrado (corre el documento 4).\n")
+}
+```
+
+## Doc 5 — Sismicidad (radios 25/50/100 km)
+
+```{r integrar-sismicidad}
+archivos_sismos <- c(
+  r25  = "sismos_cuadrante_semana_r25km.csv",
+  r50  = "sismos_cuadrante_semana_r50km.csv",
+  r100 = "sismos_cuadrante_semana_r100km.csv"
+)
+
+for (radio in names(archivos_sismos)) {
+  ruta <- file.path(UBICACION_DATA, archivos_sismos[radio])
+  if (file.exists(ruta)) {
+    tabla_sismo <- read_csv(ruta, show_col_types = FALSE) %>%
+      mutate(id_cuadrante = as.character(id_cuadrante))
+
+    cols_sismo <- setdiff(names(tabla_sismo), c("id_cuadrante", "semana"))
+
+    panel <- panel %>%
+      select(-any_of(cols_sismo)) %>%
+      left_join(tabla_sismo, by = c("id_cuadrante", "semana"))
+
+    cat(sprintf("Sismicidad (%s) integrada: %d columnas nuevas\n", radio, length(cols_sismo)))
+  } else {
+    cat(sprintf("OMITIDO: %s no encontrado (corre el documento 5).\n", archivos_sismos[radio]))
+  }
+}
+
+# Recodificar NA -> 0 en los conteos de sismos (NA = sin sismo esa
+# semana dentro del radio, no dato faltante), y crear hubo_sismo_r50
+cols_conteo_sismos <- grep("^n_sismos", names(panel), value = TRUE)
+if (length(cols_conteo_sismos) > 0) {
+  panel <- panel %>%
+    mutate(across(all_of(cols_conteo_sismos), ~replace_na(., 0)))
+}
+if ("n_sismos_r50" %in% names(panel)) {
+  panel <- panel %>% mutate(hubo_sismo_r50 = as.integer(n_sismos_r50 > 0))
+}
+```
+
+---
+
+# Resumen final del panel integrado
+
+```{r resumen-final}
+cat(sprintf(
+  "PANEL FINAL: %d filas | %d cuadrantes | %d semanas | %d columnas\n",
+  nrow(panel), n_distinct(panel$id_cuadrante), n_distinct(panel$semana), ncol(panel)
+))
+
+cat("\nColumnas del panel final:\n")
+print(names(panel))
+```
+
+```{r resumen-cobertura}
+resumen_cobertura <- tibble(
+  variable = c("estrato_predominante_municipal", "longitud_red_km", "n_nodos_terminales",
+              "n_eventos_catastroficos", "n_sismos_r50"),
+) %>%
+  filter(variable %in% names(panel)) %>%
+  rowwise() %>%
+  mutate(pct_cobertura = round(100 * mean(!is.na(panel[[variable]])), 2)) %>%
+  ungroup()
+
+if (nrow(resumen_cobertura) > 0) {
+  kable(resumen_cobertura, caption = "Cobertura (% de filas no-NA) de variables integradas") %>%
+    kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+}
+```
+
+---
+
+# Exportación del panel final
+
+```{r exportar-panel-final}
+data_final <- panel
+
+saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
+write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
+
+cat(sprintf(
+  "\n✅ PANEL FINAL EXPORTADO: data_final_modelo_cuadrantes_reales.rds/.csv\n   %d filas x %d columnas\n",
+  nrow(data_final), ncol(data_final)
+))
+cat("Este es el archivo que debe cargar modelo_saidi_saifi_cuadrantes_reales.Rmd.\n")
+```
+
+**Para actualizar el panel final tras corregir/re-correr cualquiera de
+los documentos 2-6**: simplemente vuelve a correr este documento
+completo. Como solo lee tablas propias (nunca las modifica), es seguro
+correrlo tantas veces como haga falta, en cualquier momento, sin
+riesgo de perder trabajo de ningún otro documento.
