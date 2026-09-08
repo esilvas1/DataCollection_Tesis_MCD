@@ -46,7 +46,6 @@ invisible(lapply(paquetes_sismos, function(p) {
 ```
 
 ```{r entorno}
-<<<<<<< Updated upstream
 # Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
 # Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
 env_path <- file.path("..", "..", "..", ".env")
@@ -59,58 +58,6 @@ if (file.exists(".env")) {
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") {
   stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
-=======
-# ============================================================
-# CONFIGURACION DE ENTORNO (portable entre computadores)
-# ============================================================
-#
-# Cada persona que corra este documento define su propia ruta de
-# datos en un archivo ".env" (no versionado / no compartido), con
-# una linea como:
-#
-#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
-#
-# El .env se busca en la carpeta actual y hasta dos niveles arriba,
-# para que funcione sin importar si el .Rmd esta en la raiz del
-# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
-# ajusta la ruta antes de correr este documento.
-# ============================================================
-
-buscar_env <- function() {
-  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
-  # .Rmd esta en la raiz del proyecto como si esta varios niveles
-  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
-  # ajustar manualmente cuantos "../" usar.
-  candidatos <- c(
-    ".env",
-    file.path("..", ".env"),
-    file.path("..", "..", ".env"),
-    file.path("..", "..", "..", ".env"),
-    file.path("..", "..", "..", "..", ".env")
-  )
-  existentes <- candidatos[file.exists(candidatos)]
-  if (length(existentes) == 0) return(NA_character_)
-  existentes[1]
-}
-
-ruta_env <- buscar_env()
-
-if (!is.na(ruta_env)) {
-  readRenviron(ruta_env)
-} else {
-  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
-}
-
-UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
-
-if (UBICACION_DATA == "") {
-  stop(
-    "UBICACION_DATA no esta definida.\n",
-    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
-    "proyecto, con una linea:\n",
-    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
-  )
->>>>>>> Stashed changes
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
@@ -127,17 +74,8 @@ knitr::opts_chunk$set(
 
 ```{r sismos-recargar-insumos}
 if (!exists("data_final")) {
-<<<<<<< Updated upstream
   data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
   cat("data_final recargado desde el .rds exportado.\n")
-=======
-  ruta_panel_base <- file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds")
-  if (!file.exists(ruta_panel_base)) {
-    stop("No se encontró panel_base_cuadrante_semana.rds. Corre primero el documento 2 (panel base).")
-  }
-  data_final <- readRDS(ruta_panel_base)
-  cat("Panel base recargado (solo lectura) desde panel_base_cuadrante_semana.rds.\n")
->>>>>>> Stashed changes
 }
 
 if (!exists("centroides_cuadrante_real")) {
@@ -168,34 +106,6 @@ Ajusta la ruta según dónde hayas guardado la descarga del SGC (GeoJSON,
 shapefile o `.rds` con el objeto `sf` de puntos).
 
 ```{r sismos-cargar}
-<<<<<<< Updated upstream
-ruta_sismos <- file.path(UBICACION_DATA, "sismos_sgc.geojson")
-
-if (!file.exists(ruta_sismos)) {
-  stop(
-    "No se encontró el catálogo de sismos en: ", ruta_sismos,
-    "\nVerifica que el archivo .geojson esté en esa ruta."
-  )
-}
-
-sismos <- st_read(ruta_sismos, quiet = TRUE)
-
-cat(sprintf("Catálogo cargado: %d eventos\n", nrow(sismos)))
-str(sismos)
-
-# library(sf)
-# url_sismos <- "https://archive.sgc.gov.co/catalog_download_data/20260818_023734_ea42d3a0-fbfd-4a39-9419-bcf22d85c877.geojson"
-# 
-# archivo_sismos <- file.path(UBICACION_DATA, "sismos_sgc_2019_2026.geojson")
-# 
-# # Descargar
-# download.file(
-# url = url_sismos,
-# destfile = archivo_sismos,
-# mode = "wb"
-# )
-
-=======
 ruta_sismos     <- file.path(UBICACION_DATA, "sismos_sgc.geojson")
 ruta_sismos_rds <- file.path(UBICACION_DATA, "sismos_sgc_cache.rds")
 
@@ -221,7 +131,6 @@ if (file.exists(ruta_sismos_rds)) {
 
 str(sismos)
 
->>>>>>> Stashed changes
 ```
 
 ## Preparar fechas y geometría
@@ -565,7 +474,6 @@ mayor capacidad explicativa.
 ```{r sismos-espacializar}
 RADIOS_KM <- c(25, 50, 100)
 
-<<<<<<< Updated upstream
 # Todos los sismos del período (no solo el filtro de texto), porque un
 # epicentro fuera de Norte de Santander puede seguir estando dentro del
 # radio de influencia de un cuadrante cercano al límite departamental.
@@ -581,43 +489,6 @@ centroides_sf <- centroides_real %>%
 # grande; se calcula una sola vez y se reutiliza para todos los radios.
 matriz_distancias_m <- st_distance(centroides_sf, sismos_geo)
 matriz_distancias_km <- matriz_distancias_m / 1000
-=======
-centroides_sf <- centroides_real %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE)
-
-bbox_centroides <- st_bbox(centroides_sf)
-margen_grados <- 0.5
-
-sismos_geo <- sismos_2019_2026 %>%
-  filter(
-    !is.na(latitude), !is.na(longitude),
-    longitude >= bbox_centroides["xmin"] - margen_grados,
-    longitude <= bbox_centroides["xmax"] + margen_grados,
-    latitude  >= bbox_centroides["ymin"] - margen_grados,
-    latitude  <= bbox_centroides["ymax"] + margen_grados
-  ) %>%
-  st_transform(4326)
-
-cat(sprintf("Sismos tras filtro de bounding box: %d (de %d nacionales)\n",
-            nrow(sismos_geo), nrow(sismos_2019_2026)))
-
-# ------------------------------------------------------------------
-# Filtro adicional por magnitud, SOLO para el cálculo de distancias
-# (no afecta sismos_NS, que ya usaste para la caracterización
-# exploratoria completa con el catálogo sin depurar). La zona tiene
-# sismicidad muy densa (174k eventos en el bbox), y la mayoría son
-# microsismos de magnitud muy baja, poco plausibles como causa de
-# falla eléctrica y computacionalmente inviables de procesar todos.
-# ------------------------------------------------------------------
-sismos_geo <- sismos_geo %>%
-  filter(magnitude >= 1.5)
-
-cat(sprintf("Sismos tras filtro de magnitud (>= 1.5): %d\n", nrow(sismos_geo)))
-
-matriz_distancias_m <- st_distance(centroides_sf, sismos_geo)
-matriz_distancias_km <- matriz_distancias_m / 1000
-matriz_distancias_km <- units::drop_units(matriz_distancias_km)
->>>>>>> Stashed changes
 
 cat(sprintf("Matriz de distancias: %d cuadrantes x %d sismos\n",
             nrow(matriz_distancias_km), ncol(matriz_distancias_km)))
@@ -658,7 +529,6 @@ influencia *R*, se calculan:
 
 ```{r sismos-construir-variables-semanales}
 semanas_panel <- data_final %>% distinct(semana) %>% arrange(semana)
-<<<<<<< Updated upstream
 
 # Semana del panel a la que pertenece cada sismo (misma lógica de
 # "ancla hacia atrás" usada con eventos UNGRD)
@@ -670,28 +540,11 @@ asignar_semana <- function(fecha_evento, semanas) {
 
 sismos_geo <- sismos_geo %>%
   mutate(semana = as.Date(sapply(local_time, asignar_semana, semanas = semanas_panel$semana),
-=======
-semanas_vec <- semanas_panel$semana
-
-# ------------------------------------------------------------------
-# Asignación de semana VECTORIZADA con findInterval() (busca, para
-# cada sismo, la última semana del panel <= fecha del evento). Esto
-# reemplaza el sapply() fila por fila, que con miles de sismos es
-# muy lento (búsqueda lineal repetida). findInterval() es O(n log n)
-# sobre TODO el vector de una sola vez.
-# ------------------------------------------------------------------
-fechas_sismo <- as.Date(sismos_geo$local_time)
-idx_semana <- findInterval(as.numeric(fechas_sismo), as.numeric(semanas_vec))
-
-sismos_geo <- sismos_geo %>%
-  mutate(semana = as.Date(ifelse(idx_semana == 0, NA, as.numeric(semanas_vec[pmax(idx_semana, 1)])),
->>>>>>> Stashed changes
                            origin = "1970-01-01"))
 
 cat(sprintf("Sismos sin semana asignable (fuera del rango del panel): %d\n",
             sum(is.na(sismos_geo$semana))))
 
-<<<<<<< Updated upstream
 # Para cada radio, se construye la tabla cuadrante-semana
 construir_variables_sismo <- function(radio_km) {
 
@@ -728,55 +581,6 @@ construir_variables_sismo <- function(radio_km) {
 sismos_r25  <- construir_variables_sismo(25)  %>% rename_with(~paste0(., "_r25"),  -c(id_cuadrante, semana))
 sismos_r50  <- construir_variables_sismo(50)  %>% rename_with(~paste0(., "_r50"),  -c(id_cuadrante, semana))
 sismos_r100 <- construir_variables_sismo(100) %>% rename_with(~paste0(., "_r100"), -c(id_cuadrante, semana))
-=======
-# Tabla plana de sismos (sin geometria), reutilizada para los 3 radios
-sismos_df <- sismos_geo %>% st_drop_geometry() %>% filter(!is.na(semana))
-
-# ------------------------------------------------------------------
-# Construcción VECTORIZADA por radio: en vez de iterar cuadrante por
-# cuadrante (344 x 3 = 1032 llamadas a group_by/summarise), se usa
-# which(matriz < radio, arr.ind = TRUE) para obtener de una sola vez
-# TODOS los pares (cuadrante, sismo) dentro del radio, se arma un
-# data.frame largo, y se hace UN SOLO group_by/summarise por radio.
-# ------------------------------------------------------------------
-construir_variables_sismo_rapido <- function(radio_km) {
-
-  # Ya no se necesita units::set_units() porque matriz_distancias_km
-  # ahora es numérica plana (convertida en sismos-espacializar) — la
-  # comparación es aritmética simple, sin el overhead de despacho S4
-  # de la clase "units" repetido por cada uno de los cientos de miles
-  # de elementos de la matriz.
-  pares <- which(matriz_distancias_km < radio_km, arr.ind = TRUE)
-
-  if (nrow(pares) == 0) {
-    return(tibble(id_cuadrante = character(), semana = as.Date(character())))
-  }
-
-  tabla_pares <- tibble(
-    id_cuadrante = centroides_real$id_cuadrante[pares[, "row"]],
-    sismo_idx    = pares[, "col"],
-    dist_km      = matriz_distancias_km[pares]
-  ) %>%
-    bind_cols(sismos_df[.$sismo_idx, c("magnitude", "semana")]) %>%
-    filter(!is.na(semana))
-
-  tabla_pares %>%
-    group_by(id_cuadrante, semana) %>%
-    summarise(
-      n_sismos          = n(),
-      n_sismos_m2       = sum(magnitude >= 2, na.rm = TRUE),
-      n_sismos_m3       = sum(magnitude >= 3, na.rm = TRUE),
-      n_sismos_m4       = sum(magnitude >= 4, na.rm = TRUE),
-      magnitud_max      = max(magnitude, na.rm = TRUE),
-      dist_sismo_min_km = min(dist_km, na.rm = TRUE),
-      .groups = "drop"
-    )
-}
-
-sismos_r25  <- construir_variables_sismo_rapido(25)  %>% rename_with(~paste0(., "_r25"),  -c(id_cuadrante, semana))
-sismos_r50  <- construir_variables_sismo_rapido(50)  %>% rename_with(~paste0(., "_r50"),  -c(id_cuadrante, semana))
-sismos_r100 <- construir_variables_sismo_rapido(100) %>% rename_with(~paste0(., "_r100"), -c(id_cuadrante, semana))
->>>>>>> Stashed changes
 
 cat(sprintf("Cuadrante-semanas con actividad — R25: %d | R50: %d | R100: %d\n",
             nrow(sismos_r25), nrow(sismos_r50), nrow(sismos_r100)))
@@ -878,7 +682,6 @@ sismos_r50 %>%
 
 ---
 
-<<<<<<< Updated upstream
 # Parte 6 — Integración al panel
 
 Se une la versión de radio 50 km como variable principal (intermedia
@@ -887,22 +690,6 @@ alternativas para pruebas de sensibilidad del modelo.
 
 ```{r sismos-union-panel}
 data_final <- data_final %>%
-=======
-# Parte 6 — Vista previa (solo para el gráfico exploratorio, no se guarda)
-
-Las tres versiones de radio (25/50/100 km) ya quedan exportadas como
-tablas propias en la Parte 7; radio 50 km se usa aquí solo para el
-gráfico exploratorio de esta sección.
-
-```{r sismos-union-panel}
-# ------------------------------------------------------------------
-# CAMBIO DE ARQUITECTURA: esta unión es SOLO para el gráfico
-# exploratorio. NO se reescribe ningún panel combinado. La
-# integración real ocurre en 00b_integracion_panel_final.Rmd, a
-# partir de sismos_cuadrante_semana_r{25,50,100}km.csv.
-# ------------------------------------------------------------------
-vista_previa_sismos <- data_final %>%
->>>>>>> Stashed changes
   select(-any_of(c(
     "n_sismos_r25", "n_sismos_m2_r25", "n_sismos_m3_r25", "n_sismos_m4_r25", "magnitud_max_r25", "dist_sismo_min_km_r25",
     "n_sismos_r50", "n_sismos_m2_r50", "n_sismos_m3_r50", "n_sismos_m4_r50", "magnitud_max_r50", "dist_sismo_min_km_r50",
@@ -920,45 +707,26 @@ vista_previa_sismos <- data_final %>%
   )) %>%
   mutate(hubo_sismo_r50 = as.integer(n_sismos_r50 > 0))
 
-<<<<<<< Updated upstream
 cat(sprintf("Panel actualizado: %d filas x %d columnas\n", nrow(data_final), ncol(data_final)))
 
 cobertura_sismos <- data_final %>%
   summarise(
     filas_total          = n(),
-=======
-cat(sprintf("Vista previa (solo en memoria, no se guarda): %d filas x %d columnas\n",
-            nrow(vista_previa_sismos), ncol(vista_previa_sismos)))
-
-cobertura_sismos <- vista_previa_sismos %>%
-  summarise(
-    filas_total           = n(),
->>>>>>> Stashed changes
     semanas_con_sismo_r50 = sum(hubo_sismo_r50),
     pct_semanas_con_sismo  = round(100 * mean(hubo_sismo_r50), 2)
   )
 
 kable(t(cobertura_sismos), col.names = "Valor",
-<<<<<<< Updated upstream
       caption = "Cobertura de sismicidad en el panel (radio 50 km)") %>%
-=======
-      caption = "Cobertura de sismicidad (vista previa, radio 50 km)") %>%
->>>>>>> Stashed changes
   kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
 ```
 
 ## SAIDI/SAIFI según ocurrencia de sismo (radio 50 km)
 
 ```{r sismos-saidi-vs-sismo, fig.width=8, fig.height=5}
-<<<<<<< Updated upstream
 if (all(c("SAIDI", "SAIFI") %in% names(data_final))) {
 
   datos_plot <- data_final %>%
-=======
-if (all(c("SAIDI", "SAIFI") %in% names(vista_previa_sismos))) {
-
-  datos_plot <- vista_previa_sismos %>%
->>>>>>> Stashed changes
     filter(hubo_falla == 1) %>%
     mutate(sismo_f = factor(hubo_sismo_r50, levels = c(0, 1), labels = c("Sin sismo", "Con sismo")))
 
@@ -981,21 +749,13 @@ if (all(c("SAIDI", "SAIFI") %in% names(vista_previa_sismos))) {
   }
 
 } else {
-<<<<<<< Updated upstream
   message("SAIDI/SAIFI no están en data_final todavía — se omite este gráfico.")
-=======
-  message("SAIDI/SAIFI no disponibles en el panel base — se omite este gráfico.")
->>>>>>> Stashed changes
 }
 ```
 
 ---
 
-<<<<<<< Updated upstream
 # Parte 7 — Exportaciones
-=======
-# Parte 7 — Exportaciones (tablas propias únicamente)
->>>>>>> Stashed changes
 
 ```{r sismos-exportar}
 write_csv(sismos_r25,  file.path(UBICACION_DATA, "sismos_cuadrante_semana_r25km.csv"))
@@ -1004,16 +764,11 @@ write_csv(sismos_r100, file.path(UBICACION_DATA, "sismos_cuadrante_semana_r100km
 
 saveRDS(sismos_NS, file.path(UBICACION_DATA, "sismos_NS_preliminar.rds"))
 
-<<<<<<< Updated upstream
 saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
 write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
 
 cat(sprintf("Panel final guardado: %d filas x %d columnas (incluye sismicidad)\n",
             nrow(data_final), ncol(data_final)))
-=======
-cat("Tablas propias exportadas: sismos_cuadrante_semana_r{25,50,100}km.csv\n")
-cat("Este documento YA NO sobreescribe el panel combinado. La integración final se hace en 00b_integracion_panel_final.Rmd.\n")
->>>>>>> Stashed changes
 ```
 
 ---

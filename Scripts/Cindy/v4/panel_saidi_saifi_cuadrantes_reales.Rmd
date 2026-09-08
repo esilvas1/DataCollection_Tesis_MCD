@@ -45,7 +45,6 @@ library(kableExtra)
 ```
 
 ```{r entorno}
-<<<<<<< Updated upstream
 # Misma logica que Scripts/Edwin/analisis_correlacion.Rmd.
 # Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
 env_path <- file.path("..", "..", "..", ".env")
@@ -58,58 +57,6 @@ if (file.exists(".env")) {
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") {
   stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
-=======
-# ============================================================
-# CONFIGURACION DE ENTORNO (portable entre computadores)
-# ============================================================
-#
-# Cada persona que corra este documento define su propia ruta de
-# datos en un archivo ".env" (no versionado / no compartido), con
-# una linea como:
-#
-#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
-#
-# El .env se busca en la carpeta actual y hasta dos niveles arriba,
-# para que funcione sin importar si el .Rmd esta en la raiz del
-# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
-# ajusta la ruta antes de correr este documento.
-# ============================================================
-
-buscar_env <- function() {
-  # Se buscan hasta 4 niveles arriba, para que funcione tanto si el
-  # .Rmd esta en la raiz del proyecto como si esta varios niveles
-  # abajo (ej. Scripts/Cindy/v4/), sin que cada persona tenga que
-  # ajustar manualmente cuantos "../" usar.
-  candidatos <- c(
-    ".env",
-    file.path("..", ".env"),
-    file.path("..", "..", ".env"),
-    file.path("..", "..", "..", ".env"),
-    file.path("..", "..", "..", "..", ".env")
-  )
-  existentes <- candidatos[file.exists(candidatos)]
-  if (length(existentes) == 0) return(NA_character_)
-  existentes[1]
-}
-
-ruta_env <- buscar_env()
-
-if (!is.na(ruta_env)) {
-  readRenviron(ruta_env)
-} else {
-  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
-}
-
-UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
-
-if (UBICACION_DATA == "") {
-  stop(
-    "UBICACION_DATA no esta definida.\n",
-    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
-    "proyecto, con una linea:\n",
-    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
-  )
->>>>>>> Stashed changes
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
@@ -1521,7 +1468,6 @@ write_csv(
 )
 ```
 
-<<<<<<< Updated upstream
 ```{r export-panel-final}
 saveRDS(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
 write_csv(data_final, file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.csv"))
@@ -1530,26 +1476,6 @@ cat(sprintf(
   "Panel final guardado: %d filas x %d columnas (cuadrantes reales, sin Voronoi)\n",
   nrow(data_final), ncol(data_final)
 ))
-=======
-```{r export-panel-base}
-# ------------------------------------------------------------------
-# CAMBIO DE ARQUITECTURA: este documento ya NO guarda el panel final
-# combinado. Guarda su propia tabla BASE (id_cuadrante x semana con
-# clima, NDVI, SAIDI/SAIFI, estrato real y activos), con nombre propio.
-# El panel final se arma en un documento aparte de integración
-# (00b_integracion_panel_final.Rmd), que junta esta base con las
-# salidas de los documentos 3, 4, 5 y 6. Así, correr este documento de
-# nuevo nunca borra el trabajo de los demás.
-# ------------------------------------------------------------------
-saveRDS(data_final, file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds"))
-write_csv(data_final, file.path(UBICACION_DATA, "panel_base_cuadrante_semana.csv"))
-
-cat(sprintf(
-  "Panel BASE guardado (panel_base_cuadrante_semana): %d filas x %d columnas\n",
-  nrow(data_final), ncol(data_final)
-))
-cat("NOTA: este NO es el panel final del modelo. Corre 00b_integracion_panel_final.Rmd para combinarlo con estratificacion, desastres, sismicidad y topologia.\n")
->>>>>>> Stashed changes
 ```
 
 **Así se recargan estas exportaciones en otra sesión:**
@@ -1562,11 +1488,7 @@ fallas_eventos          <- st_read(ruta_gpkg_export, layer = "fallas_eventos")
 cuadrantes_infra        <- st_read(ruta_gpkg_export, layer = "cuadrantes_infra_reales")
 centroides_cuadrante_real <- st_read(ruta_gpkg_export, layer = "centroides_cuadrantes_reales")
 
-<<<<<<< Updated upstream
 data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds"))
-=======
-data_final <- readRDS(file.path(UBICACION_DATA, "panel_base_cuadrante_semana.rds"))
->>>>>>> Stashed changes
 ```
 
 ---
