@@ -109,7 +109,7 @@ cat(sprintf("cuadrantes_infra: %d polígonos | data_final: %d filas, %d cuadrant
 ## Descompresión y localización de la geodatabase
 
 La fuente es una **File Geodatabase (`.gdb`)** empaquetada en `.zip`,
-descargada del portal oficial de estratificación. Se descomprime una
+descargada del portal oficial de estratificación: https://dane.maps.arcgis.com/home/item.html?id=25ce4a3e75f3456a992538c2f96c3032#overview. Se descomprime una
 sola vez; si la carpeta ya existe, no se repite el proceso.
 
 ```{r estrato-descomprimir-gdb}
