@@ -117,6 +117,15 @@ if (UBICACION_DATA == "") {
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "estratificacion_municipal_cuadrantes_reales"
+)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png"
+)
 ```
 
 <<<<<<< Updated upstream
@@ -173,7 +182,7 @@ sola vez; si la carpeta ya existe, no se repite el proceso.
 
 ```{r estrato-descomprimir-gdb}
 archivo_zip <- file.path(UBICACION_DATA, "Estr_Capa.gdb.zip")
-carpeta_gdb <- "estratificacion"
+carpeta_gdb <- file.path(UBICACION_DATA, "estratificacion")
 
 if (!file.exists(archivo_zip)) {
   stop("No se encontró el archivo: ", archivo_zip,

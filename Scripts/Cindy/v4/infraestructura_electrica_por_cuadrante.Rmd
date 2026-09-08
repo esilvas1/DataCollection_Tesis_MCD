@@ -101,6 +101,15 @@ if (UBICACION_DATA == "") {
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "infraestructura_electrica_por_cuadrante"
+)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png"
+)
 ```
 
 ### Distribución de los elementos de infraestructura

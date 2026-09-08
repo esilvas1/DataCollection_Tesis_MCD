@@ -131,6 +131,15 @@ if (UBICACION_DATA == "") {
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "topologia_red_electrica_cuadrantes_reales"
+)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png"
+)
 ```
 
 ## Carga de insumos previos

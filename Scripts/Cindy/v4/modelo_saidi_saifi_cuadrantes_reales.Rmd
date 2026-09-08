@@ -131,7 +131,13 @@ cat("select()/filter()/rename()/mutate() fijados explicitamente a dplyr para tod
 # ============================================================
 
 buscar_env <- function() {
-  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"))
+  candidatos <- c(
+    ".env",
+    file.path("..", ".env"),
+    file.path("..", "..", ".env"),
+    file.path("..", "..", "..", ".env"),
+    file.path("..", "..", "..", "..", ".env")
+  )
   existentes <- candidatos[file.exists(candidatos)]
   if (length(existentes) == 0) return(NA_character_)
   existentes[1]
@@ -157,6 +163,15 @@ if (UBICACION_DATA == "") {
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "modelo_saidi_saifi_cuadrantes_reales"
+)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png"
+)
 ```
 
 ---

@@ -114,6 +114,15 @@ if (UBICACION_DATA == "") {
 }
 
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "sismicidad_cuadrantes_reales"
+)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png"
+)
 ```
 
 ```{r sismos-recargar-insumos}
@@ -177,7 +186,7 @@ str(sismos)
 # library(sf)
 # url_sismos <- "https://archive.sgc.gov.co/catalog_download_data/20260818_023734_ea42d3a0-fbfd-4a39-9419-bcf22d85c877.geojson"
 # 
-# archivo_sismos <- "sismos_sgc_2019_2026.geojson"
+# archivo_sismos <- file.path(UBICACION_DATA, "sismos_sgc_2019_2026.geojson")
 # 
 # # Descargar
 # download.file(
