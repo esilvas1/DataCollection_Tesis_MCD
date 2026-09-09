@@ -90,6 +90,26 @@ if (!is.na(ruta_env)) readRenviron(ruta_env) else warning("No se encontró .env 
 UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
 if (UBICACION_DATA == "") stop("UBICACION_DATA no está definida.")
 cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+
+DIR_ARCHIVOS_PLANOS <- file.path(
+  UBICACION_DATA, "archivos_planos", "modelo_SAIDI_cuadrantes_reales"
+)
+DIR_IMAGENES <- file.path(
+  UBICACION_DATA, "imagenes", "modelo_SAIDI_cuadrantes_reales"
+)
+DIR_CACHE <- file.path(
+  UBICACION_DATA, "cache", "modelo_SAIDI_cuadrantes_reales"
+)
+
+dir.create(DIR_ARCHIVOS_PLANOS, recursive = TRUE, showWarnings = FALSE)
+dir.create(DIR_IMAGENES, recursive = TRUE, showWarnings = FALSE)
+dir.create(DIR_CACHE, recursive = TRUE, showWarnings = FALSE)
+
+knitr::opts_chunk$set(
+  fig.path = paste0(DIR_IMAGENES, "/"),
+  dev = "png",
+  cache.path = paste0(DIR_CACHE, "/")
+)
 ```
 
 ## Carga del panel final y reporte completo de variables importadas
@@ -789,11 +809,17 @@ extraer_pvalor <- function(lista_tests, nombres_posibles) {
 p_rlmerr <- extraer_pvalor(lm_tests, c("RLMerr", "adjRSerr"))
 p_rlmlag <- extraer_pvalor(lm_tests, c("RLMlag", "adjRSlag"))
 
-recomendacion <- if (is.na(p_rlmlag) || is.na(p_rlmerr)) "Comparar por AIC directamente."
-  else if (p_rlmlag < 0.05 & p_rlmerr >= 0.05) "SAR"
-  else if (p_rlmerr < 0.05 & p_rlmlag >= 0.05) "SEM"
-  else if (p_rlmlag < 0.05 & p_rlmerr < 0.05) { if (p_rlmlag < p_rlmerr) "SAR (mejor p)" else "SEM (mejor p)" }
-  else "Ninguno significativo"
+recomendacion <- if (is.na(p_rlmlag) || is.na(p_rlmerr)) {
+  "Comparar por AIC directamente."
+} else if (p_rlmlag < 0.05 & p_rlmerr >= 0.05) {
+  "SAR"
+} else if (p_rlmerr < 0.05 & p_rlmlag >= 0.05) {
+  "SEM"
+} else if (p_rlmlag < 0.05 & p_rlmerr < 0.05) {
+  if (p_rlmlag < p_rlmerr) "SAR (mejor p)" else "SEM (mejor p)"
+} else {
+  "Ninguno significativo"
+}
 cat(sprintf("\nRecomendación: %s\n", recomendacion))
 ```
 
