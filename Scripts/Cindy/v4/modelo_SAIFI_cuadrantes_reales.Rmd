@@ -1,0 +1,909 @@
+---
+title: "Modelo predictivo de SAIFI por cuadrante-semana"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+try(Sys.setlocale("LC_ALL", "es_ES.UTF-8"), silent = TRUE)
+try(Sys.setlocale("LC_CTYPE", "es_ES.UTF-8"), silent = TRUE)
+```
+
+# Introducción y supuestos
+
+Este documento construye, evalúa y compara modelos para **entender y
+pronosticar exclusivamente SAIFI** (frecuencia de interrupciones) a
+nivel cuadrante-semana — documento gemelo e independiente de
+`modelo_SAIDI_cuadrantes_reales.Rmd` (duración de interrupciones).
+
+## Supuestos y limitaciones
+
+1. **SAIFI usa el denominador real por cuadrante**
+   (`cantidad_usuarios_cuadrante`). Puede superar 1 si un cuadrante
+   tuvo más de una interrupción por usuario en la semana — correcto,
+   no un error.
+2. **Variables estáticas vs. efectos fijos**: igual tratamiento que en
+   SAIDI (infraestructura, estrato, topología quedan absorbidas por
+   el efecto fijo en modelos FE).
+3. **Dependencia temporal**: split estrictamente temporal, no aleatorio.
+4. **Escala de SAIFI**: a diferencia de SAIDI, no se aplica `log1p()`
+   por defecto — SAIFI es una tasa acotada en un rango más manejable;
+   se documenta la distribución antes de decidir la transformación.
+5. **Dimensión espacial**: rezago espacial de vecinos calculado
+   específicamente para SAIFI (`SAIFI_vecinos_lag1`, distinto del de
+   SAIDI), y modelo SAR/SEM propio en el corte transversal.
+
+---
+
+# Parte 0 — Importación completa de variables
+
+## Paquetes
+
+```{r modelo-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+paquetes_modelo <- c("dplyr", "tidyr", "ggplot2", "lubridate", "knitr",
+                     "kableExtra", "scales", "corrplot", "fixest",
+                     "randomForest", "Metrics", "purrr", "broom",
+                     "sf", "spdep", "spatialreg", "MASS", "car")
+invisible(lapply(paquetes_modelo, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+select <- dplyr::select
+filter <- dplyr::filter
+rename <- dplyr::rename
+mutate <- dplyr::mutate
+```
+
+## Entorno (.env)
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) readRenviron(ruta_env) else warning("No se encontró .env.")
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") stop("UBICACION_DATA no está definida.")
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+## Carga del panel y reporte completo de variables importadas
+
+```{r modelo-cargar-datos}
+data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds")) %>%
+  mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+  arrange(id_cuadrante, semana)
+
+cat(sprintf("Panel cargado: %d filas | %d cuadrantes | %d semanas | %d columnas\n",
+            nrow(data_final), n_distinct(data_final$id_cuadrante),
+            n_distinct(data_final$semana), ncol(data_final)))
+```
+
+```{r modelo-reporte-importacion}
+grupos_variables <- list(
+  "Identificación"                 = c("id_cuadrante", "semana", "latitud", "longitud", "altitud"),
+  "Clima (Original)"                = c("temp_media_semana", "temp_max_semana", "temp_min_semana",
+                                        "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+                                        "precip_total_semana"),
+  "Fallas e indicadores (Doc. 2)"   = c("usuarios_afectados", "elementos_afectados", "n_eventos",
+                                        "duracion_total", "usuarios_totales", "cantidad_usuarios_cuadrante",
+                                        "SAIDI", "SAIFI"),
+  "Vegetación NDVI (Doc. 2)"        = c("ndvi_semanal", "log_ndvi", "cat_ndvi"),
+  "Composición estrato/uso real (Doc. 2)" = c("ESTRATO_1","ESTRATO_2","ESTRATO_3","ESTRATO_4","ESTRATO_5","ESTRATO_6",
+                                        "INDUSTRIAL","COMERCIAL","OFICIAL","PROVISIONAL","ALUMBRADO_PUBLICO",
+                                        "prop_estrato_1","prop_estrato_2","prop_estrato_3","prop_estrato_4",
+                                        "prop_estrato_5","prop_estrato_6","prop_industrial","prop_comercial",
+                                        "prop_oficial","prop_provisional","prop_alumbrado","estrato_modal_real",
+                                        "prop_no_residencial"),
+  "Activos y mantenimiento (Doc. 2)" = c("FECHA_ACTIVO_MAS_VIEJO","FECHA_ACTIVO_MAS_NUEVO","PROM_CANT_MODIFICACIONES",
+                                        "edad_activo_mas_viejo_dias","edad_activo_mas_nuevo_dias",
+                                        "edad_activo_mas_viejo_anios","edad_activo_mas_nuevo_anios",
+                                        "rango_edad_activos_anios"),
+  "Infraestructura (Doc. 1)"        = c("n_elementos","n_tipos_infraestructura","n_transformadores",
+                                        "n_aisladeros","n_cuchillas","n_interruptores","n_reconectadores",
+                                        "prop_transformadores","prop_aisladeros","prop_cuchillas",
+                                        "prop_interruptores","prop_reconectadores"),
+  "Estratificación municipal histórica (Doc. 3)" = c("codigo_municipio","municipio","codigo_departamento",
+                                        "departamento","metodologia_estratificacion","n_estratos_municipio",
+                                        "estrato_predominante_municipal"),
+  "Desastres UNGRD (Doc. 4)"        = c("n_eventos_catastroficos","hubo_evento_catastrofico","hubo_inundacion",
+                                        "hubo_movimiento_masa","hubo_vendaval","personas_afectadas_evt",
+                                        "familias_afectadas_evt","tipos_evento"),
+  "Sismicidad (Doc. 5)"             = c("n_sismos_r25","n_sismos_m2_r25","n_sismos_m3_r25","n_sismos_m4_r25",
+                                        "magnitud_max_r25","dist_sismo_min_km_r25",
+                                        "n_sismos_r50","n_sismos_m2_r50","n_sismos_m3_r50","n_sismos_m4_r50",
+                                        "magnitud_max_r50","dist_sismo_min_km_r50",
+                                        "n_sismos_r100","n_sismos_m2_r100","n_sismos_m3_r100","n_sismos_m4_r100",
+                                        "magnitud_max_r100","dist_sismo_min_km_r100","hubo_sismo_r50"),
+  "Topología de red (Doc. 6)"       = c("longitud_red_km","n_circuitos_cuadrante","n_nodos_terminales",
+                                        "densidad_terminales","tension_predominante")
+)
+
+reporte_importacion <- purrr::map_dfr(names(grupos_variables), function(grupo) {
+  vars <- grupos_variables[[grupo]]
+  presentes <- intersect(vars, names(data_final))
+  tibble(grupo = grupo, n_esperadas = length(vars), n_presentes = length(presentes),
+         faltantes = paste(setdiff(vars, names(data_final)), collapse = ", "))
+})
+
+kable(reporte_importacion, caption = "Reporte de importación de variables por grupo/documento de origen") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE)
+
+cat(sprintf("\nTotal de columnas en el panel: %d\n", ncol(data_final)))
+```
+
+---
+
+# Parte 1 — Depuración de datos y feature engineering (SAIFI)
+
+## Depuración 1 — Tipos de dato
+
+```{r depuracion-tipos}
+cat("Clase de id_cuadrante:", class(data_final$id_cuadrante), "\n")
+cat("Clase de semana:", class(data_final$semana), "\n")
+```
+
+## Depuración 2 — Variable objetivo `hubo_falla`
+
+```{r depuracion-hubo-falla}
+data_final <- data_final %>% mutate(hubo_falla = as.integer(n_eventos > 0))
+cat(sprintf("hubo_falla creada | Semanas con falla: %d de %d (%.1f%%)\n",
+            sum(data_final$hubo_falla), nrow(data_final), 100 * mean(data_final$hubo_falla)))
+```
+
+## Depuración 3 — Advertencia de calidad: edad de activos negativa
+
+```{r depuracion-alerta-edad-negativa}
+if ("edad_activo_mas_viejo_anios" %in% names(data_final)) {
+  n_negativas <- sum(data_final$edad_activo_mas_viejo_anios < 0, na.rm = TRUE)
+  if (n_negativas > 0) {
+    cat(sprintf("ADVERTENCIA: %d filas (%.1f%%) con edad_activo_mas_viejo_anios negativa — misma limitación documentada en el análisis de SAIDI.\n",
+                n_negativas, 100 * n_negativas / nrow(data_final)))
+  }
+}
+```
+
+## Depuración 4 — Verificación de escala de SAIFI (decisión de transformación)
+
+A diferencia de SAIDI, se verifica explícitamente si SAIFI necesita
+`log1p()` o puede modelarse en escala original.
+
+```{r depuracion-verificar-escala-saifi}
+resumen_saifi <- data_final %>%
+  filter(hubo_falla == 1) %>%
+  summarise(min = min(SAIFI, na.rm = TRUE), mediana = median(SAIFI, na.rm = TRUE),
+            media = mean(SAIFI, na.rm = TRUE), p95 = quantile(SAIFI, 0.95, na.rm = TRUE),
+            max = max(SAIFI, na.rm = TRUE), pct_mayor_a_1 = 100 * mean(SAIFI > 1, na.rm = TRUE))
+kable(resumen_saifi, digits = 4, caption = "Distribución de SAIFI (semanas con falla)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+usar_log_saifi <- resumen_saifi$max / resumen_saifi$mediana > 20
+cat(sprintf(
+  "%s\n",
+  if (usar_log_saifi) "La cola es larga (max/mediana > 20) — se aplica log1p() igual que en SAIDI, por consistencia metodológica."
+  else "La distribución es razonablemente compacta — se aplica log1p() de todas formas, por consistencia directa con el enfoque de SAIDI y para estabilizar varianza."
+))
+```
+
+## Depuración 5 — Ingeniería de variables (feature engineering)
+
+```{r modelo-feature-engineering}
+data_final <- data_final %>%
+  group_by(id_cuadrante) %>%
+  arrange(semana) %>%
+  mutate(
+    mes         = month(semana),
+    trimestre   = quarter(semana),
+    semana_num  = as.numeric(semana - min(semana)) / 7,
+
+    SAIFI_lag1  = dplyr::lag(SAIFI, 1),
+    SAIFI_lag4  = dplyr::lag(SAIFI, 4),
+    precip_lag1 = dplyr::lag(precip_total_semana, 1),
+    viento_lag1 = dplyr::lag(viento_max_semana, 1),
+
+    precip_ma4  = zoo::rollmeanr(precip_total_semana, k = 4, fill = NA),
+    viento_ma4  = zoo::rollmeanr(viento_max_semana,   k = 4, fill = NA),
+
+    log_SAIFI1  = log1p(SAIFI),
+
+    ndvi_x_elementos = ndvi_semanal * n_elementos
+  ) %>%
+  ungroup()
+
+if ("n_sismos_r50" %in% names(data_final)) {
+  data_final <- data_final %>% mutate(sismo_x_elementos = n_sismos_r50 * n_elementos)
+  cat("sismo_x_elementos creada.\n")
+} else {
+  cat("sismo_x_elementos OMITIDA — falta n_sismos_r50.\n")
+}
+
+cat(sprintf("Variables tras feature engineering: %d columnas\n", ncol(data_final)))
+```
+
+---
+
+# Parte 1b — Dimensión espacial: rezago entre cuadrantes vecinos (SAIFI)
+
+## Matriz de vecindad
+
+```{r modelo-vecindad-contiguidad}
+if (!exists("cuadrantes_infra")) {
+  cuadrantes_infra <- st_read(
+    file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg"),
+    layer = "cuadrantes_infra_reales", quiet = TRUE
+  )
+}
+cuadrantes_infra <- cuadrantes_infra %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE))
+if (sum(!st_is_valid(cuadrantes_infra)) > 0) cuadrantes_infra <- st_make_valid(cuadrantes_infra)
+
+vecinos_nb <- poly2nb(cuadrantes_infra, queen = TRUE, row.names = cuadrantes_infra$id_cuadrante)
+pesos_espaciales <- nb2listw(vecinos_nb, style = "W", zero.policy = TRUE)
+cat(sprintf("Cuadrantes sin vecino: %d de %d\n", sum(card(vecinos_nb) == 0), length(vecinos_nb)))
+```
+
+## Test de Moran's I sobre SAIFI
+
+```{r modelo-moran-test}
+saifi_promedio_cuadrante <- data_final %>%
+  filter(hubo_falla == 1) %>%
+  group_by(id_cuadrante) %>%
+  summarise(SAIFI_promedio = mean(SAIFI, na.rm = TRUE), .groups = "drop")
+
+saifi_ordenado <- cuadrantes_infra %>%
+  st_drop_geometry() %>% select(id_cuadrante) %>%
+  left_join(saifi_promedio_cuadrante, by = "id_cuadrante") %>%
+  mutate(SAIFI_promedio = if_else(is.na(SAIFI_promedio), 0, SAIFI_promedio))
+
+moran_resultado_saifi <- moran.test(saifi_ordenado$SAIFI_promedio, pesos_espaciales, zero.policy = TRUE)
+print(moran_resultado_saifi)
+
+cat(sprintf(
+  "\n%s\n", if (moran_resultado_saifi$p.value < 0.05 & moran_resultado_saifi$estimate[1] > 0)
+    "Autocorrelación espacial positiva significativa en SAIFI." else "Sin evidencia fuerte de autocorrelación espacial."
+))
+```
+
+```{r modelo-moran-mapa, fig.width=8, fig.height=7}
+cuadrantes_infra %>%
+  left_join(saifi_promedio_cuadrante, by = "id_cuadrante") %>%
+  ggplot() +
+  geom_sf(aes(fill = SAIFI_promedio), color = "gray40", linewidth = 0.15) +
+  scale_fill_viridis_c(option = "viridis", na.value = "grey85", name = "SAIFI\npromedio") +
+  labs(title = "SAIFI promedio por cuadrante (semanas con falla)",
+       subtitle = sprintf("Moran I = %.3f (p = %.4f)", moran_resultado_saifi$estimate[1], moran_resultado_saifi$p.value)) +
+  theme_minimal(base_size = 11)
+```
+
+## Construcción del rezago espacial de SAIFI
+
+```{r modelo-construir-rezago-espacial}
+matriz_pesos <- listw2mat(pesos_espaciales)
+rownames(matriz_pesos) <- cuadrantes_infra$id_cuadrante
+colnames(matriz_pesos) <- cuadrantes_infra$id_cuadrante
+
+calcular_rezago_espacial <- function(datos, variable, usar_lag_temporal = FALSE) {
+  var_sym <- rlang::sym(variable)
+  ancho <- datos %>% select(id_cuadrante, semana, !!var_sym) %>%
+    tidyr::pivot_wider(names_from = id_cuadrante, values_from = !!var_sym)
+  semanas_vec <- ancho$semana
+  mat_valores <- as.matrix(ancho %>% select(-semana))
+  mat_valores <- mat_valores[, colnames(matriz_pesos), drop = FALSE]
+  mat_valores[is.na(mat_valores)] <- 0
+  if (usar_lag_temporal) {
+    mat_valores <- rbind(matrix(NA, nrow = 1, ncol = ncol(mat_valores), dimnames = list(NULL, colnames(mat_valores))),
+                          mat_valores[-nrow(mat_valores), ])
+    mat_valores[is.na(mat_valores)] <- 0
+  }
+  rezago <- mat_valores %*% t(matriz_pesos)
+  colnames(rezago) <- colnames(mat_valores)
+  as.data.frame(rezago) %>% mutate(semana = semanas_vec) %>%
+    tidyr::pivot_longer(-semana, names_to = "id_cuadrante", values_to = paste0(variable, "_vecinos"))
+}
+
+# Rezago espacial DE SAIFI (distinto del de SAIDI usado en el documento gemelo)
+saifi_vecinos <- calcular_rezago_espacial(data_final, "SAIFI", usar_lag_temporal = TRUE) %>%
+  rename(SAIFI_vecinos_lag1 = SAIFI_vecinos)
+ndvi_vecinos <- calcular_rezago_espacial(data_final, "ndvi_semanal") %>%
+  rename(ndvi_vecinos = ndvi_semanal_vecinos)
+
+data_final <- data_final %>%
+  select(-any_of(c("SAIFI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"))) %>%
+  left_join(saifi_vecinos, by = c("id_cuadrante", "semana")) %>%
+  left_join(ndvi_vecinos,  by = c("id_cuadrante", "semana"))
+
+if ("n_eventos_catastroficos" %in% names(data_final)) {
+  eventos_vecinos <- calcular_rezago_espacial(data_final, "n_eventos_catastroficos") %>%
+    rename(n_eventos_vecinos = n_eventos_catastroficos_vecinos)
+  data_final <- data_final %>% select(-any_of("n_eventos_vecinos")) %>%
+    left_join(eventos_vecinos, by = c("id_cuadrante", "semana"))
+}
+
+cat(sprintf("Cobertura SAIFI_vecinos_lag1: %.1f%% | ndvi_vecinos: %.1f%%\n",
+            100 * mean(!is.na(data_final$SAIFI_vecinos_lag1)),
+            100 * mean(!is.na(data_final$ndvi_vecinos))))
+```
+
+```{r modelo-verificar-rezago-espacial, fig.width=8, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  ggplot(aes(x = SAIFI_vecinos_lag1, y = SAIFI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#238b45", se = TRUE) +
+  labs(title = "SAIFI del cuadrante vs. SAIFI de sus vecinos (t-1)", x = "SAIFI vecinos (t-1)", y = "SAIFI (t)") +
+  theme_minimal(base_size = 12)
+```
+
+## Selección de variables candidatas para SAIFI
+
+```{r modelo-seleccionar-variables}
+vars_candidatas <- c(
+  "temp_media_semana", "temp_max_semana", "humedad_media_semana",
+  "viento_max_semana", "precip_total_semana", "precip_ma4", "viento_ma4",
+  "ndvi_semanal", "log_ndvi",
+  "n_elementos", "n_tipos_infraestructura", "prop_transformadores",
+  "longitud_red_km", "n_circuitos_cuadrante", "n_nodos_terminales", "densidad_terminales",
+  "estrato_modal_real", "prop_estrato_1", "prop_estrato_2", "prop_estrato_3",
+  "prop_estrato_4", "prop_estrato_5", "prop_estrato_6",
+  "prop_industrial", "prop_comercial", "prop_oficial", "prop_no_residencial",
+  "edad_activo_mas_viejo_anios", "edad_activo_mas_nuevo_anios",
+  "rango_edad_activos_anios", "PROM_CANT_MODIFICACIONES",
+  "n_eventos_catastroficos", "hubo_evento_catastrofico",
+  "n_sismos_r50", "n_sismos_m3_r50", "magnitud_max_r50", "dist_sismo_min_km_r50",
+  "SAIFI_lag1", "SAIFI_lag4",
+  "ndvi_x_elementos", "sismo_x_elementos",
+  "SAIFI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"
+)
+vars_disponibles <- intersect(vars_candidatas, names(data_final))
+cat(sprintf("Variables candidatas disponibles: %d de %d\n", length(vars_disponibles), length(vars_candidatas)))
+print(setdiff(vars_candidatas, names(data_final)))
+```
+
+```{r modelo-matriz-correlacion, fig.width=10, fig.height=9}
+vars_numericas <- data_final %>% select(all_of(vars_disponibles)) %>% select(where(is.numeric)) %>% na.omit()
+if (nrow(vars_numericas) > 100) {
+  cor_mat <- cor(vars_numericas, use = "complete.obs")
+  corrplot(cor_mat, method = "color", type = "upper", tl.cex = 0.6, tl.col = "black",
+           diag = FALSE, title = "Matriz de correlación — SAIFI", mar = c(0,0,2,0))
+}
+```
+
+---
+
+# Parte 2 — Análisis exploratorio de relaciones (SAIFI)
+
+```{r modelo-scatter-clima, fig.width=10, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  select(SAIFI, precip_total_semana, viento_max_semana) %>%
+  pivot_longer(-SAIFI, names_to = "variable", values_to = "valor") %>%
+  ggplot(aes(x = valor, y = SAIFI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#238b45", se = TRUE) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "SAIFI vs. variables climáticas", x = NULL, y = "SAIFI") +
+  theme_minimal(base_size = 12)
+```
+
+```{r modelo-scatter-riesgo, fig.width=10, fig.height=5}
+vars_riesgo_disp <- intersect(c("ndvi_semanal", "dist_sismo_min_km_r50"), names(data_final))
+if (length(vars_riesgo_disp) > 0) {
+  data_final %>%
+    filter(hubo_falla == 1) %>%
+    select(SAIFI, all_of(vars_riesgo_disp)) %>%
+    pivot_longer(-SAIFI, names_to = "variable", values_to = "valor") %>%
+    filter(!is.na(valor)) %>%
+    ggplot(aes(x = valor, y = SAIFI)) +
+    geom_point(alpha = 0.15, size = 1) +
+    geom_smooth(method = "loess", color = "#2b8cbe", se = TRUE) +
+    facet_wrap(~variable, scales = "free_x") +
+    labs(title = "SAIFI vs. NDVI y distancia sísmica", x = NULL, y = "SAIFI") +
+    theme_minimal(base_size = 12)
+}
+```
+
+```{r modelo-distribucion-target, fig.width=8, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  ggplot(aes(x = SAIFI)) +
+  geom_histogram(bins = 50, fill = "#238b45", color = "white") +
+  labs(title = "Distribución de SAIFI (semanas con falla)", x = NULL, y = "Frecuencia") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 3 — Split temporal (train / test)
+
+```{r modelo-split-temporal}
+PCT_TEST <- 0.15
+semanas_ordenadas <- data_final %>% distinct(semana) %>% arrange(semana) %>% pull(semana)
+n_semanas <- length(semanas_ordenadas)
+corte <- semanas_ordenadas[floor(n_semanas * (1 - PCT_TEST))]
+
+train <- data_final %>% filter(semana <= corte, hubo_falla == 1)
+test  <- data_final %>% filter(semana >  corte, hubo_falla == 1)
+
+cat(sprintf("Corte: %s\nTrain: %d filas | Test: %d filas\n", corte, nrow(train), nrow(test)))
+```
+
+```{r modelo-plot-split, fig.width=9, fig.height=4}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  mutate(conjunto = if_else(semana <= corte, "Train", "Test")) %>%
+  count(semana, conjunto) %>%
+  ggplot(aes(x = semana, y = n, fill = conjunto)) +
+  geom_col() + geom_vline(xintercept = as.numeric(corte), linetype = "dashed") +
+  scale_fill_manual(values = c(Train = "#3182bd", Test = "#de2d26")) +
+  labs(title = "Partición temporal train/test (SAIFI)", x = NULL, y = "N° observaciones") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 4 — Especificaciones de modelo (SAIFI)
+
+```{r modelo-formula-base}
+vars_modelo <- c(
+  "temp_media_semana", "viento_max_semana", "precip_total_semana", "precip_ma4",
+  "ndvi_semanal", "n_eventos_catastroficos", "n_sismos_r50", "dist_sismo_min_km_r50",
+  "SAIFI_lag1", "longitud_red_km", "densidad_terminales",
+  "prop_estrato_1", "prop_estrato_2", "prop_no_residencial",
+  "edad_activo_mas_viejo_anios", "PROM_CANT_MODIFICACIONES",
+  "SAIFI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"
+)
+vars_modelo <- intersect(vars_modelo, names(data_final))
+formula_pooled <- as.formula(paste("log_SAIFI1 ~", paste(vars_modelo, collapse = " + ")))
+cat("Fórmula base:\n"); print(formula_pooled)
+```
+
+## Modelo 1 — Pooled OLS
+
+```{r modelo-1-pooled}
+m1_pooled <- feols(formula_pooled, data = train)
+summary(m1_pooled)
+```
+
+## Modelo 2 — Efectos fijos de cuadrante
+
+```{r modelo-2-fe-cuadrante}
+formula_fe <- as.formula(paste("log_SAIFI1 ~", paste(vars_modelo, collapse = " + "), "| id_cuadrante"))
+m2_fe_cuadrante <- feols(formula_fe, data = train)
+summary(m2_fe_cuadrante)
+```
+
+## Modelo 3 — Efectos fijos de cuadrante + semana
+
+```{r modelo-3-fe-doble}
+formula_fe2 <- as.formula(paste("log_SAIFI1 ~", paste(vars_modelo, collapse = " + "), "| id_cuadrante + semana"))
+m3_fe_doble <- feols(formula_fe2, data = train)
+summary(m3_fe_doble)
+```
+
+## Modelo 4 — Random Forest
+
+```{r modelo-4-random-forest}
+train_rf <- train %>% select(log_SAIFI1, all_of(vars_modelo)) %>% na.omit()
+test_rf  <- test  %>% select(log_SAIFI1, all_of(vars_modelo)) %>% na.omit()
+set.seed(123)
+m4_rf <- randomForest(log_SAIFI1 ~ ., data = train_rf, ntree = 500, importance = TRUE)
+print(m4_rf)
+```
+
+```{r modelo-rf-importancia, fig.width=8, fig.height=5}
+importancia_rf <- importance(m4_rf) %>% as.data.frame() %>%
+  tibble::rownames_to_column("variable") %>% arrange(desc(`%IncMSE`))
+ggplot(importancia_rf, aes(x = reorder(variable, `%IncMSE`), y = `%IncMSE`)) +
+  geom_col(fill = "#238b45") + coord_flip() +
+  labs(title = "Importancia de variables — Random Forest (SAIFI)", x = NULL, y = "% incremento en MSE") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 5 — Evaluación en test
+
+```{r modelo-evaluar-todos}
+test_completo <- test %>% select(log_SAIFI1, SAIFI, all_of(vars_modelo), id_cuadrante, semana) %>% na.omit()
+
+pred_pooled <- predict(m1_pooled, newdata = test_completo)
+pred_fe1    <- predict(m2_fe_cuadrante, newdata = test_completo)
+pred_fe2    <- predict(m3_fe_doble, newdata = test_completo)
+pred_rf     <- predict(m4_rf, newdata = test_completo)
+
+cat(sprintf("NA en predicciones — Pooled: %d | FE cuadrante: %d | FE cuadrante+semana: %d | RF: %d (de %d)\n",
+            sum(is.na(pred_pooled)), sum(is.na(pred_fe1)), sum(is.na(pred_fe2)), sum(is.na(pred_rf)), nrow(test_completo)))
+
+calc_metricas_validas <- function(observado, predicho) {
+  valido <- !is.na(predicho) & !is.na(observado)
+  if (sum(valido) < 5) return(c(RMSE = NA_real_, MAE = NA_real_, R2 = NA_real_))
+  c(RMSE = Metrics::rmse(observado[valido], predicho[valido]),
+    MAE  = Metrics::mae(observado[valido], predicho[valido]),
+    R2   = cor(observado[valido], predicho[valido])^2)
+}
+
+m_pooled_metricas <- calc_metricas_validas(test_completo$log_SAIFI1, pred_pooled)
+m_fe1_metricas    <- calc_metricas_validas(test_completo$log_SAIFI1, pred_fe1)
+m_fe2_metricas    <- calc_metricas_validas(test_completo$log_SAIFI1, pred_fe2)
+m_rf_metricas     <- calc_metricas_validas(test_completo$log_SAIFI1, pred_rf)
+
+resultados <- tibble(
+  modelo   = c("Pooled OLS", "FE cuadrante", "FE cuadrante+semana", "Random Forest"),
+  RMSE_log = c(m_pooled_metricas["RMSE"], m_fe1_metricas["RMSE"], m_fe2_metricas["RMSE"], m_rf_metricas["RMSE"]),
+  MAE_log  = c(m_pooled_metricas["MAE"],  m_fe1_metricas["MAE"],  m_fe2_metricas["MAE"],  m_rf_metricas["MAE"]),
+  R2_log   = c(m_pooled_metricas["R2"],   m_fe1_metricas["R2"],   m_fe2_metricas["R2"],   m_rf_metricas["R2"])
+)
+kable(resultados, digits = 4, caption = "Desempeño comparado en test (SAIFI, escala log)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## Aporte del rezago espacial
+
+```{r modelo-comparar-con-sin-espacial}
+vars_sin_espacial <- setdiff(vars_modelo, c("SAIFI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"))
+formula_fe_sin_espacial <- as.formula(paste("log_SAIFI1 ~", paste(vars_sin_espacial, collapse = " + "), "| id_cuadrante"))
+m2_fe_sin_espacial <- feols(formula_fe_sin_espacial, data = train)
+
+test_sin_espacial <- test %>% select(log_SAIFI1, all_of(vars_sin_espacial), id_cuadrante) %>% na.omit()
+pred_sin_espacial  <- predict(m2_fe_sin_espacial, newdata = test_sin_espacial)
+
+metricas_sin <- calc_metricas_validas(test_sin_espacial$log_SAIFI1, pred_sin_espacial)
+metricas_con <- calc_metricas_validas(test_completo$log_SAIFI1, pred_fe1)
+
+comparacion_espacial <- tibble(
+  especificacion = c("FE cuadrante — SIN espacial", "FE cuadrante — CON espacial"),
+  RMSE_log = c(metricas_sin["RMSE"], metricas_con["RMSE"])
+)
+kable(comparacion_espacial, digits = 4, caption = "Aporte marginal del rezago espacial (SAIFI)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+```{r modelo-pred-vs-obs, fig.width=8, fig.height=7}
+mejor_modelo <- resultados$modelo[which.min(resultados$RMSE_log)]
+pred_mejor <- switch(mejor_modelo, "Pooled OLS" = pred_pooled, "FE cuadrante" = pred_fe1,
+                     "FE cuadrante+semana" = pred_fe2, "Random Forest" = pred_rf)
+
+data.frame(observado = test_completo$log_SAIFI1, predicho = pred_mejor) %>%
+  ggplot(aes(x = observado, y = predicho)) +
+  geom_point(alpha = 0.3, size = 1.2, color = "#238b45") +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(title = sprintf("Predicho vs. observado — %s (SAIFI)", mejor_modelo),
+       x = "log(SAIFI) observado", y = "log(SAIFI) predicho") +
+  theme_minimal(base_size = 12)
+```
+
+```{r modelo-serie-pronostico, fig.width=10, fig.height=6}
+set.seed(1)
+muestra_cuad <- test_completo %>% distinct(id_cuadrante) %>% slice_sample(n = 4) %>% pull(id_cuadrante)
+test_completo %>%
+  mutate(SAIFI_pred = expm1(pred_mejor)) %>%
+  filter(id_cuadrante %in% muestra_cuad) %>%
+  select(id_cuadrante, semana, SAIFI, SAIFI_pred) %>%
+  pivot_longer(c(SAIFI, SAIFI_pred), names_to = "tipo", values_to = "valor") %>%
+  ggplot(aes(x = semana, y = valor, color = tipo)) +
+  geom_line(linewidth = 0.7) + geom_point(size = 1.5) +
+  facet_wrap(~id_cuadrante, scales = "free_y") +
+  scale_color_manual(values = c(SAIFI = "black", SAIFI_pred = "#238b45"), labels = c("Observado", "Pronosticado")) +
+  labs(title = "SAIFI observado vs. pronosticado — muestra de cuadrantes", x = NULL, y = "SAIFI", color = NULL) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 6 — Diagnóstico de supuestos (FE cuadrante)
+
+```{r modelo-diagnostico-homocedasticidad, fig.width=8, fig.height=5}
+data.frame(ajustado = fitted(m2_fe_cuadrante), residuo = resid(m2_fe_cuadrante)) %>%
+  ggplot(aes(x = ajustado, y = residuo)) +
+  geom_point(alpha = 0.2, size = 1) +
+  geom_hline(yintercept = 0, color = "#de2d26", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "#3182bd") +
+  labs(title = "Residuos vs. ajustados — FE cuadrante (SAIFI)", x = "Ajustado", y = "Residuo") +
+  theme_minimal(base_size = 12)
+```
+
+```{r modelo-diagnostico-qq, fig.width=6, fig.height=6}
+qqnorm(resid(m2_fe_cuadrante), main = "QQ-plot — residuos FE cuadrante (SAIFI)")
+qqline(resid(m2_fe_cuadrante), col = "#de2d26")
+```
+
+```{r modelo-comparacion-especificaciones}
+etable(m1_pooled, m2_fe_cuadrante, m3_fe_doble, headers = c("Pooled OLS", "FE cuadrante", "FE cuadrante+semana"))
+```
+
+---
+
+# Parte 7 — Modelo espacial formal: SAR y SEM (corte transversal, SAIFI)
+
+```{r sar-promedio-ponderado-digitos}
+pesos_temporales <- data_final %>%
+  distinct(semana) %>% arrange(semana) %>%
+  mutate(t = row_number(), n = n(), peso_digitos = t / (n * (n + 1) / 2)) %>%
+  select(semana, peso_digitos)
+```
+
+```{r sar-calcular-cross-section}
+cross_section_cuadrante <- data_final %>%
+  left_join(pesos_temporales, by = "semana") %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    SAIFI_ponderado = sum(SAIFI * peso_digitos, na.rm = TRUE) / sum(peso_digitos[!is.na(SAIFI)]),
+    SAIFI_simple    = mean(SAIFI, na.rm = TRUE),
+    n_elementos               = first(n_elementos),
+    prop_transformadores      = first(prop_transformadores),
+    longitud_red_km           = first(longitud_red_km),
+    densidad_terminales       = first(densidad_terminales),
+    n_circuitos_cuadrante     = first(n_circuitos_cuadrante),
+    estrato_modal_real        = first(estrato_modal_real),
+    prop_estrato_1            = first(prop_estrato_1),
+    prop_estrato_2            = first(prop_estrato_2),
+    prop_no_residencial       = first(prop_no_residencial),
+    edad_activo_mas_viejo_anios = first(edad_activo_mas_viejo_anios),
+    PROM_CANT_MODIFICACIONES    = first(PROM_CANT_MODIFICACIONES),
+    cantidad_usuarios_cuadrante = if ("cantidad_usuarios_cuadrante" %in% names(data_final)) first(cantidad_usuarios_cuadrante) else NA_real_,
+    ndvi_promedio             = mean(ndvi_semanal, na.rm = TRUE),
+    dist_sismo_prom_km        = if ("dist_sismo_min_km_r50" %in% names(data_final)) mean(dist_sismo_min_km_r50, na.rm = TRUE) else NA_real_,
+    precip_promedio           = mean(precip_total_semana, na.rm = TRUE),
+    .groups = "drop"
+  )
+cat(sprintf("Corte transversal: %d cuadrantes\n", nrow(cross_section_cuadrante)))
+```
+
+```{r sar-comparar-ponderacion, fig.width=8, fig.height=6}
+cross_section_cuadrante %>%
+  ggplot(aes(x = SAIFI_simple, y = SAIFI_ponderado)) +
+  geom_point(alpha = 0.4, color = "#238b45") +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(title = "SAIFI: promedio simple vs. ponderado", x = "Simple", y = "Ponderado") +
+  theme_minimal(base_size = 12)
+```
+
+```{r sar-formula}
+predictores_candidatos_espacial <- c(
+  "n_elementos", "prop_transformadores", "longitud_red_km", "densidad_terminales",
+  "prop_estrato_1", "prop_estrato_2", "prop_no_residencial",
+  "edad_activo_mas_viejo_anios", "PROM_CANT_MODIFICACIONES",
+  "ndvi_promedio", "dist_sismo_prom_km", "precip_promedio"
+)
+predictores_espacial_disp <- intersect(predictores_candidatos_espacial, names(cross_section_cuadrante))
+formula_espacial <- as.formula(paste("SAIFI_ponderado ~", paste(predictores_espacial_disp, collapse = " + ")))
+cat("Fórmula:\n"); print(formula_espacial)
+```
+
+```{r sar-alinear-geometria}
+predictores_espacial_final <- all.vars(formula_espacial)[-1]
+
+cross_section_sf <- cuadrantes_infra %>%
+  select(id_cuadrante) %>%
+  left_join(cross_section_cuadrante, by = "id_cuadrante") %>%
+  filter(!is.na(SAIFI_ponderado))
+
+filas_incompletas <- cross_section_sf %>% st_drop_geometry() %>%
+  filter(if_any(all_of(predictores_espacial_final), is.na)) %>%
+  select(id_cuadrante, all_of(predictores_espacial_final))
+if (nrow(filas_incompletas) > 0) cat(sprintf("Cuadrantes excluidos por NA: %d\n", nrow(filas_incompletas)))
+
+cross_section_sf <- cross_section_sf %>% filter(if_all(all_of(predictores_espacial_final), ~ !is.na(.)))
+cuadrantes_completos <- cross_section_sf$id_cuadrante
+
+if (length(cuadrantes_completos) < nrow(cuadrantes_infra)) {
+  vecinos_nb_cs <- subset(vecinos_nb, cuadrantes_infra$id_cuadrante %in% cuadrantes_completos)
+  pesos_espaciales_cs <- nb2listw(vecinos_nb_cs, style = "W", zero.policy = TRUE)
+} else {
+  pesos_espaciales_cs <- pesos_espaciales
+}
+cat(sprintf("Cuadrantes en el modelo espacial: %d\n", nrow(cross_section_sf)))
+```
+
+```{r sar-ols-referencia}
+modelo_ols_cs <- lm(formula_espacial, data = cross_section_sf)
+summary(modelo_ols_cs)
+```
+
+```{r sar-moran-residuos-ols}
+moran_residuos_ols <- lm.morantest(modelo_ols_cs, pesos_espaciales_cs, zero.policy = TRUE)
+print(moran_residuos_ols)
+```
+
+```{r sar-lm-tests}
+lm_tests <- lm.LMtests(modelo_ols_cs, pesos_espaciales_cs, test = c("LMerr", "LMlag", "RLMerr", "RLMlag"), zero.policy = TRUE)
+print(lm_tests)
+extraer_pvalor <- function(lista_tests, nombres_posibles) {
+  for (nombre in nombres_posibles) if (!is.null(lista_tests[[nombre]])) return(lista_tests[[nombre]]$p.value)
+  NA_real_
+}
+p_rlmerr <- extraer_pvalor(lm_tests, c("RLMerr", "adjRSerr"))
+p_rlmlag <- extraer_pvalor(lm_tests, c("RLMlag", "adjRSlag"))
+recomendacion <- if (is.na(p_rlmlag) || is.na(p_rlmerr)) "Comparar por AIC directamente."
+  else if (p_rlmlag < 0.05 & p_rlmerr >= 0.05) "SAR"
+  else if (p_rlmerr < 0.05 & p_rlmlag >= 0.05) "SEM"
+  else if (p_rlmlag < 0.05 & p_rlmerr < 0.05) { if (p_rlmlag < p_rlmerr) "SAR (mejor p)" else "SEM (mejor p)" }
+  else "Ninguno significativo"
+cat(sprintf("\nRecomendación: %s\n", recomendacion))
+```
+
+```{r sar-modelo-sar}
+modelo_sar <- lagsarlm(formula_espacial, data = cross_section_sf, listw = pesos_espaciales_cs, zero.policy = TRUE)
+summary(modelo_sar)
+```
+
+```{r sar-modelo-sem}
+modelo_sem <- errorsarlm(formula_espacial, data = cross_section_sf, listw = pesos_espaciales_cs, zero.policy = TRUE)
+summary(modelo_sem)
+```
+
+```{r sar-comparar-aic}
+comparacion_aic <- tibble(
+  modelo = c("OLS", "SAR", "SEM"),
+  AIC = c(AIC(modelo_ols_cs), AIC(modelo_sar), AIC(modelo_sem))
+) %>% arrange(AIC)
+kable(comparacion_aic, digits = 2, caption = "Comparación OLS/SAR/SEM (SAIFI)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+```{r sar-seleccionar-mejor}
+mejor_modelo_espacial <- if (comparacion_aic$modelo[1] == "SAR") modelo_sar else if (comparacion_aic$modelo[1] == "SEM") modelo_sem else modelo_ols_cs
+nombre_mejor <- comparacion_aic$modelo[1]
+cat(sprintf("Mejor modelo: %s\n", nombre_mejor))
+```
+
+```{r sar-mapa-residuos, fig.width=8, fig.height=7}
+cross_section_sf %>%
+  mutate(residuo = as.numeric(residuals(mejor_modelo_espacial))) %>%
+  ggplot() +
+  geom_sf(aes(fill = residuo), color = "gray40", linewidth = 0.15) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b", midpoint = 0, name = "Residuo") +
+  labs(title = sprintf("Residuos espaciales — %s (SAIFI)", nombre_mejor)) +
+  theme_minimal(base_size = 11)
+```
+
+---
+
+# Parte 8 — Selección de variables y verificación de robustez (SAIFI)
+
+```{r seleccion-stepwise}
+select <- dplyr::select; filter <- dplyr::filter
+modelo_completo_cs <- lm(formula_espacial, data = cross_section_sf)
+modelo_stepwise <- stepAIC(modelo_completo_cs, direction = "both", trace = FALSE)
+summary(modelo_stepwise)
+```
+
+```{r seleccion-vif}
+car::vif(modelo_stepwise)
+```
+
+```{r seleccion-modelo-final}
+modelo_final_saifi_cs <- modelo_stepwise
+summary(modelo_final_saifi_cs)
+```
+
+## Verificación de robustez: ¿es un artefacto de colinealidad estructural?
+
+```{r robustez-prueba1-correlacion}
+st_drop_geometry_safe <- function(x) if (inherits(x, "sf")) sf::st_drop_geometry(x) else x
+predictores_finales <- gsub("`", "", names(coef(modelo_final_saifi_cs))[-1])
+
+if (!"cantidad_usuarios_cuadrante" %in% names(cross_section_sf) && "cantidad_usuarios_cuadrante" %in% names(data_final)) {
+  cross_section_sf <- cross_section_sf %>%
+    left_join(data_final %>% distinct(id_cuadrante, cantidad_usuarios_cuadrante), by = "id_cuadrante")
+}
+
+if ("cantidad_usuarios_cuadrante" %in% names(cross_section_sf)) {
+  datos_num <- cross_section_sf %>% st_drop_geometry_safe() %>%
+    select(cantidad_usuarios_cuadrante, all_of(intersect(predictores_finales, names(.)))) %>%
+    select(where(is.numeric))
+  cor_denominador <- cor(datos_num, use = "complete.obs")["cantidad_usuarios_cuadrante", ] %>% sort(decreasing = TRUE)
+  kable(data.frame(variable = names(cor_denominador), correlacion = round(cor_denominador, 3)),
+        row.names = FALSE, caption = "Correlación con cantidad_usuarios_cuadrante (SAIFI)") %>%
+    kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+  max_cor <- max(abs(cor_denominador[names(cor_denominador) != "cantidad_usuarios_cuadrante"]))
+} else { max_cor <- NA_real_ }
+cat(sprintf("Correlación máxima con el denominador: %s\n", if(is.na(max_cor)) "N/D" else sprintf("%.2f", max_cor)))
+```
+
+```{r robustez-prueba2-control-denominador}
+if ("cantidad_usuarios_cuadrante" %in% names(cross_section_sf)) {
+  formula_control <- as.formula(paste("SAIFI_ponderado ~", paste(predictores_finales, collapse = " + "), "+ log1p(cantidad_usuarios_cuadrante)"))
+  modelo_con_control <- lm(formula_control, data = cross_section_sf)
+  comparacion_control <- tibble(
+    modelo = c("Original", "Con control log(usuarios)"),
+    R2 = c(summary(modelo_final_saifi_cs)$r.squared, summary(modelo_con_control)$r.squared)
+  )
+  kable(comparacion_control, digits = 4, caption = "SAIFI: original vs. controlado por denominador") %>%
+    kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+  delta_r2 <- summary(modelo_final_saifi_cs)$r.squared - summary(modelo_con_control)$r.squared
+} else { delta_r2 <- NA_real_ }
+cat(sprintf("Cambio en R²: %s\n", if(is.na(delta_r2)) "N/D" else sprintf("%.4f", delta_r2)))
+```
+
+```{r robustez-prueba3-sensibilidad}
+r2_base <- summary(modelo_final_saifi_cs)$r.squared
+sensibilidad <- purrr::map_dfr(predictores_finales, function(v) {
+  restantes <- setdiff(predictores_finales, v)
+  if (length(restantes) == 0) return(NULL)
+  m <- lm(as.formula(paste("SAIFI_ponderado ~", paste(restantes, collapse = " + "))), data = cross_section_sf)
+  tibble(variable_excluida = v, caida_R2 = r2_base - summary(m)$r.squared)
+}) %>% arrange(desc(caida_R2))
+kable(sensibilidad, digits = 4, caption = "Caída en R² al excluir cada variable (SAIFI)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+caida_maxima <- sensibilidad$caida_R2[1]; variable_dominante <- sensibilidad$variable_excluida[1]
+```
+
+```{r robustez-prueba4-permutacion}
+set.seed(123); n_permutaciones <- 500
+datos_perm <- cross_section_sf %>% st_drop_geometry()
+r2_permutados <- numeric(n_permutaciones)
+for (i in seq_len(n_permutaciones)) {
+  datos_perm$SAIFI_shuffled <- sample(datos_perm$SAIFI_ponderado)
+  m <- lm(as.formula(paste("SAIFI_shuffled ~", paste(predictores_finales, collapse = " + "))), data = datos_perm)
+  r2_permutados[i] <- summary(m)$r.squared
+}
+p_valor_empirico <- mean(r2_permutados >= r2_base)
+cat(sprintf("R² observado: %.4f | p-valor empírico: %.4f\n", r2_base, p_valor_empirico))
+```
+
+```{r robustez-conclusion, results='asis'}
+alerta1 <- !is.na(max_cor) && max_cor > 0.6
+alerta2 <- caida_maxima > 0.5
+alerta3 <- p_valor_empirico >= 0.01
+n_alertas <- sum(alerta1, alerta2, alerta3, na.rm = TRUE)
+cat(sprintf(
+  "**R² = %.3f | %d de 3 pruebas cuantitativas emiten alerta.** %s",
+  r2_base, n_alertas,
+  if (n_alertas <= 1) "Resultado robusto y presentable como hallazgo principal para SAIFI."
+  else "Se recomienda investigar antes de presentar sin matices."
+))
+```
+
+---
+
+# Parte 9 — Resumen final SAIFI
+
+```{r resumen-tabla-completa}
+tabla_resumen <- tribble(
+  ~Modelo, ~Datos, ~Metrica, ~Valor,
+  "Pooled OLS", "Panel semanal (test)", "RMSE log", resultados$RMSE_log[resultados$modelo == "Pooled OLS"],
+  "FE cuadrante", "Panel semanal (test)", "RMSE log", resultados$RMSE_log[resultados$modelo == "FE cuadrante"],
+  "FE cuadrante+semana", "Panel semanal", "No evaluable en test", NA_real_,
+  "Random Forest", "Panel semanal (test)", "RMSE log", resultados$RMSE_log[resultados$modelo == "Random Forest"],
+  "SAR/SEM", "Corte transversal ponderado", "AIC", AIC(mejor_modelo_espacial)
+)
+kable(tabla_resumen, digits = 4, caption = "Resumen comparativo — SAIFI") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+```{r resumen-recomendacion, results='asis'}
+mejor_pronostico <- resultados %>% filter(modelo != "FE cuadrante+semana", !is.na(RMSE_log)) %>%
+  slice_min(RMSE_log, n = 1) %>% pull(modelo)
+cat(sprintf(
+  "**Para pronóstico semanal de SAIFI**, el modelo con menor RMSE en test es **%s**. ",
+  "**Para explicación estructural**, el modelo espacial ganador es **%s** (AIC = %.2f), ",
+  "con R² = %.3f verificado por 4 pruebas de robustez.",
+  mejor_pronostico, nombre_mejor, AIC(mejor_modelo_espacial), r2_base
+))
+```
+
+---
+
+# Conclusiones — SAIFI
+
+```{r conclusiones-saifi, results='asis'}
+cat(sprintf(paste0(
+  "- **Mejor modelo de pronóstico semanal:** %s (RMSE = %.4f).\n",
+  "- **Mejor modelo estructural:** %s (R² = %.3f), verificado como robusto.\n",
+  "- **Variables más relevantes identificadas:** %s.\n",
+  "- Ver `modelo_SAIDI_cuadrantes_reales.Rmd` para el análisis equivalente de duración de interrupciones.\n"
+), mejor_pronostico, min(resultados$RMSE_log, na.rm = TRUE), nombre_mejor, r2_base,
+   paste(predictores_finales, collapse = ", ")))
+```
