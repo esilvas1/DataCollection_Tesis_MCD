@@ -1,0 +1,320 @@
+---
+title: "Etapa 4 — Feature engineering para SAIDI y SAIFI"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# ⚠️ Nota de alcance metodológico
+
+Este documento define `SAIFI`/`SAIDI` como **aproximaciones
+provisionales** (`SAIFI ≈ n_eventos`, `SAIDI ≈ duracion_total`), en
+ausencia, en el momento en que se escribió este análisis, del número
+de usuarios por cuadrante. **Esta no es la fórmula oficial** adoptada
+posteriormente en el capítulo de metodología de la tesis, que define:
+
+$$\mathrm{SAIFI}_{q,s}=\dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}, \qquad
+\mathrm{SAIDI}_{q,s}=\dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}$$
+
+Se conserva este documento como parte de la evolución metodológica del
+proyecto (primera aproximación de feature engineering, antes de
+enriquecer el panel con `D_mod`), pero **sus resultados no deben
+citarse como los definitivos de SAIDI/SAIFI** — ver
+`Etapa4_03...` en adelante (a definir) para la versión sobre el panel
+`D_mod` con la fórmula oficial.
+
+# 1. Objetivo del análisis
+
+El objetivo de esta sección es desarrollar modelos estadísticos y de
+Machine Learning para predecir los indicadores de calidad del servicio
+eléctrico (SAIDI y SAIFI), a partir de información climática,
+operativa y espacial consolidada en el panel semanal.
+
+Específicamente, se busca:
+
+- Identificar variables climáticas relevantes en la ocurrencia de fallas
+- Modelar la frecuencia de interrupciones (SAIFI)
+- Modelar la duración de interrupciones (SAIDI)
+- Comparar diferentes enfoques de modelación
+- Evaluar el desempeño predictivo de los modelos
+- Analizar la importancia de variables explicativas
+
+Unidad de análisis: **cuadrante × semana**.
+
+# 2. Preparación del entorno
+
+```{r paquetes}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(tidyr)
+library(MASS)
+library(randomForest)
+library(Metrics)
+library(corrplot)
+library(GGally)
+library(knitr)
+```
+
+## Entorno (.env)
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+# 3. Carga de datos
+
+```{r cargar-panel}
+panel_semana <- readRDS(file.path(UBICACION_DATA, "panel_semana.rds"))
+
+## Muestreo de desarrollo/prueba — reduce el panel para iterar rápido
+## mientras se ajusta el código. QUITAR esta línea (o poner
+## eval=FALSE en el chunk) cuando se corra el ejercicio completo con
+## todos los datos.
+panel_semana <- panel_semana %>%
+  slice_sample(by = semana, n = 50)
+
+str(panel_semana)
+```
+
+# 4. Construcción de variables objetivo
+
+En ausencia de número de usuarios por cuadrante en este punto del
+desarrollo:
+
+- SAIFI ≈ número de eventos
+- SAIDI ≈ duración total
+
+```{r variables-objetivo}
+panel_semana <- panel_semana %>%
+  mutate(
+    SAIFI = n_eventos,
+    SAIDI = duracion_total
+  )
+```
+
+# 5. Análisis exploratorio inicial
+
+## Distribución de eventos
+
+```{r distribucion-saifi, fig.width=7, fig.height=5}
+ggplot(panel_semana, aes(x = SAIFI)) +
+  geom_histogram(bins = 30) +
+  ggtitle("Distribución de SAIFI (eventos)")
+```
+
+## Distribución de duración
+
+```{r distribucion-saidi, fig.width=7, fig.height=5}
+ggplot(panel_semana, aes(x = SAIDI)) +
+  geom_histogram(bins = 30) +
+  ggtitle("Distribución de SAIDI (duración total)")
+```
+
+# 6. Matriz de correlación: SAIFI vs. variables climáticas
+
+```{r correlacion-saifi}
+vars_clima <- panel_semana %>%
+  dplyr::select(
+    SAIFI,
+    temp_media_semana,
+    temp_max_semana,
+    temp_min_semana,
+    precip_total_semana,
+    humedad_media_semana,
+    viento_medio_semana,
+    viento_max_semana,
+    lluvia_intensa,
+    calor_extremo,
+    viento_fuerte
+  )
+
+cor_matrix <- cor(vars_clima, use = "complete.obs")
+round(cor_matrix, 3)
+```
+
+## Visualización
+
+```{r plot-correlacion-saifi, fig.width=8, fig.height=8}
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  tl.cex = 0.8,
+  number.cex = 0.7,
+  col = colorRampPalette(c("#B22222", "#FFD700", "#009900"))(200)
+)
+```
+
+## Matriz de dispersión (pairsplot)
+
+```{r pairsplot-saifi, fig.width=9, fig.height=9}
+combo_diag <- function(data, mapping, ...) {
+  ggplot(data = data, mapping = mapping) +
+    geom_histogram(aes(y = after_stat(density)),
+                   bins = 15,
+                   fill = "#fdae61",
+                   alpha = 0.6,
+                   color = "white") +
+    geom_density(color = "#d7305f", linewidth = 0.6)
+}
+
+vars_saifi <- panel_semana %>%
+  slice_sample(n = 500) %>%
+  dplyr::select(
+    SAIFI,
+    precip_total_semana,
+    viento_max_semana,
+    temp_media_semana,
+    humedad_media_semana
+  ) %>%
+  rename(
+    SAIFI = SAIFI,
+    Lluvia = precip_total_semana,
+    Viento = viento_max_semana,
+    Temp = temp_media_semana,
+    Humedad = humedad_media_semana
+  )
+
+ggpairs(
+  vars_saifi,
+  lower = list(
+    continuous = wrap("smooth",
+                      alpha = 0.3,
+                      color = "#2c7fb8",
+                      se = FALSE)
+  ),
+  diag = list(
+    continuous = combo_diag
+  ),
+  upper = list(
+    continuous = wrap("cor", size = 4)
+  )
+) +
+  theme_minimal(base_size = 12)
+```
+
+# 7. Matriz de correlación: SAIDI vs. variables climáticas
+
+```{r correlacion-saidi}
+vars_clima_saidi <- panel_semana %>%
+  dplyr::select(
+    SAIDI,
+    temp_media_semana,
+    temp_max_semana,
+    temp_min_semana,
+    precip_total_semana,
+    humedad_media_semana,
+    viento_medio_semana,
+    viento_max_semana,
+    lluvia_intensa,
+    calor_extremo,
+    viento_fuerte
+  )
+
+cor_matrix_saidi <- cor(vars_clima_saidi, use = "complete.obs")
+```
+
+## Pairsplot SAIDI
+
+```{r pairsplot-saidi, fig.width=9, fig.height=9}
+vars_saidi <- panel_semana %>%
+  slice_sample(n = 500) %>%
+  dplyr::select(
+    SAIDI,
+    precip_total_semana,
+    viento_max_semana,
+    temp_media_semana,
+    humedad_media_semana
+  ) %>%
+  rename(
+    SAIDI = SAIDI,
+    Lluvia = precip_total_semana,
+    Viento = viento_max_semana,
+    Temp = temp_media_semana,
+    Humedad = humedad_media_semana
+  )
+
+ggpairs(
+  vars_saidi,
+  lower = list(
+    continuous = wrap("smooth",
+                      alpha = 0.3,
+                      color = "#1b7837",
+                      se = FALSE)
+  ),
+  diag = list(
+    continuous = combo_diag
+  ),
+  upper = list(
+    continuous = wrap("cor", size = 4)
+  )
+) +
+  theme_minimal(base_size = 12)
+```
+
+## Visualización con escala distinta
+
+```{r plot-correlacion-saidi, fig.width=8, fig.height=8}
+corrplot(
+  cor_matrix_saidi,
+  method = "color",
+  type = "upper",
+  col = colorRampPalette(c("darkblue", "gray90", "darkred"))(200),
+  tl.col = "black",
+  tl.cex = 0.8,
+  number.cex = 0.7
+)
+```
+
+# 8. Incorporación de rezagos temporales
+
+```{r rezagos-temporales}
+panel_semana <- panel_semana %>%
+  arrange(id_cuadrante, semana) %>%
+  group_by(id_cuadrante) %>%
+  mutate(
+    lluvia_lag1 = lag(precip_total_semana, 1),
+    viento_lag1 = lag(viento_max_semana, 1),
+    eventos_lag1 = lag(SAIFI, 1)
+  ) %>%
+  ungroup()
+```
+
+## Exportación
+
+Se exporta el panel con rezagos, insumo del siguiente documento
+(`Etapa4_02_rezagos_SAIDI.Rmd`).
+
+```{r exportar-panel-rezagos}
+saveRDS(panel_semana, file.path(UBICACION_DATA, "panel_semana_con_rezagos.rds"))
+cat(sprintf("panel_semana_con_rezagos exportado: %d filas x %d columnas\n",
+            nrow(panel_semana), ncol(panel_semana)))
+```

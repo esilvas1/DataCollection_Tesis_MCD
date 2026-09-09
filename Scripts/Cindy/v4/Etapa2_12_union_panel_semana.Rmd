@@ -1,0 +1,378 @@
+---
+title: "Etapa 2 — Integración clima-eventos y construcción del panel analítico"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# 1. Objetivo del análisis
+
+El objetivo de esta sección es construir una base de datos integrada
+que combine información climatológica y eventos de falla en una
+unidad espacial y temporal consistente, con el fin de:
+
+- Consolidar la información en una única estructura analítica
+- Garantizar consistencia entre dimensiones espacial y temporal
+- Preparar el insumo base para modelos predictivos
+- Permitir análisis conjuntos clima–fallas
+- Evitar problemas de explosión de datos por joins incorrectos
+
+Unidad de análisis: **cuadrante × semana**.
+
+# 2. Preparación de datos
+
+```{r paquetes}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(tidyr)
+library(readxl)
+```
+
+## Entorno (.env)
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+# 3. Carga de bases consolidadas
+
+Se leen los dos insumos producidos por los documentos anteriores del
+pipeline (`Etapa2_10_cargue_nasa_semana.Rmd` y
+`Etapa2_11_cargue_eventos_semana.Rmd`) — **ya no desde una ruta fija de
+un usuario específico**, sino desde `UBICACION_DATA`.
+
+```{r cargar-insumos}
+# Clima semanal con coordenadas
+clima_semana_spatial <- readRDS(file.path(UBICACION_DATA, "clima_semana_spatial.rds"))
+
+# Eventos agregados por cuadrante-semana
+eventos_cuadrante_semana <- readRDS(file.path(UBICACION_DATA, "eventos_semana_spatial.rds"))
+```
+
+# 4. Construcción del panel final
+
+```{r construir-panel}
+panel_semana <- clima_semana_spatial %>%
+  left_join(
+    eventos_cuadrante_semana %>% select(-latitud, -longitud),
+    by = c("id_cuadrante", "semana")
+  ) %>%
+  mutate(
+    n_eventos = replace_na(n_eventos, 0),
+    duracion_total = replace_na(duracion_total, 0),
+    duracion_promedio = replace_na(duracion_promedio, 0),
+    falla = as.integer(n_eventos > 0)
+  )
+```
+
+## Exportación del panel
+
+Este es el panel intermedio (clima + eventos, sin las variables de
+usuarios/estrato/activos de `D_mod`) que consumen los documentos de
+Etapa 4 (`Etapa4_01_feature_engineering_general.Rmd`,
+`Etapa4_02_rezagos_SAIDI.Rmd`).
+
+```{r exportar-panel}
+saveRDS(panel_semana, file.path(UBICACION_DATA, "panel_semana.rds"))
+cat(sprintf("panel_semana exportado: %d filas x %d columnas\n",
+            nrow(panel_semana), ncol(panel_semana)))
+```
+
+# 5. Validación del panel
+
+## 5.1 Dimensiones
+
+```{r validar-dimensiones}
+dim(panel_semana)
+```
+
+## 5.2 Valores faltantes
+
+```{r validar-faltantes}
+panel_semana %>%
+  summarise_all(~sum(is.na(.)))
+```
+
+## 5.3 Distribución de la variable objetivo
+
+Clave para entender el desbalance de clases.
+
+```{r distribucion-falla}
+table(panel_semana$falla)
+prop.table(table(panel_semana$falla))
+```
+
+# 6. Análisis exploratorio integrado
+
+## 6.1 Dinámica temporal de fallas
+
+```{r dinamica-temporal-fallas, fig.width=9, fig.height=5}
+fallas_tiempo <- panel_semana %>%
+  group_by(semana) %>%
+  summarise(
+    total_eventos = sum(n_eventos, na.rm = TRUE),
+    proporcion_fallas = mean(falla, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(fallas_tiempo, aes(x = semana, y = total_eventos)) +
+  geom_line(color = "#d73027", linewidth = 1) +
+  theme_minimal() +
+  labs(
+    title = "Evolución temporal de eventos de falla",
+    x = "Semana",
+    y = "Número de eventos"
+  )
+```
+
+## 6.2 Distribución espacial de fallas
+
+```{r distribucion-espacial-fallas, fig.width=8, fig.height=6}
+fallas_mapa <- panel_semana %>%
+  group_by(id_cuadrante, latitud, longitud) %>%
+  summarise(
+    eventos_promedio = mean(n_eventos, na.rm = TRUE),
+    prob_falla = mean(falla, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(fallas_mapa, aes(x = longitud, y = latitud)) +
+  geom_point(aes(color = prob_falla), size = 2) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Probabilidad de falla por cuadrante")
+```
+
+## 6.3 Relación clima–fallas
+
+```{r relacion-clima-fallas, fig.width=8, fig.height=6}
+ggplot(panel_semana %>% slice_sample(n = 1500), aes(x = precip_total_semana, y = n_eventos)) +
+  geom_point(alpha = 0.2, color = "#1f78b4") +
+  geom_smooth(method = "lm", color = "black") +
+  theme_minimal() +
+  labs(
+    title = "Relación entre precipitación y eventos de falla",
+    x = "Precipitación semanal (mm)",
+    y = "Número de eventos"
+  )
+```
+
+## 6.4 Eventos extremos y fallas
+
+```{r extremos-y-fallas}
+panel_semana %>%
+  group_by(lluvia_intensa) %>%
+  summarise(
+    promedio_eventos = mean(n_eventos, na.rm = TRUE),
+    prob_falla = mean(falla, na.rm = TRUE)
+  )
+```
+
+## 6.5 Interacción espacio–tiempo
+
+```{r interaccion-espacio-tiempo, fig.width=10, fig.height=8}
+ggplot(panel_semana %>%
+         slice_sample(n = 500) %>%
+         filter(semana >= as.Date("2025-10-01")), aes(x = longitud, y = latitud)) +
+  geom_point(aes(color = n_eventos), size = 1.5) +
+  facet_wrap(~semana) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Distribución espacio-temporal de fallas")
+```
+
+```{r interaccion-espacio-tiempo-continuo, fig.width=9, fig.height=7}
+ggplot(
+  panel_semana %>%
+    slice_sample(n = 2000) %>%
+    filter(semana >= as.Date("2025-10-01")),
+  aes(x = longitud, y = latitud)
+) +
+  geom_point(
+    aes(
+      color = as.numeric(semana),   # tiempo como continuo
+      size = n_eventos
+    ),
+    alpha = 0.7
+  ) +
+  scale_color_viridis_c(
+    option = "plasma",
+    name = "Tiempo"
+  ) +
+  scale_size_continuous(
+    range = c(1, 6),
+    name = "N° eventos"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Distribución espacio-temporal de fallas",
+    x = "Longitud",
+    y = "Latitud"
+  )
+```
+
+```{r distribucion-espacial-por-mes, fig.width=9, fig.height=7}
+ggplot(
+  panel_semana %>%
+    slice_sample(n = 2000) %>%
+    filter(semana >= as.Date("2025-10-01")) %>%
+    mutate(
+      mes = format(floor_date(semana, "month"), "%Y-%m")
+    ),
+  aes(x = longitud, y = latitud)
+) +
+  geom_point(
+    aes(
+      color = mes,
+      size = n_eventos
+    ),
+    alpha = 0.7
+  ) +
+  scale_color_viridis_d(name = "Mes") +
+  scale_size_continuous(range = c(1, 6), name = "N° eventos") +
+  theme_minimal() +
+  labs(
+    title = "Distribución espacial de fallas por mes",
+    x = "Longitud",
+    y = "Latitud"
+  )
+```
+
+# 7. Animación espacio-temporal (opcional)
+
+Este bloque genera una animación GIF de la evolución espacial de
+fallas. Se deja como **opcional** (`eval=FALSE` por defecto) porque
+requiere paquetes adicionales (`gganimate`, `gifski`, `transformr`) y
+tarda más que el resto del documento — actívalo manualmente si lo
+necesitas para la presentación.
+
+```{r instalar-paquetes-animacion, eval=FALSE}
+if (!requireNamespace("gganimate", quietly = TRUE)) install.packages("gganimate")
+if (!requireNamespace("gifski", quietly = TRUE)) install.packages("gifski")
+if (!requireNamespace("transformr", quietly = TRUE)) install.packages("transformr")
+library(gganimate)
+```
+
+```{r animacion-basica, eval=FALSE}
+animacion <- ggplot(
+  panel_semana %>%
+    slice_sample(n = 3000) %>%
+    filter(semana >= as.Date("2025-10-01")),
+  aes(x = longitud, y = latitud)
+) +
+  geom_point(
+    aes(
+      size = n_eventos,
+      color = n_eventos
+    ),
+    alpha = 0.7
+  ) +
+  scale_color_viridis_c(name = "Eventos") +
+  scale_size(range = c(1, 6)) +
+  theme_minimal() +
+  labs(
+    title = "Semana: {frame_time}",
+    x = "Longitud",
+    y = "Latitud"
+  ) +
+  transition_time(semana) +
+  ease_aes("linear")
+
+animate(animacion, nframes = 80, fps = 8, width = 800, height = 600)
+
+# Guardado en UBICACION_DATA, no en una ruta fija de usuario
+anim_save(file.path(UBICACION_DATA, "fallas_animacion.gif"), animacion)
+```
+
+## Versión mejorada (recomendada para presentación)
+
+```{r animacion-mejorada, eval=FALSE}
+animacion_pro <- ggplot(
+  panel_semana %>%
+    slice_sample(n = 3000) %>%
+    filter(semana >= as.Date("2025-10-01")),
+  aes(x = longitud, y = latitud)
+) +
+  geom_point(
+    aes(
+      size = n_eventos,
+      color = n_eventos
+    ),
+    alpha = 0.6
+  ) +
+  scale_color_viridis_c(option = "plasma") +
+  scale_size(range = c(1, 5)) +
+  theme_minimal() +
+  labs(
+    title = "Evolución de fallas | Semana: {frame_time}",
+    subtitle = "Tamaño = número de eventos | Color = intensidad",
+    x = "Longitud",
+    y = "Latitud"
+  ) +
+  transition_time(semana) +
+  shadow_mark(alpha = 0.1) +   # deja "rastro"
+  ease_aes("linear")
+```
+
+**Interpretación:** la animación permite observar clusters
+persistentes de fallas, dinámica temporal asociada a condiciones
+climáticas, zonas críticas recurrentes y posibles patrones de
+propagación espacial.
+
+# 8. Interpretación técnica
+
+La construcción del panel permite establecer una estructura de datos
+coherente donde:
+
+- Se alinean variables climáticas y operativas en una misma unidad de análisis
+- Se preserva la dimensión espacial mediante cuadrantes
+- Se captura la variabilidad temporal a nivel semanal
+
+Este enfoque evita problemas comunes como:
+
+- Explosión de registros por joins a nivel elemento
+- Inconsistencias entre escalas de agregación
+- Pérdida de interpretabilidad en modelos
+
+Adicionalmente, la variable `falla` define un problema de
+clasificación binaria, mientras que `n_eventos` permite un enfoque
+alternativo de conteo (Poisson o modelos de intensidad).
+
+---
+
+**Nota metodológica importante:** este panel (`panel_semana`) usa
+`n_eventos` y `duracion_total` en bruto, sin el denominador de
+usuarios totales por cuadrante. Los documentos de Etapa 4 que
+consumen este panel (`Etapa4_01`, `Etapa4_02`) definen `SAIFI`/`SAIDI`
+como aproximaciones provisionales sobre estas variables — **no** la
+fórmula oficial con `usuarios_totales`/`usuarios_afectados` descrita
+en el capítulo de metodología. Ver la nota de alcance en esos
+documentos.

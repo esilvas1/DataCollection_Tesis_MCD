@@ -1,0 +1,412 @@
+---
+title: "Etapa 2 — Cargue y agregación de eventos de falla a cuadrante-semana"
+subtitle: "Análisis exploratorio de eventos de falla"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# 1. Objetivo del análisis
+
+El objetivo de esta sección es caracterizar la dinámica temporal y
+operativa de los eventos de falla en la red eléctrica, con énfasis en:
+
+- Identificar patrones temporales (tendencias, estacionalidad)
+- Analizar la duración de las fallas
+- Detectar eventos extremos (fallas críticas)
+- Evaluar concentración por elemento
+- Generar insumos para la modelación predictiva
+
+Unidad de análisis inicial: **elemento eléctrico × semana** (antes de
+agregar a cuadrante × semana, en la Sección 8).
+
+# 2. Preparación de datos
+
+```{r paquetes}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(tidyr)
+library(readxl)
+```
+
+## Entorno (.env)
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+## 2.1 Cargar y limpiar datos
+
+```{r cargar-eventos}
+tabla_eventos <- read_csv(file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"))
+
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    FECHA_DESCONEXION = dmy_hm(FECHA_DESCONEXION),
+    FECHA_CONEXION = dmy_hm(FECHA_CONEXION)
+  )
+
+ELEMENTO_FALLA_CUADRANTE_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls")
+)
+head(ELEMENTO_FALLA_CUADRANTE_800)
+
+# Contiene id de cuadrante y lat/long de los centroides
+CUADRANTE_CORD_800 <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "CUADRANTE_CORD_800.xls")
+)
+```
+
+## 2.2 Construcción de variables temporales
+
+```{r variables-temporales}
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    anio = year(FECHA_DESCONEXION),
+    mes = floor_date(FECHA_DESCONEXION, "month"),
+    semana = floor_date(FECHA_DESCONEXION, "week", week_start = 1),
+    dia = floor_date(FECHA_DESCONEXION, "day")
+  )
+```
+
+## 2.3 Duración de eventos
+
+```{r duracion-eventos}
+tabla_eventos <- tabla_eventos %>%
+  mutate(
+    duracion_horas = as.numeric(
+      difftime(FECHA_CONEXION, FECHA_DESCONEXION, units = "hours")
+    )
+  )
+```
+
+# 3. Construcción de eventos semanales (por elemento)
+
+```{r eventos-semana-elemento}
+eventos_semana <- tabla_eventos %>%
+  group_by(ELEMENTO_FALLADO, semana) %>%
+  summarise(
+    n_eventos = n(),
+    duracion_total = sum(duracion_horas, na.rm = TRUE),
+    duracion_promedio = mean(duracion_horas, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+# 4. Dinámica temporal de fallas
+
+## 4.1 Agregación temporal global
+
+```{r agregacion-temporal-global}
+eventos_tiempo <- eventos_semana %>%
+  group_by(semana) %>%
+  summarise(
+    total_eventos = sum(n_eventos, na.rm = TRUE),
+    duracion_total = sum(duracion_total, na.rm = TRUE),
+    duracion_promedio = mean(duracion_promedio, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## 4.2 Visualización: número de eventos en el tiempo
+
+```{r plot-eventos-tiempo, fig.width=9, fig.height=5}
+ggplot(eventos_tiempo, aes(x = semana, y = total_eventos)) +
+  geom_line(color = "#1f78b4", linewidth = 1) +
+  theme_minimal() +
+  labs(
+    title = "Evolución temporal del número de fallas",
+    x = "Semana",
+    y = "Número de eventos"
+  )
+```
+
+## 4.3 Duración de los eventos en horas a través del tiempo
+
+```{r plot-duracion-tiempo, fig.width=9, fig.height=5}
+ggplot(eventos_tiempo, aes(x = semana, y = duracion_total)) +
+  geom_line(color = "#e31a1c", linewidth = 1) +
+  theme_minimal() +
+  labs(
+    title = "Evolución de duración total de fallas",
+    x = "Semana",
+    y = "Horas"
+  )
+```
+
+# 5. Eventos extremos
+
+## 5.1 Definición de extremos
+
+```{r definir-extremos}
+eventos_tiempo <- eventos_tiempo %>%
+  mutate(
+    evento_extremo = as.integer(
+      total_eventos > quantile(total_eventos, 0.9, na.rm = TRUE)
+    ),
+
+    duracion_extrema = as.integer(
+      duracion_total > quantile(duracion_total, 0.9, na.rm = TRUE)
+    )
+  )
+```
+
+## 5.2 Visualización con extremos
+
+```{r plot-extremos, fig.width=9, fig.height=5}
+ggplot(eventos_tiempo, aes(x = semana, y = total_eventos)) +
+  geom_line(color = "grey30") +
+  geom_point(
+    data = eventos_tiempo %>% filter(evento_extremo == 1),
+    color = "#e31a1c",
+    size = 2
+  ) +
+  theme_minimal() +
+  labs(title = "Eventos extremos de fallas")
+```
+
+# 6. Heterogeneidad por elemento
+
+## 6.1 Top elementos críticos
+
+```{r top-elementos}
+eventos_elemento <- eventos_semana %>%
+  group_by(ELEMENTO_FALLADO) %>%
+  summarise(
+    total_eventos = sum(n_eventos, na.rm = TRUE),
+    duracion_total = sum(duracion_total, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_eventos))
+```
+
+## 6.2 Visualización top 20
+
+```{r plot-top20, fig.width=8, fig.height=6}
+eventos_elemento %>%
+  slice_max(total_eventos, n = 20) %>%
+  ggplot(aes(x = reorder(ELEMENTO_FALLADO, total_eventos), y = total_eventos)) +
+  geom_col(fill = "#1f78b4") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Elementos con mayor número de fallas",
+    x = "Elemento",
+    y = "Número de eventos"
+  )
+```
+
+# 7. Distribución de duración
+
+```{r plot-distribucion-duracion, fig.width=8, fig.height=5}
+ggplot(tabla_eventos, aes(x = duracion_horas)) +
+  geom_histogram(bins = 50, fill = "#33a02c") +
+  theme_minimal() +
+  labs(
+    title = "Distribución de duración de fallas",
+    x = "Horas",
+    y = "Frecuencia"
+  )
+```
+
+# 8. Preparación para integración con clima (agregación a cuadrante-semana)
+
+```{r preparar-panel}
+eventos_panel <- eventos_semana %>%
+  mutate(
+    falla = as.integer(n_eventos > 0)
+  )
+```
+
+## 8.1 Construir puente elemento–cuadrante
+
+```{r puente-elemento-cuadrante}
+# Puente único: cada elemento con su cuadrante
+elemento_cuadrante <- ELEMENTO_FALLA_CUADRANTE_800 %>%
+  select(ELEMENTO, CUADRANTE_1) %>%
+  distinct() %>%
+  rename(
+    ELEMENTO_FALLADO = ELEMENTO,
+    id_cuadrante = CUADRANTE_1
+  )
+```
+
+## 8.2 Integrar cuadrante a eventos
+
+```{r integrar-cuadrante}
+eventos_semana_cuadrante <- eventos_semana %>%
+  left_join(elemento_cuadrante, by = "ELEMENTO_FALLADO")
+
+# Validación clave: si esto no es cercano a 0, hay problemas de matching
+sum(is.na(eventos_semana_cuadrante$id_cuadrante))
+```
+
+## 8.3 Agregar a nivel cuadrante–semana (clave del modelo)
+
+```{r agregar-cuadrante-semana}
+eventos_cuadrante_semana <- eventos_semana_cuadrante %>%
+  group_by(id_cuadrante, semana) %>%
+  summarise(
+    n_eventos = sum(n_eventos, na.rm = TRUE),
+    duracion_total = sum(duracion_total, na.rm = TRUE),
+    duracion_promedio = mean(duracion_promedio, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Este es el equivalente de clima_semana pero para fallas.
+```
+
+## 8.4 Incorporar coordenadas (centroide del cuadrante)
+
+```{r incorporar-coordenadas-eventos}
+eventos_spatial <- eventos_cuadrante_semana %>%
+  left_join(
+    CUADRANTE_CORD_800 %>%
+      rename(
+        id_cuadrante = OBJECTID,
+        longitud = POINT_X,
+        latitud = POINT_Y
+      ),
+    by = "id_cuadrante"
+  ) %>%
+  filter(!is.na(latitud))
+```
+
+## Exportación
+
+Se exporta el resultado (`eventos_spatial`) al `.rds` que consume el
+documento de integración (`Etapa2_12_union_panel_semana.Rmd`).
+
+```{r exportar-eventos}
+saveRDS(eventos_spatial, file.path(UBICACION_DATA, "eventos_semana_spatial.rds"))
+cat(sprintf("eventos_semana_spatial exportado: %d filas x %d columnas\n",
+            nrow(eventos_spatial), ncol(eventos_spatial)))
+```
+
+## Diagnóstico: ¿qué cuadrantes no están matcheando?
+
+```{r diagnostico-matching}
+ids_eventos <- eventos_cuadrante_semana %>%
+  distinct(id_cuadrante)
+
+ids_malla <- CUADRANTE_CORD_800 %>%
+  distinct(OBJECTID) %>%
+  rename(id_cuadrante = OBJECTID)
+
+ids_no_match <- ids_eventos %>%
+  anti_join(ids_malla, by = "id_cuadrante")
+
+ids_no_match
+nrow(ids_no_match)
+
+n_total <- nrow(eventos_cuadrante_semana)
+n_validos <- nrow(eventos_spatial)
+
+n_perdidos <- n_total - n_validos
+n_perdidos / n_total
+```
+
+# 9. EDA espacial de eventos
+
+## 9.1 Promedios espaciales
+
+```{r eda-eventos-promedios}
+eventos_mapa <- eventos_spatial %>%
+  group_by(id_cuadrante, latitud, longitud) %>%
+  summarise(
+    eventos_promedio = mean(n_eventos, na.rm = TRUE),
+    duracion_media = mean(duracion_total, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## 9.2 Mapa de frecuencia de fallas
+
+```{r mapa-frecuencia, fig.width=8, fig.height=6}
+ggplot(eventos_mapa, aes(longitud, latitud)) +
+  geom_point(aes(color = eventos_promedio), size = 2) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Frecuencia promedio de fallas por cuadrante")
+```
+
+## 9.3 Mapa de duración
+
+```{r mapa-duracion, fig.width=8, fig.height=6}
+ggplot(eventos_mapa, aes(longitud, latitud)) +
+  geom_point(aes(color = duracion_media), size = 2) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Duración promedio de fallas por cuadrante")
+```
+
+# 10. Dinámica temporal (cuadrantes)
+
+```{r dinamica-cuadrantes, fig.width=9, fig.height=5}
+eventos_tiempo <- eventos_cuadrante_semana %>%
+  group_by(semana) %>%
+  summarise(
+    total_eventos = sum(n_eventos, na.rm = TRUE),
+    duracion_total = sum(duracion_total, na.rm = TRUE),
+    .groups = "drop"
+  )
+ggplot(eventos_tiempo, aes(semana, total_eventos)) +
+  geom_line(color = "#1f78b4", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "Evolución temporal de fallas (nivel sistema)")
+```
+
+# 11. Eventos extremos espaciales
+
+```{r extremos-espaciales}
+eventos_spatial <- eventos_spatial %>%
+  mutate(
+    evento_extremo = as.integer(
+      n_eventos > quantile(n_eventos, 0.9, na.rm = TRUE)
+    )
+  )
+```
+
+## 11.1 Frecuencia de eventos extremos por cuadrante
+
+```{r plot-extremos-espaciales, fig.width=8, fig.height=6}
+eventos_extremos <- eventos_spatial %>%
+  group_by(id_cuadrante, latitud, longitud) %>%
+  summarise(
+    freq_extremos = mean(evento_extremo, na.rm = TRUE),
+    .groups = "drop"
+  )
+ggplot(eventos_extremos, aes(longitud, latitud)) +
+  geom_point(aes(color = freq_extremos), size = 3) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Frecuencia de eventos extremos de falla")
+```

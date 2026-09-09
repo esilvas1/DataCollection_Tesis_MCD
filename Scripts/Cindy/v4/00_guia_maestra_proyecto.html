@@ -11,7 +11,7 @@
 
 <meta name="author" content="Cindy Carolina Lugo Rozo" />
 
-<meta name="date" content="2026-09-07" />
+<meta name="date" content="2026-09-09" />
 
 <title>Guía maestra del proyecto — Panel semana x cuadrante SAIDI/SAIFI</title>
 
@@ -1482,7 +1482,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Guía maestra del proyecto — Panel semana x
 cuadrante SAIDI/SAIFI</h1>
 <h4 class="author">Cindy Carolina Lugo Rozo</h4>
-<h4 class="date">2026-09-07</h4>
+<h4 class="date">2026-09-09</h4>
 
 </div>
 
@@ -1507,45 +1507,72 @@ rutas fijas a <code>C:/Users/User/Downloads</code>.</p>
 <div id="orden-de-ejecución-del-pipeline" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Orden de ejecución del
 pipeline</h1>
-<p>El panel se construye de forma <strong>acumulativa</strong>: cada
-documento retoma <code>data_final</code> donde lo dejó el anterior,
-agrega sus propias variables, y vuelve a guardar
-<code>data_final_modelo_cuadrantes_reales.rds/.csv</code>. El orden
-correcto para correr todo desde cero es:</p>
+<div id="cambio-de-arquitectura-importante" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> ⚠️ Cambio de
+arquitectura (importante)</h2>
+<p>Hasta la versión anterior, cada documento cargaba el panel combinado,
+le agregaba sus columnas, y <strong>volvía a guardar ese mismo archivo
+combinado</strong>. Esto causaba un problema real: si los documentos se
+corrían en otro orden, o alguno se re-ejecutaba por separado, ese
+guardado <strong>sobrescribía el trabajo de los demás
+documentos</strong>.</p>
+<p><strong>Ahora cada documento (2 a 6) guarda solo su propia tabla, con
+nombre propio</strong>, sin tocar ningún archivo compartido. Un
+documento nuevo (<code>00b_integracion_panel_final.Rmd</code>) lee todas
+esas tablas propias (sin modificarlas) y arma el panel final. Correr
+cualquier documento las veces que haga falta ya no destruye nada.</p>
 <pre class="text"><code>1. infraestructura_electrica_por_cuadrante.Rmd
-        ↓  (crea cuadrantes_infra, fallas_eventos.gpkg)
-2. panel_saidi_saifi_cuadrantes_reales.Rmd
-        ↓  (centroides reales, NDVI semanal, SAIDI/SAIFI con
-        ↓   denominador real, composicion de estrato/tipo de uso
-        ↓   REAL por cuadrante, edad de activos y mantenimiento)
-3. estratificacion_municipal_cuadrantes_reales.Rmd
-        ↓  (SOLO para mapeo cuadrante-&gt;municipio, usado por 4 y 5;
-        ↓   su variable de estrato ya NO se usa en el modelo)
-4. desastres_naturales_cuadrantes_reales.Rmd
-        ↓  (eventos UNGRD: inundación, deslizamiento, vendaval...)
-5. sismicidad_cuadrantes_reales.Rmd
-        ↓  (sismicidad SGC por distancia real al cuadrante)
-6. topologia_red_electrica_cuadrantes_reales.Rmd
-        ↓  (grafo eléctrico, longitud de red, nodos terminales, vecindad eléctrica)
+        ↓  produce: infraestructura_cuadrantes_reales.gpkg,
+        ↓           infraestructura_por_cuadrante_real.csv    [estatica, por cuadrante]
 
-  →  data_final_modelo_cuadrantes_reales.rds/.csv  (panel completo, insumo del modelo)
+2. panel_saidi_saifi_cuadrantes_reales.Rmd
+        ↓  produce: panel_base_cuadrante_semana.rds/.csv       [dinamica, cuadrante x semana]
+        ↓  (centroides reales, NDVI semanal, SAIDI/SAIFI con denominador
+        ↓   real, composicion de estrato/tipo de uso REAL por cuadrante,
+        ↓   edad de activos y mantenimiento)
+
+3. estratificacion_municipal_cuadrantes_reales.Rmd
+        ↓  produce: estratificacion_municipal_por_cuadrante.csv [estatica, por cuadrante]
+        ↓  (lee panel_base SOLO para su grafico exploratorio, no lo modifica)
+
+4. desastres_naturales_cuadrantes_reales.Rmd
+        ↓  produce: eventos_catastroficos_cuadrante_semana.csv  [dinamica, cuadrante x semana]
+        ↓  (lee panel_base + tabla del doc. 3, SOLO lectura)
+
+5. sismicidad_cuadrantes_reales.Rmd
+        ↓  produce: sismos_cuadrante_semana_r{25,50,100}km.csv  [dinamica, cuadrante x semana]
+        ↓  (lee panel_base SOLO lectura)
+
+6. topologia_red_electrica_cuadrantes_reales.Rmd
+        ↓  produce: longitud_red_por_cuadrante.csv,
+        ↓           nodos_terminales_por_cuadrante.csv          [estatica, por cuadrante]
+        ↓  (lee panel_base SOLO lectura)
+
+                    ┌─────────────────────────────────────┐
+                    │  Tablas propias de 2, 3, 4, 5, 6      │
+                    └──────────────────┬────────────────────┘
+                                       ↓
+00b. integracion_panel_final.Rmd   &lt;- ÚNICO documento que arma y
+        ↓                              guarda el panel final. Lee las
+        ↓                              tablas propias (nunca las
+        ↓                              modifica); si alguna falta, la
+        ↓                              omite con aviso, sin fallar.
+        ↓
+  →  data_final_modelo_cuadrantes_reales.rds/.csv  (panel final)
         ↓
 7. modelo_saidi_saifi_cuadrantes_reales.Rmd
         →  seleccion de variables, comparacion de especificaciones,
            modelo espacial SAR/SEM, modelo de conteo Poisson/NB</code></pre>
-<p><strong>Nota sobre el documento 7:</strong> a diferencia de los
-documentos 1-6, el de modelación <strong>no vuelve a guardar</strong>
-<code>data_final</code> con variables nuevas — lo consume tal como queda
-al final del documento 6, y construye a partir de ahí las variables de
-modelación (rezagos, medias móviles, rezago espacial de vecinos, corte
-transversal ponderado para SAR/SEM). Es el último eslabón de la
-cadena.</p>
-<p>Si solo necesitas actualizar una capa (por ejemplo, agregar
-mantenimiento más adelante), no hace falta re-correr todo desde el paso
-1 — basta con que <code>data_final</code> ya exista en el
-<code>.rds</code> y el nuevo documento lo recargue (todos tienen el
-chunk <code>if (!exists(&quot;data_final&quot;))</code> al inicio).</p>
+<p><strong>Regla práctica:</strong> si corriges o vuelves a correr
+cualquiera de los documentos 2-6, <strong>siempre corre después
+<code>00b_integracion_panel_final.Rmd</code></strong> para que el panel
+final (documento 7) refleje el cambio. El documento 7 nunca necesita
+tocarse — siempre lee el mismo nombre de archivo.</p>
+<p>Si algún documento 3-6 aún no se ha corrido, <code>00b</code> genera
+igual el panel final con lo que esté disponible, avisando qué faltó (ver
+su chequeo de disponibilidad al inicio).</p>
 <hr />
+</div>
 </div>
 <div id="infraestructura_electrica_por_cuadrante.rmd" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> 1.
@@ -1689,10 +1716,10 @@ real y variables de activos ya unidas)</p>
 <td>Lat/lon del centroide real de cada cuadrante</td>
 </tr>
 <tr class="even">
-<td><code>data_final_modelo_cuadrantes_reales.rds</code> /
+<td><code>panel_base_cuadrante_semana.rds</code> /
 <code>.csv</code></td>
-<td><strong>Panel maestro</strong>, se actualiza en cada documento
-posterior</td>
+<td><strong>Tabla propia de este documento</strong> (ya no es el panel
+final — ver documento 00b)</td>
 </tr>
 </tbody>
 </table>
@@ -1894,9 +1921,9 @@ cuadrantes que caen sobre límites municipales.</p>
 <td>Tabla de estratificación, sin geometría</td>
 </tr>
 <tr class="odd">
-<td><code>data_final_modelo_cuadrantes_reales.rds</code> /
-<code>.csv</code></td>
-<td>Panel actualizado</td>
+<td>Este documento YA NO reescribe el panel combinado – solo produce las
+salidas de arriba.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1986,9 +2013,9 @@ los cuadrantes del municipio correspondiente.</p>
 <td>Expandido a cuadrante-semana</td>
 </tr>
 <tr class="odd">
-<td><code>data_final_modelo_cuadrantes_reales.rds</code> /
-<code>.csv</code></td>
-<td>Panel actualizado</td>
+<td>Este documento YA NO reescribe el panel combinado – solo produce las
+salidas de arriba.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -2089,9 +2116,9 @@ panel)</td>
 <td>Variables sísmicas, radio 100 km</td>
 </tr>
 <tr class="even">
-<td><code>data_final_modelo_cuadrantes_reales.rds</code> /
-<code>.csv</code></td>
-<td><strong>Panel final completo</strong></td>
+<td>Este documento YA NO reescribe el panel combinado – solo produce las
+salidas de arriba.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -2170,8 +2197,8 @@ descarta.</p>
 no <code>read_csv()</code>)</li>
 <li><code>cuadrantes_infra</code> (documento 1)</li>
 <li><code>centroides_cuadrante_real</code> (documento 2)</li>
-<li><code>data_final_modelo_cuadrantes_reales.rds</code> (documento 5,
-panel a la fecha)</li>
+<li><code>panel_base_cuadrante_semana.rds</code> (documento 2, solo
+lectura, para el gráfico exploratorio)</li>
 </ul>
 <p><strong>Salidas (objetos R):</strong> <code>tramos_sf</code>,
 <code>nodos_terminales_sf</code>, <code>grafo_red</code>,
@@ -2229,9 +2256,9 @@ red)</td>
 <td>Objeto <code>listw</code> de vecindad eléctrica</td>
 </tr>
 <tr class="even">
-<td><code>data_final_modelo_cuadrantes_reales.rds</code> /
-<code>.csv</code></td>
-<td>Panel actualizado</td>
+<td>Este documento YA NO reescribe el panel combinado – solo produce las
+salidas de arriba.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -2287,17 +2314,83 @@ panel) — mismo tratamiento que infraestructura/estrato frente a efectos
 fijos de cuadrante.</p>
 <hr />
 </div>
-<div id="modelo_saidi_saifi_cuadrantes_reales.rmd" class="section level1" number="9">
-<h1><span class="header-section-number">9</span> 7.
+<div id="b.-integracion_panel_final.rmd-único-documento-que-produce-el-panel-final" class="section level1" number="9">
+<h1><span class="header-section-number">9</span> 00b.
+<code>integracion_panel_final.Rmd</code> — ÚNICO documento que produce
+el panel final</h1>
+<p><strong>Qué hace:</strong> lee las tablas propias de los documentos
+2-6 (nunca las modifica) y las une en el panel final que consume el
+modelo. Es el <strong>único</strong> documento del pipeline que escribe
+<code>data_final_modelo_cuadrantes_reales.rds/.csv</code>.</p>
+<p><strong>Por qué existe:</strong> en versiones anteriores, cada
+documento 2-6 guardaba el panel combinado directamente, y si se corrían
+en otro orden o alguno se re-ejecutaba solo, se perdía el trabajo de los
+demás. Ahora los documentos 2-6 solo producen sus propias tablas (ver
+arriba), y este documento hace la unión de forma segura.</p>
+<p><strong>Entradas (todas opcionales excepto la primera; si falta
+alguna, se omite con un aviso, sin fallar):</strong></p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Archivo</th>
+<th>Documento origen</th>
+<th>Obligatorio</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>panel_base_cuadrante_semana.rds</code></td>
+<td>2</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr class="even">
+<td><code>estratificacion_municipal_por_cuadrante.csv</code></td>
+<td>3</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td><code>eventos_catastroficos_cuadrante_semana.csv</code></td>
+<td>4</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td><code>sismos_cuadrante_semana_r{25,50,100}km.csv</code></td>
+<td>5</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td><code>longitud_red_por_cuadrante.csv</code>,
+<code>nodos_terminales_por_cuadrante.csv</code></td>
+<td>6</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Salida:</strong>
+<code>data_final_modelo_cuadrantes_reales.rds</code> / <code>.csv</code>
+— el panel que lee el documento 7 (modelo).</p>
+<p><strong>Regla práctica:</strong> cada vez que corrijas o vuelvas a
+correr cualquiera de los documentos 2-6, corre después este documento
+para que el panel final quede actualizado. El documento 7 nunca necesita
+tocarse.</p>
+<hr />
+</div>
+<div id="modelo_saidi_saifi_cuadrantes_reales.rmd" class="section level1" number="10">
+<h1><span class="header-section-number">10</span> 7.
 <code>modelo_saidi_saifi_cuadrantes_reales.Rmd</code></h1>
 <p><strong>Qué hace:</strong> construye, evalúa y compara modelos
 predictivos de SAIDI/SAIFI usando el panel completo (documentos 1-6). No
 genera nuevas variables para <code>data_final</code> — es el documento
 de análisis final, no de construcción de datos.</p>
 <p><strong>Entradas:</strong>
-<code>data_final_modelo_cuadrantes_reales.rds</code> (documento 6),
-<code>cuadrantes_infra</code> (documento 1, para la matriz de vecindad
-geográfica).</p>
+<code>data_final_modelo_cuadrantes_reales.rds</code> (documento 00b,
+integración final), <code>cuadrantes_infra</code> (documento 1, para la
+matriz de vecindad geográfica).</p>
 <p><strong>Contenido:</strong></p>
 <table>
 <colgroup>
@@ -2365,8 +2458,8 @@ dado que son variables de naturaleza discreta — mencionado en las
 conclusiones como próximo paso, aún no implementado.</p>
 <hr />
 </div>
-<div id="diccionario-consolidado-del-panel-final" class="section level1" number="10">
-<h1><span class="header-section-number">10</span> Diccionario
+<div id="diccionario-consolidado-del-panel-final" class="section level1" number="11">
+<h1><span class="header-section-number">11</span> Diccionario
 consolidado del panel final</h1>
 <p><code>data_final_modelo_cuadrantes_reales.rds</code> /
 <code>.csv</code> — unidad: cuadrante x semana.</p>
@@ -2482,122 +2575,347 @@ usándose para Doc. 4-5</td>
 </table>
 <hr />
 </div>
-<div id="mapa-de-archivos-en-la-carpeta-ubicacion_data" class="section level1" number="11">
-<h1><span class="header-section-number">11</span> Mapa de archivos en la
+<div id="mapa-de-archivos-en-la-carpeta-ubicacion_data" class="section level1" number="12">
+<h1><span class="header-section-number">12</span> Mapa de archivos en la
 carpeta UBICACION_DATA</h1>
+<p>La carpeta Downloads no es accesible desde esta sesión de knit.</p>
+<hr />
+</div>
+<div id="línea-d_mod-metodología-oficial-crisp-dm-etapas-1-6" class="section level1" number="13">
+<h1><span class="header-section-number">13</span> Línea D_mod —
+Metodología oficial CRISP-DM (Etapas 1-6)</h1>
+<p><strong>⚠️ Distinción crítica con la línea geoespacial de
+arriba.</strong> Todo lo documentado hasta este punto (documentos 1-7 y
+00b) corresponde a la línea de trabajo <strong>geoespacial por
+cuadrante</strong> (Cindy). En paralelo, el proyecto adoptó formalmente
+<strong>CRISP-DM</strong> como marco metodológico oficial de la tesis,
+con 6 Etapas documentadas en el capítulo de metodología, sobre un
+dataset distinto (<code>D_mod</code> /
+<code>data_agrupada_mod.csv</code>), construido por <strong>Edwin Silva
+Salas</strong> a partir del panel activo × día.</p>
+<p><strong>Ambas líneas responden al mismo objetivo (predecir
+SAIDI/SAIFI)</strong>, pero con datos y enfoques distintos. La tesis
+debe decidir explícitamente si son enfoques complementarios que se
+presentan ambos, o si una de las dos es la línea principal — esta
+decisión sigue <strong>pendiente</strong> (ver sección de
+Pendientes).</p>
+<div id="fórmula-oficial-de-saidisaifi-capítulo-de-metodología" class="section level2" number="13.1">
+<h2><span class="header-section-number">13.1</span> Fórmula oficial de
+SAIDI/SAIFI (capítulo de metodología)</h2>
+<p><span class="math display">\[\mathrm{SAIFI}_{q,s}=\dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
+\qquad
+\mathrm{SAIDI}_{q,s}=\dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}\]</span></p>
+<p>donde <span class="math inline">\(UT_{m(s)}\)</span> es
+<code>usuarios_totales</code> del mes calendario correspondiente.
+<strong>Nota:</strong> esta fórmula usa <strong>multiplicación</strong>
+por <code>usuarios_afectados</code> en el numerador de SAIDI — distinta
+a la fórmula simplificada
+(<code>duracion_total / cantidad_usuarios_cuadrante</code>, sin
+multiplicar) usada en la línea geoespacial. Verificar cuál se implementó
+realmente en cada línea antes de comparar resultados (ver
+Pendientes).</p>
+</div>
+<div id="diagrama-de-flujo-línea-d_mod" class="section level2" number="13.2">
+<h2><span class="header-section-number">13.2</span> Diagrama de flujo —
+línea D_mod</h2>
+<pre class="text"><code>Etapa 1 — Extraccion de datos
+  BRAE (QA_TFDDREGISTRO), OMS SPARD, OMS SP7, GTECH (GIS), NASA POWER
+        ↓
+Etapa 2 — Integracion y depuracion
+  Panel activo x dia (N=87,007,074) → agregacion cuadrante x semana
+  → data_agrupada.csv (grano cuadrante-semana, D_EDA 2021-2025)
+        ↓
+Etapa 3 — EDA
+  Faltantes, extremos, descriptivos, distribucion, temporal,
+  patrones, correlacion, multivariado, segmentacion
+  → delimitacion temporal: D_mod = data_agrupada_mod.csv (2024-2025,
+    36,120 filas, enriquecido con usuarios/estrato/activos)
+        ↓
+Etapa 4 — Ingenieria de variables
+  Definicion formal de Y (SAIFI, SAIDI), deputacion cuantitativa
+  (27 candidatas -&gt; 13 retenidas), particion train 2024 / test 2025
+        ↓
+Etapa 5 — Modelado predictivo
+  Regresion lineal, Random Forest, Poisson (SAIDI y SAIFI)
+        ↓
+Etapa 6 — Cierre y documentacion</code></pre>
+</div>
+<div id="archivos-de-la-línea-d_mod-clasificación-y-decisiones-tomadas" class="section level2" number="13.3">
+<h2><span class="header-section-number">13.3</span> Archivos de la línea
+D_mod — clasificación y decisiones tomadas</h2>
+<div id="etapa-1-extracción-código-fuente-no-reproducible-como-.rmd-propio" class="section level3" number="13.3.1">
+<h3><span class="header-section-number">13.3.1</span> Etapa 1 —
+Extracción (código fuente, no reproducible como .Rmd propio)</h3>
 <table>
-<caption>Estado actual de los archivos esperados en Downloads</caption>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
 <thead>
 <tr class="header">
-<th align="left">archivo</th>
-<th align="left">existe</th>
+<th>Archivo</th>
+<th>Rol</th>
+<th>Decisión</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">fallas_eventos.gpkg</td>
-<td align="left">✅</td>
+<td><code>Script.sql</code></td>
+<td>Extracción GIS (GTECH: transformadores, reconectadores,
+interruptores, cuchillas, aisladores)</td>
+<td>Mantener como apéndice de código SQL</td>
 </tr>
 <tr class="even">
-<td align="left">infraestructura_cuadrantes_reales.gpkg</td>
-<td align="left">✅</td>
+<td><code>Collection_Script.sqlnb</code>,
+<code>tabla_eventos.sqlnb</code>,
+<code>tabla_elemento_fallado_1.sqlnb</code>,
+<code>tipo_elemento.sqlnb</code></td>
+<td>Notebooks SQL de extracción BRAE/OMS</td>
+<td>Mantener como apéndice</td>
 </tr>
 <tr class="odd">
-<td align="left">mapa_infraestructura_cuadrantes_reales.html</td>
-<td align="left">✅</td>
+<td><code>sqlldr.par</code></td>
+<td>Parámetros SQL*Loader (carga masiva Oracle)</td>
+<td>Mantener como evidencia técnica</td>
 </tr>
 <tr class="even">
-<td align="left">infraestructura_por_cuadrante_real.csv</td>
-<td align="left">✅</td>
+<td><code>consulta.py</code>, <code>consulta_por_item.py</code></td>
+<td>Extracción NASA POWER (clima)</td>
+<td>Mantener — documenta la fuente climática pendiente en
+<code>temp.md</code></td>
 </tr>
 <tr class="odd">
-<td align="left">ndvi_semanal_por_cuadrante_real.csv</td>
-<td align="left">✅</td>
+<td><code>leersharepoint.ipynb</code></td>
+<td>Acceso a documentos institucionales</td>
+<td>Mantener</td>
 </tr>
 <tr class="even">
-<td align="left">centroides_cuadrantes_reales.csv</td>
-<td align="left">✅</td>
+<td><code>consultaNASA_optimizada_elemento_grilla.py</code></td>
+<td>Versión con grilla NASA (optimización de consultas)</td>
+<td>⚠️ <strong>Archivar — es un script de prueba</strong>
+(<code>.sample(5)</code>, rango de fechas fijo a 2021, código
+comentado). No incluir en la entrega final salvo que se confirme uso
+real a escala completa.</td>
 </tr>
 <tr class="odd">
-<td align="left">estratificacion_municipal_por_cuadrante.csv</td>
-<td align="left">✅</td>
+<td><code>prueba.py</code></td>
+<td><code>print(&quot;hola mundo&quot;)</code></td>
+<td>Descartar, no forma parte de la tesis</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="etapa-2-integración-y-depuración" class="section level3" number="13.3.2">
+<h3><span class="header-section-number">13.3.2</span> Etapa 2 —
+Integración y depuración</h3>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Archivo</th>
+<th>Estado</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>1_Raw_Data_Proc.R</code></td>
+<td>Prototipo temprano (une <code>Eventos_BRAE_part1-4.csv</code>, rutas
+absolutas, sin <code>.env</code>)</td>
+<td>⚠️ <strong>Archivar como historial de desarrollo</strong> — superado
+por la extracción SQL directa (<code>BRAE.QA_TFDDREGISTRO</code>) del
+capítulo oficial</td>
 </tr>
 <tr class="even">
-<td align="left">eventos_catastroficos_municipio_semana.csv</td>
-<td align="left">✅</td>
+<td><code>2_cargue_tablas__y_union.R</code></td>
+<td>Intermedio (agrega por <code>ELEMENTO_FALLADO</code>, no por
+cuadrante)</td>
+<td>⚠️ <strong>Archivar</strong> — superado por los scripts 3-5, que ya
+agregan a cuadrante-semana</td>
 </tr>
 <tr class="odd">
-<td align="left">eventos_catastroficos_cuadrante_semana.csv</td>
-<td align="left">✅</td>
+<td><code>Etapa2_10_cargue_nasa_semana.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code>, usa <code>.env</code>, sin rutas
+absolutas</td>
+<td>Activo — produce <code>clima_semana_spatial.rds</code></td>
 </tr>
 <tr class="even">
-<td align="left">sismos_sgc.geojson</td>
-<td align="left">✅</td>
+<td><code>Etapa2_11_cargue_eventos_semana.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code>, usa <code>.env</code></td>
+<td>Activo — produce <code>eventos_semana_spatial.rds</code></td>
 </tr>
 <tr class="odd">
-<td align="left">sismos_cuadrante_semana_r25km.csv</td>
-<td align="left">✅</td>
+<td><code>Etapa2_12_union_panel_semana.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code>, usa <code>.env</code>, animación
+GIF opcional (<code>eval=FALSE</code>)</td>
+<td>Activo — produce <code>panel_semana.rds</code></td>
 </tr>
 <tr class="even">
-<td align="left">sismos_cuadrante_semana_r50km.csv</td>
-<td align="left">✅</td>
+<td><code>fix_clima_cuadrante_semana.py</code></td>
+<td>Corrige el sesgo multiplicativo de precipitación (suma por
+activo-día)</td>
+<td>✅ <strong>Mantener como código canónico</strong> — implementa la
+agregación en dos etapas ya descrita como oficial en el capítulo de
+metodología</td>
 </tr>
 <tr class="odd">
-<td align="left">sismos_cuadrante_semana_r100km.csv</td>
-<td align="left">✅</td>
+<td><code>aplicar_correccion_clima.py</code></td>
+<td>Parcha retroactivamente <code>data_agrupada*.csv</code> ya
+generados</td>
+<td>Archivar como evidencia histórica del bug — no debe ser parte del
+flujo reproducible si <code>fix_clima_cuadrante_semana.py</code> ya está
+integrado en la construcción desde cero</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="etapa-3-eda" class="section level3" number="13.3.3">
+<h3><span class="header-section-number">13.3.3</span> Etapa 3 — EDA</h3>
+<p>Documentos de Edwin ya identificados en sesiones anteriores:
+<code>identificacion_datos_faltantes.Rmd</code>,
+<code>missing_values_grouped.Rmd</code>,
+<code>detection_outliers.Rmd</code>, <code>outliers_gruped.Rmd</code>,
+<code>calculo_estadistico_descriptivo.Rmd</code>,
+<code>distribucion_variables.Rmd</code>,
+<code>analisis_temporal_eventos.Rmd</code>,
+<code>emparejamiento_eventos.Rmd</code>,
+<code>identificacion_patrones.Rmd</code>,
+<code>analisis_correlacion.Rmd</code>,
+<code>analisis_multivariado.Rmd</code>,
+<code>segmentacion_exploratoria.Rmd</code>, <code>EDA.Rmd</code>
+(entregable consolidado).</p>
+<p><code>estadisticos_clima_corregido.py</code> — <strong>pendiente
+confirmar con Edwin</strong>: ¿es verificación cruzada tras el fix de
+precipitación, o duplica el mismo análisis ya hecho en R? No archivar
+hasta confirmar.</p>
+</div>
+<div id="etapa-4-ingeniería-de-variables" class="section level3" number="13.3.4">
+<h3><span class="header-section-number">13.3.4</span> Etapa 4 —
+Ingeniería de variables</h3>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Archivo</th>
+<th>Estado</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>asociacion_depuracion_cuantitativas.Rmd</code></td>
+<td>Depuración formal (27→13 variables) sobre <code>D_mod</code> con
+fórmula oficial</td>
+<td>Activo — es la versión que cuenta metodológicamente</td>
 </tr>
 <tr class="even">
-<td align="left">tramos_red_electrica.gpkg</td>
-<td align="left">✅</td>
+<td><code>Etapa4_01_feature_engineering_general.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code>. <strong>Usa SAIFI/SAIDI
+provisionales</strong>
+(<code>n_eventos</code>/<code>duracion_total</code> sin
+denominador)</td>
+<td>Activo, pero marcado con nota de alcance explícita — sus resultados
+no son los oficiales de SAIDI/SAIFI</td>
 </tr>
 <tr class="odd">
-<td align="left">longitud_red_por_cuadrante.csv</td>
-<td align="left">✅</td>
+<td><code>Etapa4_02_rezagos_SAIDI.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code>. Misma limitación que el
+anterior</td>
+<td>Activo con la misma nota de alcance</td>
 </tr>
 <tr class="even">
-<td align="left">nodos_terminales_por_cuadrante.csv</td>
-<td align="left">✅</td>
+<td><code>6_feature_graf_procesamiento.R</code>,
+<code>7_feature_rezagos_SAIDI.R</code></td>
+<td>Versiones <code>.R</code> originales de los dos anteriores</td>
+<td>Superados por sus versiones <code>.Rmd</code> — no mantener ambos
+formatos</td>
 </tr>
 <tr class="odd">
-<td align="left">red_electrica_resumen_por_cuadrante.csv</td>
-<td align="left">✅</td>
+<td><code>12_feature_rezagos_SAIFI.R</code></td>
+<td>Rezagos para SAIFI (numeración interna “Capítulo 7”, duplicada)</td>
+<td>Pendiente de convertir a <code>.Rmd</code> con el mismo
+tratamiento</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="etapa-5-modelado-predictivo-línea-d_mod" class="section level3" number="13.3.5">
+<h3><span class="header-section-number">13.3.5</span> Etapa 5 — Modelado
+predictivo (línea D_mod)</h3>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Archivo</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>8_modelacion_SAIDI_reg_lineal.R</code></td>
+<td>Pendiente convertir a <code>.Rmd</code>; numerar
+<code>Etapa5_...</code> una vez resuelta la decisión de convivencia con
+la línea geoespacial</td>
 </tr>
 <tr class="even">
-<td align="left">mapa_red_electrica_tension_nodos_terminales.html</td>
-<td align="left">✅</td>
+<td><code>9_modelacion_SAIDI_RF.R</code></td>
+<td>Igual</td>
 </tr>
 <tr class="odd">
-<td align="left">mapa_longitud_red_por_cuadrante.html</td>
-<td align="left">✅</td>
+<td><code>13_modelacion_panel_poisson_SAIFI.R</code></td>
+<td>Igual</td>
 </tr>
 <tr class="even">
-<td align="left">grafo_red_electrica.rds</td>
-<td align="left">✅</td>
-</tr>
-<tr class="odd">
-<td align="left">distancias_electricas_cuadrante.rds</td>
-<td align="left">✅</td>
-</tr>
-<tr class="even">
-<td align="left">pesos_vecindad_electrica.rds</td>
-<td align="left">✅</td>
-</tr>
-<tr class="odd">
-<td align="left">data_final_modelo_cuadrantes_reales.rds</td>
-<td align="left">✅</td>
-</tr>
-<tr class="even">
-<td align="left">data_final_modelo_cuadrantes_reales.csv</td>
-<td align="left">✅</td>
+<td><code>14_modelacion_SAIFI_RF.R</code></td>
+<td>Igual</td>
 </tr>
 </tbody>
 </table>
 <hr />
-</div>
-<div id="pendientes-y-advertencias-abiertas" class="section level1" number="12">
-<h1><span class="header-section-number">12</span> Pendientes y
-advertencias abiertas</h1>
-<ol style="list-style-type: decimal">
+<ol start="0" style="list-style-type: decimal">
+<li><strong><del>Sobrescritura del panel combinado entre
+documentos</del> — Resuelto.</strong> Los documentos 2-6 ahora guardan
+solo sus propias tablas (nombre propio); un documento nuevo,
+<code>00b_integracion_panel_final.Rmd</code>, es el único que arma y
+guarda <code>data_final_modelo_cuadrantes_reales.rds</code>. Correr
+cualquier documento las veces que haga falta ya no destruye el trabajo
+de los demás.</li>
+<li><strong>🚨 CRÍTICO — Verificar coincidencia de fórmula SAIDI entre
+líneas.</strong> El capítulo de metodología oficial define SAIDI con
+<code>duracion_total × usuarios_afectados / usuarios_totales</code>
+(multiplicativo). La línea geoespacial (documento 2) verifica/usa
+<code>duracion_total / cantidad_usuarios_cuadrante</code> (sin
+multiplicar). Confirmar si esto es una discrepancia real (en cuyo caso
+el R²=0.907 y las pruebas de robustez de la Parte 9 del modelo tendrían
+que rehacerse) o si son deliberadamente dos definiciones distintas para
+dos líneas de trabajo distintas, y documentarlo explícitamente. 00b.
+<strong>🚨 CRÍTICO — Decidir convivencia de las dos líneas de
+modelado.</strong> La línea geoespacial (documentos
+<code>Etapa5_01/02</code> o
+<code>modelo_SAIDI/SAIFI_cuadrantes_reales.Rmd</code>) y la línea D_mod
+(<code>8/9/13/14_modelacion_*.R</code>, Etapa 5 oficial) responden al
+mismo objetivo con datos y métodos distintos. Decidir con el director si
+la tesis presenta ambas como comparación metodológica, o si una es la
+línea principal y la otra queda como anexo/robustez — esta decisión
+bloquea la numeración final de todo el Capítulo 5. 00c.
+<strong>Verificar <code>estadisticos_clima_corregido.py</code> con
+Edwin</strong> — ¿es verificación cruzada tras el fix de precipitación,
+o duplica
+<code>calculo_estadistico_descriptivo.Rmd</code>/<code>analisis_correlacion.Rmd</code>/
+<code>analisis_multivariado.Rmd</code>? Decide si se archiva o se
+conserva como apéndice de verificación.</li>
 <li><strong><del>SAIDI/SAIFI eran proxy</del> — Resuelto (versión
 final).</strong> Cuatro iteraciones hasta llegar a
 <code>cantidad_usuarios_cuadrante</code> (denominador real por
@@ -2654,6 +2972,8 @@ entradas/salidas por script, pero falta un documento único tipo tabla
 limitaciones) que sistematice todo lo ya disperso en cada documento —
 requerido explícitamente por el objetivo específico 1 de la tesis.</li>
 </ol>
+</div>
+</div>
 </div>
 
 

@@ -1,0 +1,331 @@
+---
+title: "Etapa 2 — Cargue y agregación de clima NASA POWER a cuadrante-semana"
+subtitle: "Análisis exploratorio de variables climáticas por cuadrante"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# 1. Objetivo del análisis
+
+El objetivo de esta sección es caracterizar la variabilidad temporal y
+espacial de las variables climatológicas agregadas semanalmente, con
+énfasis en:
+
+- Identificar diferencias entre cuadrantes
+- Detectar eventos extremos
+- Evaluar correlaciones relevantes
+- Generar insumos para la modelación predictiva
+
+Unidad de muestreo: **cuadrantes por semana**.
+
+# 2. Preparación de datos
+
+```{r paquetes}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(lubridate)
+library(readr)
+library(readxl)
+```
+
+## Entorno (.env)
+
+Se carga `UBICACION_DATA` desde el archivo `.env` — ninguna ruta queda
+fija en el código; cada persona del equipo apunta a su propia carpeta
+de datos.
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+# 3. Cargar y preparar datos base
+
+## 3.1 Coordenadas de cuadrantes
+
+```{r coordenadas-cuadrantes}
+CUADRANTE_COORD <- read_excel(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "CUADRANTE_CORD_800.xls")
+) %>%
+  rename(
+    id_cuadrante = OBJECTID,
+    longitud = POINT_X,
+    latitud = POINT_Y
+  )
+```
+
+## 3.2 Clima diario (NASA POWER consolidado)
+
+```{r clima-diario}
+nasa_power_consolidado <- read_csv(
+  file.path(UBICACION_DATA, "Distribución de Cuadrantes", "Output_Raw_API_NASA", "nasa_power_consolidado.csv")
+)
+```
+
+## 3.3 Tabla de eventos
+
+Se carga aquí también la tabla de eventos ajustada, para disponer de
+las fechas de referencia al construir la semana calendario (mismo
+criterio de agregación que en el resto del pipeline: semana inicia en
+lunes).
+
+```{r tabla-eventos}
+tabla_eventos_ajustado <- read_csv(file.path(UBICACION_DATA, "tabla_eventos_ajustado.csv"))
+head(tabla_eventos_ajustado)
+
+tabla_eventos_ajustado_1 <- tabla_eventos_ajustado %>%
+  mutate(
+    FECHA_DESCONEXION = dmy_hm(FECHA_DESCONEXION),
+    FECHA_CONEXION = dmy_hm(FECHA_CONEXION)
+  )
+
+tabla_eventos_ajustado_2 <- tabla_eventos_ajustado_1 %>%
+  mutate(
+    anio = year(FECHA_DESCONEXION),
+    mes = floor_date(FECHA_DESCONEXION, "month"),
+    semana = floor_date(FECHA_DESCONEXION, "week"),
+    day = floor_date(FECHA_DESCONEXION, "day")
+  )
+```
+
+# 4. Construcción de clima semanal
+
+```{r clima-semana}
+clima_semana <- nasa_power_consolidado %>%
+  mutate(
+    semana = floor_date(fecha_consulta, "week", week_start = 1)
+  ) %>%
+  group_by(id_cuadrante, semana) %>%
+  summarise(
+    temp_media_semana = mean(temperatura_media_c, na.rm = TRUE),
+    temp_max_semana = max(temperatura_maxima_c, na.rm = TRUE),
+    temp_min_semana = min(temperatura_minima_c, na.rm = TRUE),
+
+    precip_total_semana = sum(precipitacion_total_mm, na.rm = TRUE),
+
+    humedad_media_semana = mean(humedad_relativa_pct, na.rm = TRUE),
+
+    viento_medio_semana = mean(velocidad_viento_ms, na.rm = TRUE),
+    viento_max_semana = max(velocidad_viento_ms, na.rm = TRUE),
+
+    .groups = "drop"
+  )
+```
+
+# 5. Variables de extremos
+
+## 5.1 Principio técnico
+
+No todas las variables climáticas se agregan igual:
+
+| Variable | Agregación correcta | Justificación |
+|---|---|---|
+| Precipitación | suma | es acumulativa |
+| Temperatura media | promedio | nivel promedio de exposición |
+| Temperatura máxima | máximo | eventos extremos |
+| Temperatura mínima | mínimo | eventos extremos |
+| Humedad | promedio | estado atmosférico |
+| Viento | promedio + máximo (ideal) | nivel + ráfagas |
+
+```{r variables-extremos}
+clima_semana <- clima_semana %>%
+  mutate(
+    lluvia_intensa = as.integer(precip_total_semana > quantile(precip_total_semana, 0.9, na.rm = TRUE)),
+    calor_extremo = as.integer(temp_max_semana > quantile(temp_max_semana, 0.9, na.rm = TRUE)),
+    viento_fuerte = as.integer(viento_max_semana > quantile(viento_max_semana, 0.9, na.rm = TRUE))
+  )
+```
+
+# 6. Incorporar coordenadas (panel espacial completo)
+
+```{r incorporar-coordenadas}
+clima_semana_spatial <- clima_semana %>%
+  left_join(CUADRANTE_COORD, by = "id_cuadrante")
+```
+
+## Validación
+
+```{r validacion-coordenadas}
+sum(is.na(clima_semana_spatial$latitud))
+```
+
+## Exportación
+
+Se exporta el resultado de esta etapa (`clima_semana_spatial`), que es
+el insumo que consume el siguiente documento del pipeline
+(`Etapa2_12_union_panel_semana.Rmd`) — ya no se guarda en una ruta fija
+de usuario, sino en `UBICACION_DATA`.
+
+```{r exportar-clima-semana}
+saveRDS(clima_semana_spatial, file.path(UBICACION_DATA, "clima_semana_spatial.rds"))
+cat(sprintf("clima_semana_spatial exportado: %d filas x %d columnas\n",
+            nrow(clima_semana_spatial), ncol(clima_semana_spatial)))
+```
+
+# 7. EDA espacial
+
+## 7.1 Promedios espaciales
+
+```{r eda-espacial-promedios}
+clima_mapa <- clima_semana_spatial %>%
+  group_by(id_cuadrante, latitud, longitud) %>%
+  summarise(
+    precip_media = mean(precip_total_semana, na.rm = TRUE),
+    temp_media = mean(temp_media_semana, na.rm = TRUE),
+    viento_medio = mean(viento_medio_semana, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## 7.2 Mapa precipitación
+
+```{r mapa-precipitacion, fig.width=8, fig.height=6}
+ggplot(clima_mapa, aes(longitud, latitud)) +
+  geom_point(aes(color = precip_media), size = 2) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Precipitación promedio semanal")
+```
+
+## 7.3 Mapa temperatura
+
+```{r mapa-temperatura, fig.width=8, fig.height=6}
+ggplot(clima_mapa, aes(longitud, latitud)) +
+  geom_point(aes(color = temp_media), size = 3) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Temperatura promedio")
+```
+
+## 7.4 Mapa viento
+
+```{r mapa-viento, fig.width=8, fig.height=6}
+ggplot(clima_mapa, aes(longitud, latitud)) +
+  geom_point(aes(color = viento_medio), size = 3) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Velocidad del viento")
+```
+
+# 8. Dinámica temporal
+
+```{r dinamica-temporal}
+clima_tiempo <- clima_semana %>%
+  group_by(semana) %>%
+  summarise(
+    temp_media = mean(temp_media_semana, na.rm = TRUE),
+    temp_max = mean(temp_max_semana, na.rm = TRUE),
+    temp_min = mean(temp_min_semana, na.rm = TRUE),
+
+    precip = mean(precip_total_semana, na.rm = TRUE),
+
+    humedad = mean(humedad_media_semana, na.rm = TRUE),
+
+    viento_medio = mean(viento_medio_semana, na.rm = TRUE),
+    viento_max = mean(viento_max_semana, na.rm = TRUE),
+
+    .groups = "drop"
+  )
+
+# Pasar a formato largo
+clima_tiempo_long <- clima_tiempo %>%
+  pivot_longer(
+    cols = -semana,
+    names_to = "variable",
+    values_to = "valor"
+  ) %>%
+  mutate(
+    variable = recode(variable,
+                      temp_media = "Temperatura media",
+                      temp_max = "Temperatura máxima",
+                      temp_min = "Temperatura mínima",
+                      precip = "Precipitación",
+                      humedad = "Humedad relativa",
+                      viento_medio = "Viento medio",
+                      viento_max = "Viento máximo"
+    )
+  )
+```
+
+## Indicadores de extremos a nivel temporal
+
+Se agregan a nivel semanal (proporción de cuadrantes afectados cada
+semana):
+
+```{r extremos-temporales}
+extremos_tiempo <- clima_semana %>%
+  group_by(semana) %>%
+  summarise(
+    lluvia_extrema = mean(lluvia_intensa, na.rm = TRUE),
+    viento_extremo = mean(viento_fuerte, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Unir con la serie temporal
+clima_tiempo <- clima_tiempo %>%
+  left_join(extremos_tiempo, by = "semana")
+```
+
+## Gráfico de dinámica temporal
+
+```{r plot-dinamica-temporal, fig.width=10, fig.height=12}
+ggplot(clima_tiempo_long, aes(x = semana, y = valor, color = variable)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~variable, scales = "free_y", ncol = 1) +
+  scale_color_manual(values = c(
+    "Temperatura media" = "#e31a1c",
+    "Temperatura máxima" = "#fb9a99",
+    "Temperatura mínima" = "#b2df8a",
+
+    "Precipitación" = "#1f78b4",
+
+    "Humedad relativa" = "#ff7f00",
+
+    "Viento medio" = "#33a02c",
+    "Viento máximo" = "#6a3d9a"
+  )) +
+  geom_vline(
+    data = extremos_tiempo %>% filter(lluvia_extrema > 0.3),
+    aes(xintercept = semana),
+    color = "#1f78b4",
+    alpha = 0.2
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14)
+  ) +
+  labs(
+    title = "Dinámica temporal de variables climáticas",
+    x = "Semana",
+    y = NULL
+  )
+```
