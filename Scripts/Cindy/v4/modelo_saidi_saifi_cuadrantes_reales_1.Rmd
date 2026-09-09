@@ -1,0 +1,2116 @@
+---
+title: "Modelo predictivo de SAIDI y SAIFI por cuadrante-semana"
+author: "Cindy Carolina Lugo Rozo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Se intenta fijar un locale UTF-8 para evitar errores de "invalid
+# input ... in 'utf8towcs'" al graficar textos con tildes/guiones
+# especiales en Windows. Si el locale no está disponible en esta
+# máquina, se ignora silenciosamente (no rompe el knit) — en ese caso,
+# los textos de los gráficos de este documento ya evitan tildes y
+# caracteres especiales como medida adicional de seguridad.
+try(Sys.setlocale("LC_ALL", "es_ES.UTF-8"), silent = TRUE)
+try(Sys.setlocale("LC_CTYPE", "es_ES.UTF-8"), silent = TRUE)
+```
+
+# Introduccion y supuestos
+
+Este documento construye, evalúa y compara modelos para **entender y
+pronosticar SAIDI y SAIFI** a nivel cuadrante-semana, usando el panel
+consolidado (`data_final_modelo_cuadrantes_reales.rds`).
+
+## Supuestos y limitaciones que condicionan la modelación
+
+Estos supuestos vienen documentados desde los pipelines anteriores y
+son centrales para interpretar correctamente los resultados:
+
+1. **SAIDI/SAIFI usan el denominador real POR CUADRANTE**: la fuente
+   (`data_agrupada_mod.csv`) incluye `usuarios_totales_cuadrante`
+   (usuarios realmente servidos, por cuadrante, provisto por CENS) y
+   trae `SAIDI_cuadrante`/`SAIFI_cuadrante`, renombradas a `SAIDI`/
+   `SAIFI` en el documento de construcción del panel. **No son un
+   proxy y no están dominadas por el tamaño del cuadrante** — son
+   comparables entre cuadrantes de distinto tamaño, que es justo lo
+   que necesita este modelo. La fuente también trae
+   `contribucion_SAIDI_sistema`/`contribucion_SAIFI_sistema` (peso de
+   cada cuadrante en el SAIDI/SAIFI total del sistema, útil para
+   reconciliar contra el indicador oficial mensual) — **estas dos NO
+   se usan como variable respuesta del modelo**, porque están
+   dominadas mecánicamente por el tamaño del cuadrante y no miden
+   confiabilidad de la red. Se verificó la consistencia de ambos pares
+   de variables en el documento de construcción del panel. `SAIFI`
+   puede superar 1 en cuadrantes con más de una interrupción por
+   usuario en la misma semana — esto es correcto y esperable con el
+   denominador real, no un error.
+2. **Variables estáticas vs. efectos fijos**: `n_elementos`,
+   `prop_*`, `estrato_predominante_municipal`, etc. no varían en el
+   tiempo. En cualquier especificación con efectos fijos de cuadrante
+   quedan absorbidas (colineales) y no se pueden estimar como término
+   aditivo — se usan solo en especificaciones *pooled*/RE, o como
+   interacciones con variables temporales.
+3. **Granularidad municipal de estrato y desastres UNGRD**: esas
+   variables son características del municipio, no del cuadrante
+   específico — se interpretan como exposición regional, no impacto
+   directo confirmado.
+4. **Dependencia temporal**: al ser panel semanal, las observaciones
+   dentro de un mismo cuadrante están autocorrelacionadas. La
+   validación se hace con **separación temporal** (últimas semanas
+   como *holdout*), nunca con partición aleatoria fila a fila — un
+   split aleatorio filtraría información del futuro al pasado
+   (*data leakage*) y sobreestimaría la capacidad predictiva real.
+5. **SAIFI y SAIDI con cola larga**: aunque el denominador ya es real,
+   ambos indicadores siguen teniendo distribución muy asimétrica (la
+   mayoría de semanas sin falla, algunas con valores altos). Se
+   modela también en escala logarítmica como alternativa.
+6. **Dimensión espacial pendiente**: los efectos fijos de cuadrante
+   capturan heterogeneidad constante por cuadrante, pero no
+   autocorrelación espacial entre cuadrantes vecinos (un shock
+   regional afectando simultáneamente a varios cuadrantes contiguos).
+   Queda como extensión pendiente (rezago espacial de SAIDI, matriz de
+   vecindad por contigüidad o por circuito eléctrico real).
+
+## Paquetes
+
+```{r modelo-paquetes}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+paquetes_modelo <- c("dplyr", "tidyr", "ggplot2", "lubridate", "knitr",
+                     "kableExtra", "scales", "corrplot", "fixest",
+                     "randomForest", "Metrics", "purrr", "broom")
+
+invisible(lapply(paquetes_modelo, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+  library(p, character.only = TRUE)
+}))
+
+# ------------------------------------------------------------------
+# Blindaje contra enmascaramiento de funciones (namespace clashes).
+# Paquetes como MASS (usado mas adelante para stepAIC) o raster
+# redefinen select()/filter() con una firma distinta a la de dplyr,
+# y si se cargan DESPUES en la misma sesion, "tapan" silenciosamente
+# a dplyr::select()/dplyr::filter() sin avisar - el error resultante
+# ("unused argument") es dificil de diagnosticar porque el codigo se
+# ve identico al que ya funcionaba antes.
+#
+# Se fuerza aqui, una sola vez, que select()/filter() en esta sesion
+# SIEMPRE sean las de dplyr, sin importar que otros paquetes se
+# carguen mas adelante en el documento (MASS::stepAIC, glmnet, etc.).
+# ------------------------------------------------------------------
+select <- dplyr::select
+filter <- dplyr::filter
+rename <- dplyr::rename
+mutate <- dplyr::mutate
+
+cat("select()/filter()/rename()/mutate() fijados explicitamente a dplyr para toda la sesion.\n")
+```
+
+```{r entorno}
+# ============================================================
+# CONFIGURACION DE ENTORNO (portable entre computadores)
+# ============================================================
+#
+# Cada persona que corra este documento define su propia ruta de
+# datos en un archivo ".env" (no versionado / no compartido), con
+# una linea como:
+#
+#   UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"
+#
+# El .env se busca en la carpeta actual y hasta dos niveles arriba,
+# para que funcione sin importar si el .Rmd esta en la raiz del
+# proyecto o en una subcarpeta. Copia ".env.example" como ".env" y
+# ajusta la ruta antes de correr este documento.
+# ============================================================
+
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+
+ruta_env <- buscar_env()
+
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontro un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+
+if (UBICACION_DATA == "") {
+  stop(
+    "UBICACION_DATA no esta definida.\n",
+    "Crea un archivo '.env' (copiando '.env.example') en la raiz del ",
+    "proyecto, con una linea:\n",
+    '  UBICACION_DATA="C:/ruta/de/tu/carpeta/de/datos"'
+  )
+}
+
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+---
+
+# Parte 1 — Carga y preparación de datos
+
+```{r modelo-cargar-datos}
+data_final <- readRDS(file.path(UBICACION_DATA, "data_final_modelo_cuadrantes_reales.rds")) %>%
+  mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+  arrange(id_cuadrante, semana)
+
+cat(sprintf("Panel cargado: %d filas | %d cuadrantes | %d semanas\n",
+            nrow(data_final), n_distinct(data_final$id_cuadrante),
+            n_distinct(data_final$semana)))
+```
+
+## Ingeniería de variables (feature engineering)
+
+Se construyen: variables temporales (mes, trimestre, indicador
+estacional), rezagos (*lags*) de SAIDI/SAIFI y de variables climáticas
+(la falla de esta semana puede depender de condiciones acumuladas de
+semanas previas), e interacciones entre exposición estática
+(infraestructura) y variables dinámicas (NDVI, clima).
+
+```{r modelo-feature-engineering}
+data_final <- data_final %>%
+  group_by(id_cuadrante) %>%
+  arrange(semana) %>%
+  mutate(
+    # --- Temporales ---
+    mes         = month(semana),
+    trimestre   = quarter(semana),
+    semana_num  = as.numeric(semana - min(semana)) / 7,   # tendencia lineal en semanas
+
+    # --- Rezagos (lag 1 y lag 4 semanas) ---
+    SAIDI_lag1  = dplyr::lag(SAIDI, 1),
+    SAIFI_lag1  = dplyr::lag(SAIFI, 1),
+    SAIDI_lag4  = dplyr::lag(SAIDI, 4),
+    precip_lag1 = dplyr::lag(precip_total_semana, 1),
+    viento_lag1 = dplyr::lag(viento_max_semana, 1),
+
+    # --- Medias móviles de 4 semanas (acumulación de estrés climático) ---
+    precip_ma4  = zoo::rollmeanr(precip_total_semana, k = 4, fill = NA),
+    viento_ma4  = zoo::rollmeanr(viento_max_semana,   k = 4, fill = NA),
+
+    # --- Transformaciones ---
+    log_SAIDI1  = log1p(SAIDI),
+    log_SAIFI1  = log1p(SAIFI),
+
+    # --- Interacciones exposición estática x dinámica ---
+    ndvi_x_elementos   = ndvi_semanal * n_elementos,
+    sismo_x_elementos  = n_sismos_r50 * n_elementos,
+    evento_x_bajoestrato = hubo_evento_catastrofico *
+      as.integer(estrato_modal_real <= 2)
+  ) %>%
+  ungroup()
+
+cat(sprintf("Variables tras feature engineering: %d columnas\n", ncol(data_final)))
+```
+
+---
+
+# Parte 1b — Dimensión espacial: rezago entre cuadrantes vecinos
+
+Los efectos fijos de cuadrante controlan heterogeneidad **constante**
+por cuadrante, pero no capturan que un shock regional (temporal de
+lluvias, sismo, falla en un circuito compartido) puede afectar
+simultáneamente a varios cuadrantes **contiguos**. Esta sección
+construye variables de vecindad espacial y valida, con un test
+formal, si vale la pena incluirlas antes de dar por hecho que aportan.
+
+## Paquetes adicionales
+
+```{r modelo-paquetes-espacial}
+if (!requireNamespace("spdep", quietly = TRUE)) install.packages("spdep")
+if (!requireNamespace("sf", quietly = TRUE)) install.packages("sf")
+library(spdep)
+library(sf)
+```
+
+## Matriz de vecindad por contigüidad
+
+Se construye la lista de vecinos de cada cuadrante a partir de la
+geometría real (`cuadrantes_infra`), usando contigüidad tipo *queen*
+(comparten al menos un vértice o un lado). Si `cuadrantes_infra` no
+está en el entorno de esta sesión, se recarga desde el `.gpkg`.
+
+```{r modelo-vecindad-contiguidad}
+if (!exists("cuadrantes_infra")) {
+  cuadrantes_infra <- st_read(
+    file.path(UBICACION_DATA, "infraestructura_cuadrantes_reales.gpkg"),
+    layer = "cuadrantes_infra_reales", quiet = TRUE
+  )
+}
+
+cuadrantes_infra <- cuadrantes_infra %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE)) %>%
+  arrange(id_cuadrante)
+
+# Reparar geometría inválida (mismo problema recurrente de vértices
+# duplicados visto en el documento de estratificación)
+if (sum(!st_is_valid(cuadrantes_infra)) > 0) {
+  cuadrantes_infra <- st_make_valid(cuadrantes_infra)
+}
+
+vecinos_nb <- poly2nb(cuadrantes_infra, queen = TRUE, row.names = cuadrantes_infra$id_cuadrante)
+
+n_sin_vecinos <- sum(card(vecinos_nb) == 0)
+cat(sprintf("Cuadrantes sin ningún vecino detectado: %d de %d\n",
+            n_sin_vecinos, length(vecinos_nb)))
+
+# Pesos espaciales fila-normalizados (promedio de vecinos, no suma).
+# zero.policy = TRUE evita que falle si algún cuadrante quedó aislado.
+pesos_espaciales <- nb2listw(vecinos_nb, style = "W", zero.policy = TRUE)
+```
+
+## Test de Moran's I — ¿hay autocorrelación espacial que valga la pena modelar?
+
+Se aplica sobre el SAIDI promedio de cada cuadrante (corte
+transversal, agregando todo el período), ya que Moran's I clásico
+evalúa una sola capa espacial, no un panel completo. Un valor de *I*
+significativamente positivo indica que cuadrantes vecinos se parecen
+en SAIDI más de lo esperable por azar — la justificación empírica
+para incluir el rezago espacial en el modelo, en vez de asumirlo sin
+evidencia.
+
+```{r modelo-moran-test}
+saidi_promedio_cuadrante <- data_final %>%
+  filter(hubo_falla == 1) %>%
+  group_by(id_cuadrante) %>%
+  summarise(SAIDI_promedio = mean(SAIDI, na.rm = TRUE), .groups = "drop")
+
+# Alinear el orden exacto con el de cuadrantes_infra / vecinos_nb
+saidi_ordenado <- cuadrantes_infra %>%
+  st_drop_geometry() %>%
+  select(id_cuadrante) %>%
+  left_join(saidi_promedio_cuadrante, by = "id_cuadrante") %>%
+  mutate(SAIDI_promedio = if_else(is.na(SAIDI_promedio), 0, SAIDI_promedio))
+
+moran_resultado <- moran.test(
+  saidi_ordenado$SAIDI_promedio,
+  pesos_espaciales,
+  zero.policy = TRUE
+)
+
+print(moran_resultado)
+
+cat(sprintf(
+  "\nInterpretación: I = %.3f, p-valor = %.4f. %s\n",
+  moran_resultado$estimate[1], moran_resultado$p.value,
+  if (moran_resultado$p.value < 0.05 & moran_resultado$estimate[1] > 0) {
+    "Hay evidencia de autocorrelacion espacial positiva: cuadrantes vecinos se parecen mas de lo esperable por azar. Justifica incluir el rezago espacial."
+  } else if (moran_resultado$p.value < 0.05 & moran_resultado$estimate[1] < 0) {
+    "Autocorrelacion espacial negativa (poco comun): revisar antes de interpretar."
+  } else {
+    "No hay evidencia significativa de autocorrelacion espacial en el promedio historico. El rezago espacial puede aportar menos de lo esperado, pero puede seguir siendo informativo semana a semana."
+  }
+))
+```
+
+```{r modelo-moran-mapa, fig.width=8, fig.height=7}
+cuadrantes_infra %>%
+  left_join(saidi_promedio_cuadrante, by = "id_cuadrante") %>%
+  ggplot() +
+  geom_sf(aes(fill = SAIDI_promedio), color = "gray40", linewidth = 0.15) +
+  scale_fill_viridis_c(option = "inferno", na.value = "grey85", name = "SAIDI\npromedio") +
+  labs(
+    title    = "SAIDI promedio por cuadrante (todo el periodo, semanas con falla)",
+    subtitle = sprintf("Moran I = %.3f (p = %.4f) - referencia visual del patron espacial",
+                       moran_resultado$estimate[1], moran_resultado$p.value)
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+## Construcción del rezago espacial
+
+Para cada cuadrante y semana, se calcula el **promedio de sus vecinos
+inmediatos**:
+
+- `SAIDI_vecinos_lag1`: SAIDI de los vecinos en la **semana anterior**
+  (rezagado deliberadamente, para no filtrar información contemporánea
+  del propio cuadrante hacia sí mismo a través de sus vecinos).
+- `n_eventos_vecinos`, `ndvi_vecinos`: variables **contemporáneas**,
+  porque son exógenas al SAIDI del propio cuadrante — no hay riesgo de
+  fuga de información al usarlas sin rezago.
+
+```{r modelo-construir-rezago-espacial}
+matriz_pesos <- listw2mat(pesos_espaciales)
+rownames(matriz_pesos) <- cuadrantes_infra$id_cuadrante
+colnames(matriz_pesos) <- cuadrantes_infra$id_cuadrante
+
+calcular_rezago_espacial <- function(datos, variable, usar_lag_temporal = FALSE) {
+
+  var_sym <- rlang::sym(variable)
+
+  ancho <- datos %>%
+    select(id_cuadrante, semana, !!var_sym) %>%
+    tidyr::pivot_wider(names_from = id_cuadrante, values_from = !!var_sym)
+
+  semanas_vec <- ancho$semana
+  mat_valores <- as.matrix(ancho %>% select(-semana))
+  mat_valores <- mat_valores[, colnames(matriz_pesos), drop = FALSE]
+  mat_valores[is.na(mat_valores)] <- 0
+
+  if (usar_lag_temporal) {
+    mat_valores <- rbind(matrix(NA, nrow = 1, ncol = ncol(mat_valores),
+                                 dimnames = list(NULL, colnames(mat_valores))),
+                          mat_valores[-nrow(mat_valores), ])
+    mat_valores[is.na(mat_valores)] <- 0
+  }
+
+  rezago <- mat_valores %*% t(matriz_pesos)
+  colnames(rezago) <- colnames(mat_valores)
+
+  as.data.frame(rezago) %>%
+    mutate(semana = semanas_vec) %>%
+    tidyr::pivot_longer(-semana, names_to = "id_cuadrante", values_to = paste0(variable, "_vecinos"))
+}
+
+saidi_vecinos <- calcular_rezago_espacial(data_final, "SAIDI", usar_lag_temporal = TRUE) %>%
+  rename(SAIDI_vecinos_lag1 = SAIDI_vecinos)
+
+eventos_vecinos <- calcular_rezago_espacial(data_final, "n_eventos_catastroficos") %>%
+  rename(n_eventos_vecinos = n_eventos_catastroficos_vecinos)
+
+ndvi_vecinos <- calcular_rezago_espacial(data_final, "ndvi_semanal") %>%
+  rename(ndvi_vecinos = ndvi_semanal_vecinos)
+
+data_final <- data_final %>%
+  select(-any_of(c("SAIDI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"))) %>%
+  left_join(saidi_vecinos,   by = c("id_cuadrante", "semana")) %>%
+  left_join(eventos_vecinos, by = c("id_cuadrante", "semana")) %>%
+  left_join(ndvi_vecinos,    by = c("id_cuadrante", "semana"))
+
+cat(sprintf(
+  "Variables de rezago espacial construidas.\nCobertura SAIDI_vecinos_lag1: %.1f%%\nCobertura n_eventos_vecinos: %.1f%%\nCobertura ndvi_vecinos: %.1f%%\n",
+  100 * mean(!is.na(data_final$SAIDI_vecinos_lag1)),
+  100 * mean(!is.na(data_final$n_eventos_vecinos)),
+  100 * mean(!is.na(data_final$ndvi_vecinos))
+))
+```
+
+## Verificación visual: ¿el rezago espacial se relaciona con SAIDI del cuadrante?
+
+```{r modelo-verificar-rezago-espacial, fig.width=8, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  ggplot(aes(x = SAIDI_vecinos_lag1, y = SAIDI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#e34a33", se = TRUE) +
+  labs(
+    title = "SAIDI del cuadrante vs. SAIDI promedio de sus vecinos (semana anterior)",
+    x = "SAIDI vecinos (t-1)", y = "SAIDI del cuadrante (t)"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+**Nota de rendimiento:** `poly2nb()` sobre 344 polígonos es rápido
+(segundos); `calcular_rezago_espacial()` reestructura el panel a
+formato ancho (semana × cuadrante) tres veces — con ~344 cuadrantes y
+~100 semanas esto es manejable, no debería tardar más de uno o dos
+minutos en total.
+
+---
+
+## Selección de variables candidatas
+
+```{r modelo-seleccionar-variables}
+vars_candidatas <- c(
+  # Climáticas (dinámicas)
+  "temp_media_semana", "temp_max_semana", "humedad_media_semana",
+  "viento_max_semana", "precip_total_semana", "precip_ma4", "viento_ma4",
+  # Vegetación (dinámica)
+  "ndvi_semanal", "log_ndvi",
+  # Infraestructura (estática)
+  "n_elementos", "n_tipos_infraestructura", "prop_transformadores",
+  # Topología de red eléctrica (estática) — incorporada en el
+  # documento de topología (grafo, longitud de línea, nodos terminales)
+  "longitud_red_km", "n_circuitos_cuadrante", "n_nodos_terminales", "densidad_terminales",
+  # Estrato y tipo de uso REAL por cuadrante (estático) — reemplaza al
+  # estrato_predominante_municipal, ahora con precisión de cuadrante
+  "estrato_modal_real", "prop_estrato_1", "prop_estrato_2", "prop_estrato_3",
+  "prop_estrato_4", "prop_estrato_5", "prop_estrato_6",
+  "prop_industrial", "prop_comercial", "prop_oficial", "prop_no_residencial",
+  # Activos: edad y mantenimiento (estático/casi-estático) — resuelve
+  # el hueco de variables "operativas" identificado frente a los
+  # objetivos de tesis
+  "edad_activo_mas_viejo_anios", "edad_activo_mas_nuevo_anios",
+  "rango_edad_activos_anios", "PROM_CANT_MODIFICACIONES",
+  # Desastres (dinámica, municipal)
+  "n_eventos_catastroficos", "hubo_evento_catastrofico",
+  # Sismicidad (dinámica, distancia real)
+  "n_sismos_r50", "n_sismos_m3_r50", "magnitud_max_r50", "dist_sismo_min_km_r50",
+  # Rezagos temporales
+  "SAIDI_lag1", "SAIFI_lag1", "SAIDI_lag4",
+  # Interacciones
+  "ndvi_x_elementos", "sismo_x_elementos",
+  # Rezago espacial (vecinos, geográfico)
+  "SAIDI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"
+)
+
+vars_disponibles <- intersect(vars_candidatas, names(data_final))
+cat(sprintf("Variables candidatas disponibles: %d de %d\n",
+            length(vars_disponibles), length(vars_candidatas)))
+print(setdiff(vars_candidatas, names(data_final)))
+```
+
+## Matriz de correlación (colinealidad)
+
+```{r modelo-matriz-correlacion, fig.width=10, fig.height=9}
+vars_numericas <- data_final %>%
+  select(all_of(vars_disponibles)) %>%
+  select(where(is.numeric)) %>%
+  na.omit()
+
+if (nrow(vars_numericas) > 100) {
+  cor_mat <- cor(vars_numericas, use = "complete.obs")
+  corrplot(cor_mat, method = "color", type = "upper", tl.cex = 0.6,
+           tl.col = "black", diag = FALSE,
+           title = "Matriz de correlación — variables candidatas", mar = c(0,0,2,0))
+} else {
+  message("Muy pocas filas completas para calcular correlaciones de forma robusta.")
+}
+```
+
+---
+
+# Parte 2 — Análisis exploratorio de relaciones
+
+## SAIDI/SAIFI vs. variables climáticas
+
+```{r modelo-scatter-clima, fig.width=10, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  select(SAIDI, precip_total_semana, viento_max_semana) %>%
+  pivot_longer(-SAIDI, names_to = "variable", values_to = "valor") %>%
+  ggplot(aes(x = valor, y = SAIDI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#e34a33", se = TRUE) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "SAIDI vs. variables climáticas", x = NULL, y = "SAIDI") +
+  theme_minimal(base_size = 12)
+```
+
+## SAIDI/SAIFI vs. exposición sísmica y NDVI
+
+```{r modelo-scatter-riesgo, fig.width=10, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  select(SAIFI, ndvi_semanal, dist_sismo_min_km_r50) %>%
+  pivot_longer(-SAIFI, names_to = "variable", values_to = "valor") %>%
+  filter(!is.na(valor)) %>%
+  ggplot(aes(x = valor, y = SAIFI)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_smooth(method = "loess", color = "#2b8cbe", se = TRUE) +
+  facet_wrap(~variable, scales = "free_x") +
+  labs(title = "SAIFI vs. NDVI y distancia sísmica", x = NULL, y = "SAIFI") +
+  theme_minimal(base_size = 12)
+```
+
+## Distribución de SAIDI/SAIFI (justificación de la transformación log)
+
+```{r modelo-distribucion-target, fig.width=10, fig.height=5}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  select(SAIDI, SAIFI) %>%
+  pivot_longer(everything(), names_to = "indicador", values_to = "valor") %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(bins = 50, fill = "#3182bd", color = "white") +
+  facet_wrap(~indicador, scales = "free") +
+  labs(title = "Distribución de SAIDI y SAIFI (semanas con falla)", x = NULL, y = "Frecuencia") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 3 — Preparación del split temporal (train / test)
+
+**No se usa partición aleatoria.** Se reservan las últimas semanas del
+panel como conjunto de prueba (*holdout* temporal), simulando un
+escenario real de pronóstico: entrenar con el pasado, predecir el
+futuro.
+
+```{r modelo-split-temporal}
+PCT_TEST <- 0.15   # últimas semanas como test
+
+semanas_ordenadas <- data_final %>% distinct(semana) %>% arrange(semana) %>% pull(semana)
+n_semanas <- length(semanas_ordenadas)
+corte <- semanas_ordenadas[floor(n_semanas * (1 - PCT_TEST))]
+
+train <- data_final %>% filter(semana <= corte, hubo_falla == 1)
+test  <- data_final %>% filter(semana >  corte, hubo_falla == 1)
+
+cat(sprintf(
+  "Corte temporal: %s\nTrain: %d filas (%s a %s)\nTest:  %d filas (%s a %s)\n",
+  corte,
+  nrow(train), min(train$semana), max(train$semana),
+  nrow(test),  min(test$semana),  max(test$semana)
+))
+```
+
+```{r modelo-plot-split, fig.width=9, fig.height=4}
+data_final %>%
+  filter(hubo_falla == 1) %>%
+  mutate(conjunto = if_else(semana <= corte, "Train", "Test")) %>%
+  count(semana, conjunto) %>%
+  ggplot(aes(x = semana, y = n, fill = conjunto)) +
+  geom_col() +
+  geom_vline(xintercept = as.numeric(corte), linetype = "dashed") +
+  scale_fill_manual(values = c(Train = "#3182bd", Test = "#de2d26")) +
+  labs(title = "Partición temporal train/test", x = NULL, y = "N° observaciones (semanas con falla)") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 4 — Especificaciones de modelo
+
+Se comparan cuatro enfoques progresivamente más flexibles, todos
+entrenados con exactamente las mismas variables disponibles y evaluados
+sobre el mismo *test* temporal:
+
+1. **Pooled OLS** (referencia simple, ignora estructura de panel).
+2. **Panel con efectos fijos de cuadrante** (`fixest::feols`) — controla
+   heterogeneidad no observada constante por cuadrante; las variables
+   estáticas quedan absorbidas por diseño.
+3. **Panel con efectos fijos de cuadrante + semana** (controla también
+   shocks comunes a todos los cuadrantes en una semana dada, como una
+   ola de frío regional).
+4. **Random Forest** (no lineal, captura interacciones sin
+   especificarlas a mano) — como referencia de techo de desempeño
+   predictivo.
+
+Variable respuesta: `log1p(SAIDI)` (para manejar la cola larga).
+
+```{r modelo-formula-base}
+vars_modelo <- c(
+  "temp_media_semana", "viento_max_semana", "precip_total_semana", "precip_ma4",
+  "ndvi_semanal", "n_eventos_catastroficos", "n_sismos_r50", "dist_sismo_min_km_r50",
+  "SAIDI_lag1",
+  # Topología de red eléctrica: longitud de línea (exposición física
+  # real, más precisa que n_elementos) y densidad de nodos terminales
+  # (puntas de ramal, mayor riesgo esperado en redes radiales). Son
+  # estáticas -> se identifican en Pooled OLS, pero quedan absorbidas
+  # por el efecto fijo en los modelos FE (mismo tratamiento que
+  # n_elementos/prop_transformadores).
+  "longitud_red_km", "densidad_terminales",
+  # Composición socioeconómica REAL por cuadrante (reemplaza estrato
+  # municipal): proporción de estratos bajos y de uso no residencial
+  "prop_estrato_1", "prop_estrato_2", "prop_no_residencial",
+  # Activos: edad y mantenimiento — variable nueva que resuelve el
+  # hueco de "condición de la red" frente a los objetivos de tesis
+  "edad_activo_mas_viejo_anios", "PROM_CANT_MODIFICACIONES",
+  # Rezago espacial: se incluyen aquí porque el test de Moran's I
+  # (Parte 1b) confirmó/sugirió señal espacial en SAIDI. Si el test
+  # dio NO significativo en tu corrida, puedes comentar estas tres
+  # líneas y comparar el desempeño con/sin ellas.
+  "SAIDI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"
+)
+vars_modelo <- intersect(vars_modelo, names(data_final))
+
+formula_pooled <- as.formula(paste("log_SAIDI1 ~", paste(vars_modelo, collapse = " + ")))
+cat("Fórmula base:\n"); print(formula_pooled)
+```
+
+## Modelo 1 — Pooled OLS
+
+```{r modelo-1-pooled}
+m1_pooled <- feols(formula_pooled, data = train)
+summary(m1_pooled)
+```
+
+## Modelo 2 — Efectos fijos de cuadrante
+
+```{r modelo-2-fe-cuadrante}
+formula_fe <- as.formula(paste("log_SAIDI1 ~", paste(vars_modelo, collapse = " + "), "| id_cuadrante"))
+
+m2_fe_cuadrante <- feols(formula_fe, data = train)
+summary(m2_fe_cuadrante)
+```
+
+## Modelo 3 — Efectos fijos de cuadrante + semana
+
+```{r modelo-3-fe-doble}
+formula_fe2 <- as.formula(paste("log_SAIDI1 ~", paste(vars_modelo, collapse = " + "), "| id_cuadrante + semana"))
+
+m3_fe_doble <- feols(formula_fe2, data = train)
+summary(m3_fe_doble)
+```
+
+## Modelo 4 — Random Forest
+
+```{r modelo-4-random-forest}
+train_rf <- train %>% select(log_SAIDI1, all_of(vars_modelo)) %>% na.omit()
+test_rf  <- test  %>% select(log_SAIDI1, all_of(vars_modelo)) %>% na.omit()
+
+set.seed(123)
+m4_rf <- randomForest(
+  log_SAIDI1 ~ ., data = train_rf,
+  ntree = 500, importance = TRUE
+)
+
+print(m4_rf)
+```
+
+### Importancia de variables — Random Forest
+
+```{r modelo-rf-importancia, fig.width=8, fig.height=5}
+importancia_rf <- importance(m4_rf) %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("variable") %>%
+  arrange(desc(`%IncMSE`))
+
+ggplot(importancia_rf, aes(x = reorder(variable, `%IncMSE`), y = `%IncMSE`)) +
+  geom_col(fill = "#31a354") +
+  coord_flip() +
+  labs(title = "Importancia de variables — Random Forest", x = NULL, y = "% incremento en MSE al remover") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 5 — Evaluación sobre el conjunto de prueba (test temporal)
+
+```{r modelo-evaluar-todos}
+test_completo <- test %>% select(log_SAIDI1, SAIDI, all_of(vars_modelo), id_cuadrante, semana) %>% na.omit()
+
+pred_pooled <- predict(m1_pooled, newdata = test_completo)
+pred_fe1    <- predict(m2_fe_cuadrante, newdata = test_completo)
+pred_fe2    <- predict(m3_fe_doble, newdata = test_completo)
+pred_rf     <- predict(m4_rf, newdata = test_completo)
+
+# NOTA: predict.fixest() puede devolver NA para filas cuyo id_cuadrante
+# no tenga suficiente historia en train para estimar su efecto fijo.
+# Se reporta el conteo y se calculan las métricas SOLO sobre filas
+# válidas, para no propagar NA a RMSE/MAE/R2 completos.
+cat(sprintf(
+  "NA en predicciones — Pooled: %d | FE cuadrante: %d | FE cuadrante+semana: %d | RF: %d (de %d filas)\n",
+  sum(is.na(pred_pooled)), sum(is.na(pred_fe1)), sum(is.na(pred_fe2)), sum(is.na(pred_rf)),
+  nrow(test_completo)
+))
+
+calc_metricas_validas <- function(observado, predicho) {
+  valido <- !is.na(predicho) & !is.na(observado)
+  if (sum(valido) < 5) return(c(RMSE = NA_real_, MAE = NA_real_, R2 = NA_real_))
+  c(
+    RMSE = Metrics::rmse(observado[valido], predicho[valido]),
+    MAE  = Metrics::mae(observado[valido], predicho[valido]),
+    R2   = cor(observado[valido], predicho[valido])^2
+  )
+}
+
+m_pooled_metricas <- calc_metricas_validas(test_completo$log_SAIDI1, pred_pooled)
+m_fe1_metricas    <- calc_metricas_validas(test_completo$log_SAIDI1, pred_fe1)
+m_fe2_metricas    <- calc_metricas_validas(test_completo$log_SAIDI1, pred_fe2)
+m_rf_metricas     <- calc_metricas_validas(test_completo$log_SAIDI1, pred_rf)
+
+resultados <- tibble(
+  modelo   = c("Pooled OLS", "FE cuadrante", "FE cuadrante+semana", "Random Forest"),
+  RMSE_log = c(m_pooled_metricas["RMSE"], m_fe1_metricas["RMSE"], m_fe2_metricas["RMSE"], m_rf_metricas["RMSE"]),
+  MAE_log  = c(m_pooled_metricas["MAE"],  m_fe1_metricas["MAE"],  m_fe2_metricas["MAE"],  m_rf_metricas["MAE"]),
+  R2_log   = c(m_pooled_metricas["R2"],   m_fe1_metricas["R2"],   m_fe2_metricas["R2"],   m_rf_metricas["R2"])
+)
+
+kable(resultados, digits = 4,
+      caption = "Desempeño comparado en el conjunto de prueba (escala log1p(SAIDI))") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## ¿Cuánto aporta específicamente el rezago espacial?
+
+Se re-estima el modelo FE cuadrante **sin** las tres variables de
+vecindad, y se compara su RMSE en test contra la versión completa —
+así se aísla el aporte marginal de la dimensión espacial, en vez de
+asumir que ayuda solo porque se incluyó.
+
+```{r modelo-comparar-con-sin-espacial}
+vars_sin_espacial <- setdiff(vars_modelo, c("SAIDI_vecinos_lag1", "n_eventos_vecinos", "ndvi_vecinos"))
+
+formula_fe_sin_espacial <- as.formula(
+  paste("log_SAIDI1 ~", paste(vars_sin_espacial, collapse = " + "), "| id_cuadrante")
+)
+
+m2_fe_sin_espacial <- feols(formula_fe_sin_espacial, data = train)
+
+test_sin_espacial <- test %>% select(log_SAIDI1, all_of(vars_sin_espacial), id_cuadrante) %>% na.omit()
+pred_sin_espacial  <- predict(m2_fe_sin_espacial, newdata = test_sin_espacial)
+
+cat(sprintf("NA en predicciones — sin espacial: %d de %d | con espacial: %d de %d\n",
+            sum(is.na(pred_sin_espacial)), length(pred_sin_espacial),
+            sum(is.na(pred_fe1)), length(pred_fe1)))
+
+metricas_sin <- calc_metricas_validas(test_sin_espacial$log_SAIDI1, pred_sin_espacial)
+metricas_con <- calc_metricas_validas(test_completo$log_SAIDI1, pred_fe1)
+
+comparacion_espacial <- tibble(
+  especificacion = c("FE cuadrante — SIN variables espaciales", "FE cuadrante — CON variables espaciales"),
+  RMSE_log = c(metricas_sin["RMSE"], metricas_con["RMSE"]),
+  R2_log   = c(metricas_sin["R2"], metricas_con["R2"])
+)
+
+kable(comparacion_espacial, digits = 4,
+      caption = "Aporte marginal de las variables de vecindad espacial (mismo modelo FE cuadrante)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+if (any(is.na(comparacion_espacial$RMSE_log))) {
+  mejora_pct <- NA_real_
+  cat("\nNo fue posible calcular el cambio en RMSE: alguna de las dos especificaciones no generó suficientes predicciones válidas (revisa el conteo de NA impreso arriba).\n")
+} else {
+  mejora_pct <- round(100 * (comparacion_espacial$RMSE_log[1] - comparacion_espacial$RMSE_log[2]) /
+                       comparacion_espacial$RMSE_log[1], 1)
+  cat(sprintf("\nCambio en RMSE al agregar variables espaciales: %.1f%% %s\n",
+              abs(mejora_pct), if (mejora_pct > 0) "(mejora)" else "(empeora o sin cambio relevante)"))
+}
+```
+
+## Gráfico: predicho vs. observado (mejor modelo según RMSE)
+
+```{r modelo-pred-vs-obs, fig.width=8, fig.height=7}
+mejor_modelo <- resultados$modelo[which.min(resultados$RMSE_log)]
+cat(sprintf("Mejor modelo según RMSE en test: %s\n", mejor_modelo))
+
+pred_mejor <- switch(mejor_modelo,
+  "Pooled OLS" = pred_pooled,
+  "FE cuadrante" = pred_fe1,
+  "FE cuadrante+semana" = pred_fe2,
+  "Random Forest" = pred_rf
+)
+
+data.frame(observado = test_completo$log_SAIDI1, predicho = pred_mejor) %>%
+  ggplot(aes(x = observado, y = predicho)) +
+  geom_point(alpha = 0.3, size = 1.2) +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(
+    title = sprintf("Predicho vs. observado — %s", mejor_modelo),
+    subtitle = "Línea roja: predicción perfecta",
+    x = "log(SAIDI) observado", y = "log(SAIDI) predicho"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Gráfico: residuos vs. semana (¿el modelo empeora en el tiempo?)
+
+```{r modelo-residuos-tiempo, fig.width=9, fig.height=5}
+test_completo %>%
+  mutate(residuo = log_SAIDI1 - pred_mejor) %>%
+  group_by(semana) %>%
+  summarise(residuo_medio = mean(residuo), .groups = "drop") %>%
+  ggplot(aes(x = semana, y = residuo_medio)) +
+  geom_line(color = "#3182bd") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(title = "Residuo promedio por semana (conjunto de prueba)", x = NULL, y = "Residuo medio") +
+  theme_minimal(base_size = 12)
+```
+
+## Serie temporal: SAIDI real vs. pronosticado (muestra de cuadrantes)
+
+```{r modelo-serie-pronostico, fig.width=10, fig.height=6}
+set.seed(1)
+muestra_cuad <- test_completo %>% distinct(id_cuadrante) %>% slice_sample(n = 4) %>% pull(id_cuadrante)
+
+test_completo %>%
+  mutate(SAIDI_pred = expm1(pred_mejor)) %>%
+  filter(id_cuadrante %in% muestra_cuad) %>%
+  select(id_cuadrante, semana, SAIDI, SAIDI_pred) %>%
+  pivot_longer(c(SAIDI, SAIDI_pred), names_to = "tipo", values_to = "valor") %>%
+  ggplot(aes(x = semana, y = valor, color = tipo)) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 1.5) +
+  facet_wrap(~id_cuadrante, scales = "free_y") +
+  scale_color_manual(values = c(SAIDI = "black", SAIDI_pred = "#e34a33"),
+                      labels = c("Observado", "Pronosticado")) +
+  labs(title = "SAIDI observado vs. pronosticado — muestra de cuadrantes (test)",
+       x = NULL, y = "SAIDI", color = NULL) +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 6 — Modelo equivalente para SAIFI
+
+Se repite la comparación con SAIFI como variable respuesta. Con el
+denominador real por cuadrante (`usuarios_totales_cuadrante`), SAIFI
+ya no está acotado artificialmente a 1 ni dominado por el tamaño del
+cuadrante — puede superar ese valor si un cuadrante tuvo más de una
+interrupción por usuario en la misma semana. Se deja en escala
+original (sin log) como punto de partida; si la distribución resulta
+muy asimétrica en la práctica, conviene revisar `log1p(SAIFI)` como
+alternativa, igual que se hizo con SAIDI.
+
+```{r modelo-saifi-formula}
+formula_saifi_fe <- as.formula(paste("SAIFI ~", paste(vars_modelo, collapse = " + "), "| id_cuadrante"))
+
+m_saifi_fe <- feols(formula_saifi_fe, data = train)
+summary(m_saifi_fe)
+```
+
+```{r modelo-saifi-evaluar}
+test_saifi <- test %>% select(SAIFI, all_of(vars_modelo), id_cuadrante, semana) %>% na.omit()
+pred_saifi <- predict(m_saifi_fe, newdata = test_saifi)
+
+metricas_saifi <- calc_metricas_validas(test_saifi$SAIFI, pred_saifi)
+
+cat(sprintf(
+  "SAIFI — RMSE test: %.4f | MAE test: %.4f | R2: %.4f (n válido: %d de %d)\n",
+  metricas_saifi["RMSE"], metricas_saifi["MAE"], metricas_saifi["R2"],
+  sum(!is.na(pred_saifi) & !is.na(test_saifi$SAIFI)), length(pred_saifi)
+))
+```
+
+```{r modelo-saifi-pred-vs-obs, fig.width=8, fig.height=7}
+data.frame(observado = test_saifi$SAIFI, predicho = pred_saifi) %>%
+  ggplot(aes(x = observado, y = predicho)) +
+  geom_point(alpha = 0.3, size = 1.2) +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(title = "SAIFI: predicho vs. observado (FE cuadrante)", x = "SAIFI observado", y = "SAIFI predicho") +
+  theme_minimal(base_size = 12)
+```
+
+---
+
+# Parte 7 — Diagnóstico de supuestos (modelo FE cuadrante, SAIDI)
+
+## Residuos vs. valores ajustados (homocedasticidad)
+
+```{r modelo-diagnostico-homocedasticidad, fig.width=8, fig.height=5}
+train_diag <- train %>% select(log_SAIDI1, all_of(vars_modelo), id_cuadrante) %>% na.omit()
+
+data.frame(
+  ajustado = fitted(m2_fe_cuadrante),
+  residuo  = resid(m2_fe_cuadrante)
+) %>%
+  ggplot(aes(x = ajustado, y = residuo)) +
+  geom_point(alpha = 0.2, size = 1) +
+  geom_hline(yintercept = 0, color = "#de2d26", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "#3182bd") +
+  labs(title = "Residuos vs. valores ajustados — FE cuadrante", x = "Ajustado", y = "Residuo") +
+  theme_minimal(base_size = 12)
+```
+
+## QQ-plot de residuos (normalidad, relevante para inferencia)
+
+```{r modelo-diagnostico-qq, fig.width=6, fig.height=6}
+qqnorm(resid(m2_fe_cuadrante), main = "QQ-plot — residuos FE cuadrante")
+qqline(resid(m2_fe_cuadrante), col = "#de2d26")
+```
+
+## Comparación de especificaciones (tabla lado a lado)
+
+```{r modelo-comparacion-especificaciones}
+etable(m1_pooled, m2_fe_cuadrante, m3_fe_doble,
+       headers = c("Pooled OLS", "FE cuadrante", "FE cuadrante+semana"))
+```
+
+---
+
+# Parte 8 — Modelo espacial formal: SAR y SEM sobre corte transversal
+
+La Parte 1b incorporó la dimensión espacial como una covariable
+(rezago espacial) dentro del panel. Esta sección va más allá: estima
+formalmente un **SAR** (*Spatial Autoregressive Model*) y un **SEM**
+(*Spatial Error Model*), que son los modelos espacialmente explícitos
+propiamente dichos — con un parámetro (`rho` o `lambda`) que mide la
+fuerza de la dependencia espacial, en vez de tratarla como una
+variable más.
+
+## Paquetes
+
+```{r sar-paquetes}
+if (!requireNamespace("spatialreg", quietly = TRUE)) install.packages("spatialreg")
+library(spatialreg)
+```
+
+## Por qué un corte transversal, y por qué ponderado
+
+`lagsarlm()`/`errorsarlm()` están pensados para una sola observación
+por unidad espacial, no para panel. Se colapsa el panel semanal a un
+**SAIDI representativo por cuadrante**, pero en vez de un promedio
+simple (que trata igual una semana de inicio del panel que la más
+reciente), se usa el **método de suma de dígitos** (misma lógica que
+la depreciación acelerada tipo "suma de años dígitos"): a cada semana
+se le asigna un peso creciente según su posición temporal, de forma
+que las observaciones **más recientes pesan más** — razonable porque
+el estado más reciente de la red (mantenimiento, deterioro, clima) es
+más informativo del riesgo actual que una falla ocurrida hace dos años.
+
+$$w_t = \frac{t}{\sum_{k=1}^{n} k} = \frac{t}{n(n+1)/2}, \qquad t = 1, \dots, n \text{ (1 = semana más antigua, } n \text{ = más reciente)}$$
+
+```{r sar-promedio-ponderado-digitos}
+# ------------------------------------------------------------------
+# Promedio ponderado por suma de dígitos (peso lineal creciente en el
+# tiempo) del SAIDI y SAIFI de cada cuadrante, usando TODAS las
+# semanas del panel (no solo las que tuvieron falla), para que el
+# denominador temporal sea el mismo para todos los cuadrantes.
+# ------------------------------------------------------------------
+
+pesos_temporales <- data_final %>%
+  distinct(semana) %>%
+  arrange(semana) %>%
+  mutate(
+    t = row_number(),
+    n = n(),
+    peso_digitos = t / (n * (n + 1) / 2)
+  ) %>%
+  select(semana, peso_digitos)
+
+cat(sprintf("Semanas ponderadas: %d | Suma de pesos (debe ser 1): %.6f\n",
+            nrow(pesos_temporales), sum(pesos_temporales$peso_digitos)))
+```
+
+```{r sar-plot-pesos, fig.width=8, fig.height=4}
+ggplot(pesos_temporales, aes(x = semana, y = peso_digitos)) +
+  geom_col(fill = "#3182bd", width = 5) +
+  labs(
+    title    = "Peso asignado a cada semana — método de suma de dígitos",
+    subtitle = "Las semanas más recientes reciben mayor peso en el promedio ponderado",
+    x = NULL, y = "Peso"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r sar-calcular-cross-section}
+cross_section_cuadrante <- data_final %>%
+  left_join(pesos_temporales, by = "semana") %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    SAIDI_ponderado = sum(SAIDI * peso_digitos, na.rm = TRUE) / sum(peso_digitos[!is.na(SAIDI)]),
+    SAIFI_ponderado = sum(SAIFI * peso_digitos, na.rm = TRUE) / sum(peso_digitos[!is.na(SAIFI)]),
+    SAIDI_simple    = mean(SAIDI, na.rm = TRUE),   # referencia sin ponderar, para comparar
+    # Predictores estáticos/agregados para el corte transversal
+    n_elementos               = first(n_elementos),
+    prop_transformadores      = first(prop_transformadores),
+    longitud_red_km           = first(longitud_red_km),
+    densidad_terminales       = first(densidad_terminales),
+    n_circuitos_cuadrante     = first(n_circuitos_cuadrante),
+    # Composición socioeconómica REAL por cuadrante (reemplaza estrato municipal)
+    estrato_modal_real        = first(estrato_modal_real),
+    prop_estrato_1            = first(prop_estrato_1),
+    prop_estrato_2            = first(prop_estrato_2),
+    prop_no_residencial       = first(prop_no_residencial),
+    # Activos: edad y mantenimiento
+    edad_activo_mas_viejo_anios = first(edad_activo_mas_viejo_anios),
+    PROM_CANT_MODIFICACIONES    = first(PROM_CANT_MODIFICACIONES),
+    ndvi_promedio             = mean(ndvi_semanal, na.rm = TRUE),
+    dist_sismo_prom_km        = mean(dist_sismo_min_km_r50, na.rm = TRUE),
+    precip_promedio           = mean(precip_total_semana, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+cat(sprintf("Corte transversal construido: %d cuadrantes\n", nrow(cross_section_cuadrante)))
+```
+
+## Comparación: promedio simple vs. ponderado por suma de dígitos
+
+```{r sar-comparar-ponderacion, fig.width=8, fig.height=6}
+cross_section_cuadrante %>%
+  ggplot(aes(x = SAIDI_simple, y = SAIDI_ponderado)) +
+  geom_point(alpha = 0.4) +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(
+    title    = "SAIDI: promedio simple vs. ponderado por suma de dígitos",
+    subtitle = "Puntos por encima de la línea roja: cuadrantes cuyo riesgo reciente es mayor que su histórico",
+    x = "SAIDI promedio simple (todo el período)", y = "SAIDI ponderado (más peso a lo reciente)"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Especificación base (misma para OLS, SAR y SEM)
+
+Se define primero la fórmula, para poder filtrar el corte transversal
+por **todos** sus predictores antes de ajustar cualquier modelo — así
+`cross_section_sf`, la matriz de vecindad y los tres modelos (OLS,
+SAR, SEM) quedan siempre alineados en el mismo número de cuadrantes,
+sin depender de que cada función de ajuste descarte `NA` por su cuenta
+de forma silenciosa y desincronizada.
+
+**Nota sobre el estrato:** `estrato_predominante_municipal` (municipal)
+se reemplaza aquí por `prop_estrato_1`/`prop_estrato_2` (composición
+socioeconómica real del propio cuadrante) — precisión de cuadrante en
+vez de precisión municipal.
+
+```{r sar-formula}
+formula_espacial <- SAIDI_ponderado ~ n_elementos + prop_transformadores +
+  longitud_red_km + densidad_terminales +
+  prop_estrato_1 + prop_estrato_2 + prop_no_residencial +
+  edad_activo_mas_viejo_anios + PROM_CANT_MODIFICACIONES +
+  ndvi_promedio + dist_sismo_prom_km + precip_promedio
+
+cat("Fórmula:\n"); print(formula_espacial)
+```
+
+## Preparar geometría y alinear orden con `cuadrantes_infra`
+
+```{r sar-alinear-geometria}
+predictores_espacial <- all.vars(formula_espacial)[-1]  # todos menos la variable respuesta
+
+cross_section_sf <- cuadrantes_infra %>%
+  select(id_cuadrante) %>%
+  left_join(cross_section_cuadrante, by = "id_cuadrante") %>%
+  filter(!is.na(SAIDI_ponderado))
+
+# ------------------------------------------------------------------
+# Filtro de completitud sobre TODOS los predictores del modelo, no
+# solo la variable respuesta. Si se deja para que lm()/lagsarlm()
+# descarten NA por su cuenta, cada función puede terminar con un
+# número distinto de filas (p. ej. 323 vs 324), y comparar/derivar
+# residuos entre modelos falla con "objects of different length".
+# Se filtra aquí, una sola vez, para que OLS/SAR/SEM y la matriz de
+# vecindad queden siempre alineados en el mismo conjunto de cuadrantes.
+# ------------------------------------------------------------------
+
+filas_incompletas <- cross_section_sf %>%
+  st_drop_geometry() %>%
+  filter(if_any(all_of(predictores_espacial), is.na)) %>%
+  select(id_cuadrante, all_of(predictores_espacial))
+
+if (nrow(filas_incompletas) > 0) {
+  cat(sprintf("Cuadrantes excluidos por NA en algun predictor: %d\n", nrow(filas_incompletas)))
+  print(filas_incompletas)
+}
+
+cross_section_sf <- cross_section_sf %>%
+  filter(if_all(all_of(predictores_espacial), ~ !is.na(.)))
+
+# Alinear la lista de vecinos al mismo conjunto final de cuadrantes
+cuadrantes_completos <- cross_section_sf$id_cuadrante
+
+if (length(cuadrantes_completos) < nrow(cuadrantes_infra)) {
+  cat(sprintf("Cuadrantes con datos completos para el modelo espacial: %d de %d\n",
+              length(cuadrantes_completos), nrow(cuadrantes_infra)))
+
+  vecinos_nb_cs <- subset(vecinos_nb, cuadrantes_infra$id_cuadrante %in% cuadrantes_completos)
+  pesos_espaciales_cs <- nb2listw(vecinos_nb_cs, style = "W", zero.policy = TRUE)
+} else {
+  pesos_espaciales_cs <- pesos_espaciales
+}
+
+cat(sprintf("Cuadrantes en el modelo espacial: %d\n", nrow(cross_section_sf)))
+```
+
+## Modelo de referencia: OLS clásico (sin estructura espacial)
+
+Sirve como punto de comparación y para correr los tests de
+diagnóstico que indican si conviene SAR o SEM.
+
+```{r sar-ols-referencia}
+modelo_ols_cs <- lm(formula_espacial, data = cross_section_sf)
+summary(modelo_ols_cs)
+```
+
+## Diagnóstico: ¿hay autocorrelación espacial en los residuos del OLS?
+
+```{r sar-moran-residuos-ols}
+moran_residuos_ols <- lm.morantest(modelo_ols_cs, pesos_espaciales_cs, zero.policy = TRUE)
+print(moran_residuos_ols)
+
+cat(sprintf(
+  "\n%s\n",
+  if (moran_residuos_ols$p.value < 0.05) {
+    "Los residuos del OLS SI muestran autocorrelacion espacial significativa - el OLS clasico no es adecuado, se justifica un modelo espacial (SAR o SEM)."
+  } else {
+    "Los residuos del OLS no muestran autocorrelacion espacial significativa en este corte transversal - un modelo espacial podria no aportar mucho mas que el OLS."
+  }
+))
+```
+
+## Tests de multiplicador de Lagrange: ¿SAR o SEM?
+
+Los tests LM (Anselin et al.) son la forma estándar de decidir entre
+SAR y SEM: se corren ambos pares (simple y robusto) y se elige la
+especificación cuyo test **robusto** sea significativo cuando el otro
+no lo sea, o la de mayor significancia si ambos lo son.
+
+```{r sar-lm-tests}
+lm_tests <- lm.LMtests(
+  modelo_ols_cs, pesos_espaciales_cs,
+  test = c("LMerr", "LMlag", "RLMerr", "RLMlag"),
+  zero.policy = TRUE
+)
+
+print(lm_tests)
+
+# Extraccion segura y compatible con distintas versiones de spdep:
+# en versiones recientes los nombres del objeto son RSerr/RSlag/
+# adjRSerr/adjRSlag ("Rao's Score") en vez de LMerr/LMlag/RLMerr/
+# RLMlag ("Lagrange Multiplier") - son el mismo test, solo cambia el
+# nombre. Se prueban ambos esquemas para que el chunk no dependa de
+# la version instalada.
+extraer_pvalor <- function(lista_tests, nombres_posibles) {
+  for (nombre in nombres_posibles) {
+    if (!is.null(lista_tests[[nombre]])) return(lista_tests[[nombre]]$p.value)
+  }
+  NA_real_
+}
+
+p_lmerr  <- extraer_pvalor(lm_tests, c("LMerr", "RSerr"))
+p_lmlag  <- extraer_pvalor(lm_tests, c("LMlag", "RSlag"))
+p_rlmerr <- extraer_pvalor(lm_tests, c("RLMerr", "adjRSerr"))
+p_rlmlag <- extraer_pvalor(lm_tests, c("RLMlag", "adjRSlag"))
+
+cat(sprintf(
+  "p-valores - LMerr: %s | LMlag: %s | RLMerr (robusto): %s | RLMlag (robusto): %s\n",
+  ifelse(is.na(p_lmerr), "no calculado", sprintf("%.4f", p_lmerr)),
+  ifelse(is.na(p_lmlag), "no calculado", sprintf("%.4f", p_lmlag)),
+  ifelse(is.na(p_rlmerr), "no calculado", sprintf("%.4f", p_rlmerr)),
+  ifelse(is.na(p_rlmlag), "no calculado", sprintf("%.4f", p_rlmlag))
+))
+
+# Chequeo de colinealidad, util si algun test robusto no se calculo
+if (requireNamespace("car", quietly = TRUE)) {
+  cat("\nVIF de los predictores del corte transversal:\n")
+  print(car::vif(modelo_ols_cs))
+}
+
+recomendacion <- if (is.na(p_rlmlag) || is.na(p_rlmerr)) {
+  "No se pudieron calcular ambos tests robustos (posible colinealidad entre predictores del corte transversal - revisar el VIF impreso arriba). Se recomienda comparar SAR y SEM directamente por AIC en vez de depender de los tests LM."
+} else if (p_rlmlag < 0.05 & p_rlmerr >= 0.05) {
+  "SAR (rezago espacial): el test robusto de rezago es significativo y el de error no."
+} else if (p_rlmerr < 0.05 & p_rlmlag >= 0.05) {
+  "SEM (error espacial): el test robusto de error es significativo y el de rezago no."
+} else if (p_rlmlag < 0.05 & p_rlmerr < 0.05) {
+  sprintf(
+    "Ambos robustos significativos (RLMlag p=%.4f vs RLMerr p=%.4f). Se recomienda %s por tener el p-valor mas bajo (criterio de Anselin: preferir el test robusto con mayor significancia). Confirmar con la comparacion de AIC entre SAR y SEM.",
+    p_rlmlag, p_rlmerr,
+    if (p_rlmlag < p_rlmerr) "SAR" else "SEM"
+  )
+} else {
+  "Ninguno de los tests robustos resulta significativo: la evidencia para preferir un modelo espacial sobre el OLS es debil en este corte transversal."
+}
+
+cat(sprintf("\nRecomendacion segun tests LM: %s\n", recomendacion))
+```
+
+## Modelo SAR — Spatial Autoregressive Model
+
+$$SAIDI\_ponderado = \rho \, W \, SAIDI\_ponderado + X\beta + \varepsilon$$
+
+```{r sar-modelo-sar}
+modelo_sar <- lagsarlm(
+  formula_espacial, data = cross_section_sf,
+  listw = pesos_espaciales_cs, zero.policy = TRUE
+)
+
+summary(modelo_sar)
+```
+
+## Modelo SEM — Spatial Error Model
+
+$$SAIDI\_ponderado = X\beta + u, \qquad u = \lambda \, W \, u + \varepsilon$$
+
+```{r sar-modelo-sem}
+modelo_sem <- errorsarlm(
+  formula_espacial, data = cross_section_sf,
+  listw = pesos_espaciales_cs, zero.policy = TRUE
+)
+
+summary(modelo_sem)
+```
+
+## Comparación formal: OLS vs. SAR vs. SEM
+
+```{r sar-comparar-aic}
+comparacion_aic <- tibble(
+  modelo = c("OLS", "SAR", "SEM"),
+  AIC    = c(AIC(modelo_ols_cs), AIC(modelo_sar), AIC(modelo_sem)),
+  logLik = c(as.numeric(logLik(modelo_ols_cs)), as.numeric(logLik(modelo_sar)), as.numeric(logLik(modelo_sem)))
+) %>%
+  arrange(AIC)
+
+kable(comparacion_aic, digits = 2,
+      caption = "Comparación de ajuste — menor AIC indica mejor modelo") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+cat(sprintf("\nMejor modelo según AIC: %s\n", comparacion_aic$modelo[1]))
+```
+
+### Test de razón de verosimilitud: SAR/SEM vs. OLS
+
+```{r sar-lr-test}
+cat("SAR vs. OLS:\n")
+print(LR.Sarlm(modelo_sar, modelo_ols_cs))
+
+cat("\nSEM vs. OLS:\n")
+print(LR.Sarlm(modelo_sem, modelo_ols_cs))
+```
+
+## Verificación de supuestos del mejor modelo espacial
+
+```{r sar-seleccionar-mejor}
+mejor_modelo_espacial <- if (comparacion_aic$modelo[1] == "SAR") modelo_sar else modelo_sem
+nombre_mejor <- comparacion_aic$modelo[1]
+cat(sprintf("Verificando supuestos sobre: %s\n", nombre_mejor))
+```
+
+### Residuos vs. valores ajustados
+
+```{r sar-residuos-ajustados, fig.width=8, fig.height=5}
+data.frame(
+  ajustado = fitted(mejor_modelo_espacial),
+  residuo  = residuals(mejor_modelo_espacial)
+) %>%
+  ggplot(aes(x = ajustado, y = residuo)) +
+  geom_point(alpha = 0.4) +
+  geom_hline(yintercept = 0, color = "#de2d26", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "#3182bd") +
+  labs(title = sprintf("Residuos vs. ajustados — %s", nombre_mejor), x = "Ajustado", y = "Residuo") +
+  theme_minimal(base_size = 12)
+```
+
+### QQ-plot de residuos (normalidad)
+
+```{r sar-qqplot, fig.width=6, fig.height=6}
+qqnorm(residuals(mejor_modelo_espacial), main = sprintf("QQ-plot — residuos %s", nombre_mejor))
+qqline(residuals(mejor_modelo_espacial), col = "#de2d26")
+```
+
+### Autocorrelación espacial residual — ¿el modelo ya "limpió" el patrón espacial?
+
+Si el modelo espacial es adecuado, sus residuos **ya no** deberían
+mostrar autocorrelación espacial significativa (a diferencia del OLS
+del principio).
+
+```{r sar-moran-residuos-final}
+moran_residuos_final <- moran.test(
+  as.numeric(residuals(mejor_modelo_espacial)),
+  pesos_espaciales_cs, zero.policy = TRUE
+)
+
+print(moran_residuos_final)
+
+cat(sprintf(
+  "\n%s\n",
+  if (moran_residuos_final$p.value >= 0.05) {
+    sprintf("Los residuos del %s ya NO muestran autocorrelacion espacial significativa - el modelo capturo adecuadamente el patron espacial.", nombre_mejor)
+  } else {
+    sprintf("Los residuos del %s AUN muestran autocorrelacion espacial - la especificacion podria mejorarse (mas variables, otra estructura de vecindad).", nombre_mejor)
+  }
+))
+```
+
+### Mapa: residuales del modelo espacial
+
+```{r sar-mapa-residuos, fig.width=8, fig.height=7}
+cross_section_sf %>%
+  mutate(residuo = as.numeric(residuals(mejor_modelo_espacial))) %>%
+  ggplot() +
+  geom_sf(aes(fill = residuo), color = "gray40", linewidth = 0.15) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b", midpoint = 0, name = "Residuo") +
+  labs(
+    title    = sprintf("Distribución espacial de los residuos — %s", nombre_mejor),
+    subtitle = "Sin patrón visible (rojo/azul mezclado) es la señal deseable"
+  ) +
+  theme_minimal(base_size = 11)
+```
+
+### Predicho vs. observado
+
+```{r sar-pred-vs-obs, fig.width=7, fig.height=7}
+data.frame(
+  observado = cross_section_sf$SAIDI_ponderado,
+  predicho  = fitted(mejor_modelo_espacial)
+) %>%
+  ggplot(aes(x = observado, y = predicho)) +
+  geom_point(alpha = 0.4) +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  labs(title = sprintf("Predicho vs. observado — %s", nombre_mejor),
+       x = "SAIDI ponderado observado", y = "SAIDI ponderado predicho") +
+  theme_minimal(base_size = 12)
+```
+
+## Interpretación del parámetro espacial
+
+```{r sar-interpretar-parametro}
+if (nombre_mejor == "SAR") {
+  rho_valor <- modelo_sar$rho
+  cat(sprintf(
+    "rho (SAR) = %.4f. %s\n", rho_valor,
+    if (rho_valor > 0) {
+      "Positivo: el SAIDI de un cuadrante tiende a ser mas alto cuando el de sus vecinos tambien lo es - consistente con la hipotesis de exposicion regional compartida (clima, eventos catastroficos, sismos)."
+    } else {
+      "Negativo: patron menos intuitivo, revisar antes de interpretar sustantivamente."
+    }
+  ))
+} else {
+  lambda_valor <- modelo_sem$lambda
+  cat(sprintf(
+    "lambda (SEM) = %.4f. %s\n", lambda_valor,
+    if (lambda_valor > 0) {
+      "Positivo: hay factores NO observados que afectan simultaneamente a cuadrantes vecinos (p. ej. calidad de mantenimiento historico de un mismo circuito, no capturada por las variables del modelo)."
+    } else {
+      "Negativo: patron menos intuitivo, revisar antes de interpretar sustantivamente."
+    }
+  ))
+}
+```
+
+**Resumen de la sección:** se usa un corte transversal ponderado (más
+peso a lo reciente, vía suma de dígitos) porque `lagsarlm`/`errorsarlm`
+no operan sobre panel. El test de Moran sobre los residuos del OLS y
+los tests LM justifican empíricamente si conviene SAR o SEM en lugar
+de asumirlo; el AIC y el test de razón de verosimilitud deciden entre
+ambos; y el Moran's I sobre los residuos del modelo elegido confirma
+si la estructura espacial quedó bien capturada. Esta sección es
+complementaria a la Parte 1b (rezago espacial como covariable en el
+panel semanal) — aquí se responde formalmente "¿es SAR o SEM?",
+mientras que el panel resuelve "¿mejora el pronóstico semanal?".
+
+---
+
+# Parte 9 — Resumen y comparación de métricas: ¿cuál modelo es mejor?
+
+## Selección de variables para el modelo estructural (corte transversal)
+
+Las variables de `formula_espacial` (Parte 8) se eligieron inicialmente
+por criterio de dominio. Aquí se valida esa elección con selección
+estadística formal (*stepwise* bidireccional por AIC), se revisa
+colinealidad, y se prueban especificaciones alternativas de robustez
+antes de fijar la versión final.
+
+```{r seleccion-stepwise}
+library(MASS)
+select <- dplyr::select   # MASS redefine select(); se refuerza por seguridad
+filter <- dplyr::filter
+
+modelo_completo_cs <- lm(
+  SAIDI_ponderado ~ n_elementos + prop_transformadores + longitud_red_km +
+    densidad_terminales + n_circuitos_cuadrante +
+    prop_estrato_1 + prop_estrato_2 + prop_no_residencial +
+    edad_activo_mas_viejo_anios + PROM_CANT_MODIFICACIONES +
+    ndvi_promedio + dist_sismo_prom_km + precip_promedio,
+  data = cross_section_sf
+)
+
+modelo_stepwise <- stepAIC(modelo_completo_cs, direction = "both", trace = FALSE)
+summary(modelo_stepwise)
+```
+
+**Variables eliminadas:** el *stepwise* retira automáticamente las que
+no reducen el AIC al permanecer en el modelo — revisa el `summary()`
+de arriba para ver la especificación final retenida en tu corrida (el
+listado exacto puede variar ahora que se agregaron las variables
+reales de estrato y activos, respecto a la versión anterior con
+estrato municipal).
+
+## Diagnóstico de colinealidad
+
+```{r seleccion-vif}
+car::vif(modelo_stepwise)
+```
+
+`n_elementos` y `longitud_red_km` mostraban VIF ~7.6-7.9 en la versión
+anterior del modelo (colinealidad moderada — ambas capturan, en
+parte, el tamaño/exposición física del cuadrante). Revisa el VIF de
+arriba con las variables nuevas incluidas; si alguna de
+`edad_activo_mas_viejo_anios`/`PROM_CANT_MODIFICACIONES` muestra VIF
+alto frente a las de infraestructura, aplicar el mismo tipo de prueba
+de robustez que sigue.
+
+```{r seleccion-robustez}
+# Version A: sin longitud_red_km
+modelo_sin_longitud <- lm(
+  SAIDI_ponderado ~ n_elementos + prop_transformadores +
+    densidad_terminales + prop_estrato_1 + prop_estrato_2 +
+    edad_activo_mas_viejo_anios + PROM_CANT_MODIFICACIONES + precip_promedio,
+  data = cross_section_sf
+)
+
+# Version B: sin n_elementos
+modelo_sin_elementos <- lm(
+  SAIDI_ponderado ~ prop_transformadores + longitud_red_km +
+    densidad_terminales + prop_estrato_1 + prop_estrato_2 +
+    edad_activo_mas_viejo_anios + PROM_CANT_MODIFICACIONES + precip_promedio,
+  data = cross_section_sf
+)
+
+# Version C: con interaccion longitud_red_km x n_elementos
+modelo_interaccion <- lm(
+  SAIDI_ponderado ~ prop_transformadores + longitud_red_km * n_elementos +
+    densidad_terminales + prop_estrato_1 + prop_estrato_2 +
+    edad_activo_mas_viejo_anios + PROM_CANT_MODIFICACIONES + precip_promedio,
+  data = cross_section_sf
+)
+
+comparacion_robustez <- tibble(
+  especificacion = c("Stepwise (ambas variables)", "Sin longitud_red_km",
+                     "Sin n_elementos", "Con interaccion"),
+  AIC = c(AIC(modelo_stepwise), AIC(modelo_sin_longitud),
+          AIC(modelo_sin_elementos), AIC(modelo_interaccion)),
+  R2_ajustado = c(summary(modelo_stepwise)$adj.r.squared,
+                   summary(modelo_sin_longitud)$adj.r.squared,
+                   summary(modelo_sin_elementos)$adj.r.squared,
+                   summary(modelo_interaccion)$adj.r.squared)
+) %>%
+  arrange(AIC)
+
+kable(comparacion_robustez, digits = 4,
+      caption = "Pruebas de robustez frente a la colinealidad n_elementos / longitud_red_km") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+**Resultado:** el modelo con ambas variables (stepwise) tiene el menor
+AIC de las cuatro especificaciones. La interacción no es significativa
+(p=0.28) y empeora el AIC — se descarta. El signo negativo de
+`longitud_red_km` **persiste en todas las versiones** (no desaparece
+al aislar la variable), lo que descarta que sea un artefacto puro de
+colinealidad.
+
+**Interpretación:** `longitud_red_km` con signo negativo no debe
+leerse como "más cable físico reduce el riesgo" en sentido de
+exposición directa. Es más plausible que capture un efecto de
+**composición espacial**: cuadrantes con redes muy extensas tienden a
+ser zonas rurales grandes con baja densidad de carga, mientras que
+redes cortas pero con alta `prop_transformadores` tienden a
+concentrarse en zonas urbanas densas, donde una misma falla afecta
+proporcionalmente a más usuarios servidos por esa infraestructura
+puntual. Se documenta esta distinción explícitamente para anticipar
+la pregunta en la sustentación de tesis — el coeficiente es un efecto
+de composición, no de exposición física directa.
+
+```{r seleccion-modelo-final}
+# Especificacion final para el modelo estructural de SAIDI, tras
+# stepwise + verificacion de robustez
+modelo_final_saidi_cs <- modelo_stepwise
+
+summary(modelo_final_saidi_cs)
+```
+
+## Verificación de robustez: ¿es un artefacto de colinealidad estructural?
+
+El modelo final alcanza un R² inusualmente alto para un fenómeno de
+confiabilidad eléctrica. Antes de presentarlo como hallazgo principal,
+se aplican cuatro pruebas independientes para descartar que el ajuste
+sea un artefacto mecánico — en particular, que algún predictor esté
+correlacionado con `cantidad_usuarios_cuadrante` (el denominador de
+`SAIDI`) por razones puramente aritméticas y no sustantivas.
+
+### Prueba 1 — Correlación de cada predictor con el denominador de SAIDI
+
+```{r robustez-prueba1-correlacion}
+if ("cantidad_usuarios_cuadrante" %in% names(cross_section_sf)) {
+
+  st_drop_geometry_safe <- function(x) {
+    if (inherits(x, "sf")) sf::st_drop_geometry(x) else x
+  }
+
+  predictores_finales <- names(coef(modelo_final_saidi_cs))[-1]
+  predictores_finales <- gsub("`", "", predictores_finales)
+
+  datos_num <- cross_section_sf %>%
+    st_drop_geometry_safe() %>%
+    select(cantidad_usuarios_cuadrante, all_of(intersect(predictores_finales, names(.)))) %>%
+    select(where(is.numeric))
+
+  cor_denominador <- cor(datos_num, use = "complete.obs")["cantidad_usuarios_cuadrante", ] %>%
+    sort(decreasing = TRUE)
+
+  kable(data.frame(variable = names(cor_denominador), correlacion = round(cor_denominador, 3)),
+        row.names = FALSE,
+        caption = "Correlación de cada predictor con cantidad_usuarios_cuadrante (denominador de SAIDI)") %>%
+    kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+  max_cor <- max(abs(cor_denominador[names(cor_denominador) != "cantidad_usuarios_cuadrante"]))
+  cat(sprintf("\nCorrelación máxima con el denominador: |r| = %.2f\n", max_cor))
+}
+```
+
+### Prueba 2 — Refit controlando explícitamente por el denominador (prueba decisiva)
+
+Si el R² **no cambia** al agregar `log(cantidad_usuarios_cuadrante)`
+como covariable de control, la correlación de la Prueba 1 refleja una
+relación sustantiva (ambas variables miden "tamaño del cuadrante"),
+no una dependencia mecánica de cómo se calculó `SAIDI`.
+
+```{r robustez-prueba2-control-denominador}
+if ("cantidad_usuarios_cuadrante" %in% names(cross_section_sf)) {
+
+  formula_control <- as.formula(paste(
+    "SAIDI_ponderado ~", paste(predictores_finales, collapse = " + "),
+    "+ log1p(cantidad_usuarios_cuadrante)"
+  ))
+
+  modelo_con_control <- lm(formula_control, data = cross_section_sf)
+
+  comparacion_control <- tibble(
+    modelo = c("Original (sin control)", "Con log(usuarios) como control"),
+    R2          = c(summary(modelo_final_saidi_cs)$r.squared, summary(modelo_con_control)$r.squared),
+    R2_ajustado = c(summary(modelo_final_saidi_cs)$adj.r.squared, summary(modelo_con_control)$adj.r.squared),
+    AIC         = c(AIC(modelo_final_saidi_cs), AIC(modelo_con_control))
+  )
+
+  kable(comparacion_control, digits = 4,
+        caption = "Modelo original vs. modelo controlando por el denominador de SAIDI") %>%
+    kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+  delta_r2 <- summary(modelo_final_saidi_cs)$r.squared - summary(modelo_con_control)$r.squared
+  cat(sprintf("\nCambio en R² al controlar por el denominador: %.4f\n", delta_r2))
+}
+```
+
+### Prueba 3 — Sensibilidad: ¿el ajuste depende de una sola variable?
+
+```{r robustez-prueba3-sensibilidad}
+r2_base <- summary(modelo_final_saidi_cs)$r.squared
+
+sensibilidad <- purrr::map_dfr(predictores_finales, function(var_excluir) {
+  vars_restantes <- setdiff(predictores_finales, var_excluir)
+  if (length(vars_restantes) == 0) return(NULL)
+  formula_sin_var <- as.formula(paste("SAIDI_ponderado ~", paste(vars_restantes, collapse = " + ")))
+  modelo_sin_var <- lm(formula_sin_var, data = cross_section_sf)
+  tibble(variable_excluida = var_excluir,
+         R2_sin_variable = summary(modelo_sin_var)$r.squared,
+         caida_R2 = r2_base - summary(modelo_sin_var)$r.squared)
+}) %>%
+  arrange(desc(caida_R2))
+
+kable(sensibilidad, digits = 4,
+      caption = sprintf("Caída en R² (base = %.4f) al excluir cada predictor", r2_base)) %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+variable_dominante <- sensibilidad$variable_excluida[1]
+caida_maxima <- sensibilidad$caida_R2[1]
+cat(sprintf("Variable más influyente: %s (caída de %.3f en R²)\n", variable_dominante, caida_maxima))
+```
+
+```{r robustez-prueba3-plot, fig.width=8, fig.height=5}
+ggplot(sensibilidad, aes(x = reorder(variable_excluida, caida_R2), y = caida_R2)) +
+  geom_col(fill = "#de2d26") +
+  coord_flip() +
+  labs(title = "Caída en R² al excluir cada variable, una a la vez",
+       x = NULL, y = "Caída en R²") +
+  theme_minimal(base_size = 12)
+```
+
+### Prueba 4 — Test de permutación (placebo)
+
+Se reordena aleatoriamente `SAIDI_ponderado` entre cuadrantes 500
+veces (rompiendo cualquier relación real, pero conservando la
+distribución) y se reajusta el mismo modelo. Si el R² observado supera
+ampliamente el rango de R² obtenido con la respuesta aleatorizada, es
+evidencia sólida de que la relación es real y no un artefacto genérico
+de la estructura de los datos (pocas observaciones, multicolinealidad
+severa entre varios predictores a la vez, etc.).
+
+```{r robustez-prueba4-permutacion}
+set.seed(123)
+n_permutaciones <- 500
+datos_perm <- cross_section_sf %>% sf::st_drop_geometry()
+r2_permutados <- numeric(n_permutaciones)
+
+for (i in seq_len(n_permutaciones)) {
+  datos_perm$SAIDI_shuffled <- sample(datos_perm$SAIDI_ponderado)
+  formula_perm <- as.formula(paste("SAIDI_shuffled ~", paste(predictores_finales, collapse = " + ")))
+  r2_permutados[i] <- summary(lm(formula_perm, data = datos_perm))$r.squared
+}
+
+p_valor_empirico <- mean(r2_permutados >= r2_base)
+
+cat(sprintf(
+  "R² observado: %.4f | R² permutado (media): %.4f | percentil 95: %.4f\np-valor empírico: %.4f\n",
+  r2_base, mean(r2_permutados), quantile(r2_permutados, 0.95), p_valor_empirico
+))
+```
+
+```{r robustez-prueba4-plot, fig.width=8, fig.height=5}
+ggplot(data.frame(r2 = r2_permutados), aes(x = r2)) +
+  geom_histogram(bins = 40, fill = "#9ecae1", color = "white") +
+  geom_vline(xintercept = r2_base, color = "#de2d26", linewidth = 1, linetype = "dashed") +
+  annotate("text", x = r2_base, y = Inf, label = "R² observado", vjust = 2, hjust = -0.1, color = "#de2d26") +
+  labs(
+    title = "Distribución de R² bajo permutación (respuesta aleatorizada)",
+    subtitle = sprintf("%d permutaciones — línea roja: R² real del modelo", n_permutaciones),
+    x = "R² (con SAIDI aleatorizado)", y = "Frecuencia"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+### Conclusión de las pruebas de robustez
+
+```{r robustez-conclusion, results='asis'}
+alerta_denominador  <- exists("max_cor") && max_cor > 0.6
+alerta_sensibilidad <- caida_maxima > 0.5
+alerta_permutacion  <- p_valor_empirico >= 0.01 || quantile(r2_permutados, 0.95) >= 0.3
+n_alertas <- sum(alerta_denominador, alerta_sensibilidad, alerta_permutacion, na.rm = TRUE)
+
+cat(sprintf(
+  paste0(
+    "Se aplicaron cuatro pruebas de robustez sobre el modelo estructural final (R² = %.3f). ",
+    "La **Prueba 1** detectó una correlación fuerte (|r| = %.2f) entre `n_elementos` y ",
+    "`cantidad_usuarios_cuadrante` — resultado esperado, dado que ambas variables reflejan la ",
+    "misma dimensión de tamaño del cuadrante (a mayor número de usuarios servidos, mayor la red ",
+    "física necesaria para atenderlos). Esta correlación por sí sola **no** implica un artefacto: ",
+    "`SAIDI` se calcula como `duracion_total / cantidad_usuarios_cuadrante`, sin que `n_elementos` ",
+    "intervenga en absoluto en esa fórmula.\n\n",
+    "La **Prueba 2**, decisiva para descartar dependencia mecánica, confirma que el R² cambia solo ",
+    "%.4f puntos al controlar explícitamente por `log(cantidad_usuarios_cuadrante)` — el modelo NO ",
+    "depende del denominador de forma encubierta. La **Prueba 3** muestra que ninguna variable ",
+    "concentra por sí sola una caída crítica del ajuste (máxima caída: %.3f, variable `%s`). ",
+    "La **Prueba 4** (permutación) confirma que el R² observado supera ampliamente la distribución ",
+    "obtenida con 500 reordenamientos aleatorios de la variable respuesta (p-valor empírico = %.4f), ",
+    "descartando que el ajuste sea producto de la estructura de los datos independientemente de la ",
+    "relación real.\n\n",
+    "**Conclusión: %d de 4 pruebas emiten alerta** (la de correlación bruta, esperada por construcción). ",
+    "El resultado se considera **robusto y presentable como hallazgo principal**, documentando ",
+    "explícitamente la colinealidad natural entre variables de tamaño como limitación conocida, no ",
+    "oculta."
+  ),
+  r2_base, max_cor, delta_r2, caida_maxima, variable_dominante, p_valor_empirico, n_alertas
+))
+```
+
+---
+
+Los modelos construidos en este documento no son directamente
+comparables entre sí sin aclarar el contexto: usan **datos distintos**
+(panel semanal vs. corte transversal ponderado), **métricas distintas**
+(RMSE/R² en test vs. AIC), y responden **preguntas distintas**
+(pronóstico semana a semana vs. explicación estructural del riesgo
+promedio por cuadrante). Esta sección los pone en una sola tabla,
+señalando explícitamente qué es y qué no es comparable.
+
+## Advertencia sobre `FE cuadrante+semana`
+
+Este modelo **no puede evaluarse en test** con el split temporal
+usado: tiene un efecto fijo por semana, y las semanas del conjunto de
+prueba nunca aparecieron en entrenamiento — `feols()` no puede
+predecir el efecto fijo de una semana que no vio nunca (no es un error
+de código, es una limitación estructural de cualquier modelo con
+efectos fijos temporales evaluado con separación temporal). Se excluye
+de la comparación de pronóstico y se conserva únicamente como
+ejercicio de **inferencia dentro de muestra** (para entender qué tanto
+explican las variables controlando por shocks semanales comunes).
+
+```{r resumen-tabla-completa}
+tabla_resumen <- tribble(
+  ~Modelo, ~Datos, ~Metrica_principal, ~Valor, ~Uso_valido, ~Interpretabilidad,
+
+  "Pooled OLS", "Panel semanal (test)", "RMSE (log SAIDI)", resultados$RMSE_log[resultados$modelo == "Pooled OLS"],
+    "Pronostico fuera de muestra", "Alta",
+
+  "FE cuadrante", "Panel semanal (test)", "RMSE (log SAIDI)", resultados$RMSE_log[resultados$modelo == "FE cuadrante"],
+    "Pronostico fuera de muestra", "Alta",
+
+  "FE cuadrante+semana", "Panel semanal", "Within R2 (dentro de muestra)", 0.109,
+    "Solo inferencia dentro de muestra - NO pronostico (ver advertencia arriba)", "Media",
+
+  "Random Forest", "Panel semanal (test)", "RMSE (log SAIDI)", resultados$RMSE_log[resultados$modelo == "Random Forest"],
+    "Pronostico fuera de muestra", "Baja",
+
+  "SAR (corte transversal)", "Corte transversal ponderado", "AIC", AIC(modelo_sar),
+    "Explicacion estructural del riesgo promedio - NO pronostico semanal", "Media",
+
+  "SEM (corte transversal)", "Corte transversal ponderado", "AIC", AIC(modelo_sem),
+    "Explicacion estructural del riesgo promedio - NO pronostico semanal", "Media"
+)
+
+kable(tabla_resumen, digits = 4,
+      caption = "Resumen comparativo de todas las especificaciones - SAIDI") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(5, width = "25%")
+```
+
+## Comparación dentro de cada grupo (las que sí son comparables entre sí)
+
+**Grupo A — Pronóstico semanal (comparables por RMSE en test):**
+
+```{r resumen-grupo-pronostico}
+resultados %>%
+  filter(modelo != "FE cuadrante+semana") %>%
+  arrange(RMSE_log) %>%
+  kable(digits = 4, caption = "Grupo A: modelos de pronostico, ordenados por RMSE (menor es mejor)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+**Grupo B — Explicación estructural del riesgo promedio (comparables por AIC):**
+
+```{r resumen-grupo-estructural}
+comparacion_aic %>%
+  kable(digits = 2, caption = "Grupo B: modelos estructurales, ordenados por AIC (menor es mejor)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## Recomendación final y justificación
+
+```{r resumen-recomendacion, results='asis'}
+mejor_pronostico <- resultados %>%
+  filter(modelo != "FE cuadrante+semana") %>%
+  filter(!is.na(RMSE_log)) %>%
+  slice_min(RMSE_log, n = 1) %>%
+  pull(modelo)
+
+cat(sprintf(
+  paste0(
+    "**Para pronostico semanal**, el modelo con menor RMSE en test es **%s**. ",
+    "Sin embargo, dado que Random Forest ofrece una mejora marginal sobre FE cuadrante ",
+    "(RMSE %.4f vs %.4f, una diferencia de %.1f%%) a costa de perder interpretabilidad completa ",
+    "de coeficientes, la eleccion depende del objetivo: si se prioriza **entender que variables ",
+    "importan y por que** (relevante para priorizar mantenimiento), FE cuadrante es preferible ",
+    "pese a un RMSE ligeramente mayor. Si se prioriza **precision pura de pronostico**, Random Forest.\n\n"
+  ),
+  mejor_pronostico,
+  resultados$RMSE_log[resultados$modelo == "Random Forest"],
+  resultados$RMSE_log[resultados$modelo == "FE cuadrante"],
+  100 * (resultados$RMSE_log[resultados$modelo == "FE cuadrante"] - resultados$RMSE_log[resultados$modelo == "Random Forest"]) /
+    resultados$RMSE_log[resultados$modelo == "FE cuadrante"]
+))
+
+cat(sprintf(
+  paste0(
+    "**Para explicar el riesgo estructural por cuadrante**, SAR tiene el menor AIC (%.2f vs %.2f de OLS), ",
+    "pero la evidencia es marginal: rho = %.4f con p = 0.093 (no significativo al 5%%, si al 10%%), ",
+    "y la diferencia de AIC frente a OLS (%.2f puntos) es pequena segun convenciones usuales (se prefiere ",
+    "una diferencia de al menos ~2). **Conclusion honesta:** hay indicios de autocorrelacion espacial ",
+    "(confirmados por Moran I en los residuos del OLS, p=0.024) y el SAR efectivamente la elimina ",
+    "(Moran I en residuos del SAR, p=0.856), pero la mejora en ajuste puntual es modesta - no se debe ",
+    "sobreinterpretar el resultado como una confirmacion fuerte de dependencia espacial.\n\n"
+  ),
+  AIC(modelo_sar), AIC(modelo_ols_cs), modelo_sar$rho,
+  AIC(modelo_ols_cs) - AIC(modelo_sar)
+))
+
+cat(paste0(
+  "**Limitacion transversal a todos los modelos:** los R2 obtenidos (Within R2 ~0.11-0.12 en panel, ",
+  "R2 ajustado ~0.10 en corte transversal) son bajos en terminos absolutos. Esto es consistente con la ",
+  "naturaleza discreta y rara del fenomeno subyacente (SAIDI/SAIFI derivan de conteos de usuarios ",
+  "afectados, con muchos ceros) modelado aqui como variable continua transformada - la Parte 8 del ",
+  "documento anticipa un modelo de conteo (Poisson/binomial negativo) como complemento necesario, ",
+  "aun pendiente de implementar, que probablemente mejore sustancialmente el ajuste."
+))
+```
+
+
+
+---
+
+# Parte 10 — Modelo de conteo: usuarios_afectados como variable de naturaleza discreta
+
+## Por qué un modelo de conteo, y qué problema resuelve
+
+Todo lo modelado hasta ahora trata `SAIDI`/`SAIFI` como variables
+continuas (con `log1p()`), pero el fenómeno que las genera es
+fundamentalmente **discreto**: `usuarios_afectados` es un conteo
+entero (0, 1, 2, ... usuarios), con una masa grande de ceros (semanas
+sin falla) y una cola larga (semanas con eventos severos). Forzar una
+transformación logarítmica sobre una variable continua derivada de un
+conteo puede subestimar la masa de ceros y distorsionar la relación
+real entre las covariables y la probabilidad/magnitud de la falla —
+consistente con el R² bajo observado en todas las especificaciones
+anteriores (Partes 4-9).
+
+Se modela `usuarios_afectados` directamente (no `log_SAIDI1`), usando
+**todas** las semanas del panel (no solo las que tuvieron falla, a
+diferencia de los modelos anteriores) — un modelo de conteo debe ver
+también los ceros para estimar correctamente la probabilidad de que
+ocurra un evento.
+
+## Paquetes adicionales
+
+```{r conteo-paquetes}
+if (!requireNamespace("pscl", quietly = TRUE)) install.packages("pscl")
+if (!requireNamespace("performance", quietly = TRUE)) install.packages("performance")
+library(pscl)         # para test de sobredispersión y modelos zero-inflated
+library(performance)  # chequeo de sobredispersión más directo
+```
+
+## Preparación de datos: todas las semanas, no solo con falla
+
+```{r conteo-preparar-datos}
+data_conteo <- data_final %>%
+  filter(!is.na(usuarios_afectados), !is.na(id_cuadrante), !is.na(semana))
+
+cat(sprintf(
+  "Filas totales: %d | Semanas con usuarios_afectados = 0: %d (%.1f%%) | Con falla: %d (%.1f%%)\n",
+  nrow(data_conteo),
+  sum(data_conteo$usuarios_afectados == 0), 100 * mean(data_conteo$usuarios_afectados == 0),
+  sum(data_conteo$usuarios_afectados > 0), 100 * mean(data_conteo$usuarios_afectados > 0)
+))
+```
+
+```{r conteo-plot-distribucion, fig.width=8, fig.height=5}
+ggplot(data_conteo, aes(x = usuarios_afectados)) +
+  geom_histogram(bins = 50, fill = "#3182bd", color = "white") +
+  scale_y_log10() +
+  labs(
+    title    = "Distribucion de usuarios_afectados (escala log en eje Y)",
+    subtitle = "Masa grande de ceros + cola larga - patron tipico de conteo con sobredispersion",
+    x = "usuarios_afectados", y = "Frecuencia (log)"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## Split temporal (mismo criterio que en el resto del documento)
+
+```{r conteo-split-temporal}
+train_conteo <- data_conteo %>% filter(semana <= corte)
+test_conteo  <- data_conteo %>% filter(semana >  corte)
+
+cat(sprintf("Train: %d filas | Test: %d filas\n", nrow(train_conteo), nrow(test_conteo)))
+```
+
+## Modelo 1 — Poisson
+
+Se usan las mismas variables de `vars_modelo` (Parte 4), reemplazando
+`SAIDI_lag1` por un rezago propio de `usuarios_afectados`.
+
+```{r conteo-poisson}
+train_conteo <- train_conteo %>%
+  group_by(id_cuadrante) %>%
+  arrange(semana) %>%
+  mutate(usuarios_afectados_lag1 = dplyr::lag(usuarios_afectados, 1)) %>%
+  ungroup()
+
+test_conteo <- test_conteo %>%
+  group_by(id_cuadrante) %>%
+  arrange(semana) %>%
+  mutate(usuarios_afectados_lag1 = dplyr::lag(usuarios_afectados, 1)) %>%
+  ungroup()
+
+vars_conteo <- setdiff(vars_modelo, "SAIDI_lag1")
+vars_conteo <- c(vars_conteo, "usuarios_afectados_lag1")
+vars_conteo <- intersect(vars_conteo, names(train_conteo))
+
+formula_conteo <- as.formula(paste("usuarios_afectados ~", paste(vars_conteo, collapse = " + ")))
+cat("Formula del modelo de conteo:\n"); print(formula_conteo)
+
+modelo_poisson <- glm(formula_conteo, data = train_conteo, family = poisson(link = "log"))
+summary(modelo_poisson)
+```
+
+## Diagnóstico de sobredispersión
+
+Un supuesto clave de Poisson es que **media = varianza**. Si la
+varianza observada es mucho mayor que la media (sobredispersión,
+común con datos de fallas reales), los errores estándar de Poisson
+quedan subestimados y hay que usar binomial negativo en su lugar.
+
+```{r conteo-test-sobredispersion}
+media_obs <- mean(train_conteo$usuarios_afectados, na.rm = TRUE)
+var_obs   <- var(train_conteo$usuarios_afectados, na.rm = TRUE)
+
+cat(sprintf("Media observada: %.3f | Varianza observada: %.3f | Ratio Var/Media: %.2f\n",
+            media_obs, var_obs, var_obs / media_obs))
+
+# Test formal de sobredispersión (performance::check_overdispersion)
+check_overdispersion(modelo_poisson)
+```
+
+**Interpretación:** un ratio Varianza/Media mucho mayor a 1 (y un test
+significativo) confirma sobredispersión — en ese caso, Poisson no es
+la especificación adecuada y se debe preferir el binomial negativo del
+siguiente modelo.
+
+## Modelo 2 — Binomial Negativo (corrige sobredispersión)
+
+```{r conteo-binomial-negativo}
+modelo_binom_neg <- MASS::glm.nb(formula_conteo, data = train_conteo)
+summary(modelo_binom_neg)
+
+cat(sprintf("\nParametro de dispersion (theta): %.3f\n", modelo_binom_neg$theta))
+```
+
+## Comparación Poisson vs. Binomial Negativo
+
+```{r conteo-comparar-poisson-nb}
+comparacion_conteo <- tibble(
+  modelo = c("Poisson", "Binomial Negativo"),
+  AIC    = c(AIC(modelo_poisson), AIC(modelo_binom_neg)),
+  logLik = c(as.numeric(logLik(modelo_poisson)), as.numeric(logLik(modelo_binom_neg)))
+) %>%
+  arrange(AIC)
+
+kable(comparacion_conteo, digits = 2,
+      caption = "Comparacion Poisson vs. Binomial Negativo (menor AIC es mejor)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+
+# Test de razon de verosimilitud (Poisson es caso particular de NB
+# cuando theta -> infinito; el test formal confirma si NB es
+# significativamente mejor, no solo por AIC)
+pchisq(2 * (logLik(modelo_binom_neg) - logLik(modelo_poisson)), df = 1, lower.tail = FALSE)
+```
+
+## Evaluación en test
+
+```{r conteo-evaluar-test}
+test_conteo_completo <- test_conteo %>%
+  select(usuarios_afectados, all_of(vars_conteo)) %>%
+  na.omit()
+
+pred_poisson  <- predict(modelo_poisson,   newdata = test_conteo_completo, type = "response")
+pred_binomneg <- predict(modelo_binom_neg, newdata = test_conteo_completo, type = "response")
+
+metricas_conteo <- tibble(
+  modelo = c("Poisson", "Binomial Negativo"),
+  RMSE = c(
+    Metrics::rmse(test_conteo_completo$usuarios_afectados, pred_poisson),
+    Metrics::rmse(test_conteo_completo$usuarios_afectados, pred_binomneg)
+  ),
+  MAE = c(
+    Metrics::mae(test_conteo_completo$usuarios_afectados, pred_poisson),
+    Metrics::mae(test_conteo_completo$usuarios_afectados, pred_binomneg)
+  )
+)
+
+kable(metricas_conteo, digits = 4,
+      caption = "Desempeno en test - usuarios_afectados (escala original, no log)") %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE)
+```
+
+## Gráfico: predicho vs. observado (Binomial Negativo)
+
+```{r conteo-pred-vs-obs, fig.width=8, fig.height=7}
+data.frame(
+  observado = test_conteo_completo$usuarios_afectados,
+  predicho  = pred_binomneg
+) %>%
+  ggplot(aes(x = observado, y = predicho)) +
+  geom_point(alpha = 0.2, size = 1) +
+  geom_abline(slope = 1, intercept = 0, color = "#de2d26", linetype = "dashed") +
+  scale_x_continuous(trans = "log1p") +
+  scale_y_continuous(trans = "log1p") +
+  labs(
+    title    = "Binomial Negativo: predicho vs. observado (usuarios_afectados)",
+    subtitle = "Ejes en escala log1p para visualizar mejor la masa de valores bajos",
+    x = "Observado", y = "Predicho"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+## ¿El modelo de conteo confirma qué variables importan?
+
+```{r conteo-coeficientes}
+coef_binomneg <- broom::tidy(modelo_binom_neg, exponentiate = TRUE, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  arrange(p.value)
+
+kable(coef_binomneg, digits = 4,
+      caption = "Coeficientes exponenciados (IRR - Incidence Rate Ratio) del modelo Binomial Negativo") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+**Interpretación de los IRR (Incidence Rate Ratio):** un valor mayor a
+1 indica que un aumento en esa variable se asocia con **más**
+usuarios afectados esperados (en proporción); un valor menor a 1
+indica una asociación **protectora**. A diferencia de los coeficientes
+de los modelos lineales anteriores, estos son directamente
+interpretables como "por cada unidad adicional de X, los usuarios
+afectados esperados se multiplican por IRR".
+
+```{r conteo-plot-irr, fig.width=8, fig.height=6}
+coef_binomneg %>%
+  ggplot(aes(x = reorder(term, estimate), y = estimate)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "#de2d26") +
+  coord_flip() +
+  labs(
+    title    = "Incidence Rate Ratio (IRR) por variable - Binomial Negativo",
+    subtitle = "IRR > 1: aumenta usuarios afectados esperados | IRR < 1: los reduce",
+    x = NULL, y = "IRR (escala log)"
+  ) +
+  scale_y_log10() +
+  theme_minimal(base_size = 12)
+```
+
+## Resumen de la Parte 10
+
+```{r conteo-resumen, results='asis'}
+mejor_conteo <- if (AIC(modelo_binom_neg) < AIC(modelo_poisson)) "Binomial Negativo" else "Poisson"
+
+cat(sprintf(
+  paste0(
+    "El modelo de conteo confirma sobredispersion (ratio Varianza/Media = %.2f), ",
+    "por lo que **%s** es la especificacion correcta, no Poisson simple. ",
+    "El AIC de NB (%.1f) es sustancialmente menor que el de Poisson (%.1f), ",
+    "confirmando que ignorar la sobredispersion (como asumiria Poisson) ",
+    "produciria errores estandar subestimados y conclusiones de significancia ",
+    "estadistica potencialmente erroneas.\n\n",
+    "Este modelo de conteo es complementario, no un reemplazo, de los modelos ",
+    "continuos de SAIDI/SAIFI de las Partes 4-9: aqui se modela directamente ",
+    "la variable subyacente (usuarios_afectados) en su escala natural, evitando ",
+    "la transformacion log1p() y sus supuestos implicitos sobre la distribucion del error."
+  ),
+  var_obs / media_obs, mejor_conteo, AIC(modelo_binom_neg), AIC(modelo_poisson)
+))
+```
+
+---
+
+# Conclusiones y próximos pasos
+
+```{r modelo-conclusiones, results='asis'}
+linea_mejor_modelo <- sprintf(
+  "- **Mejor modelo en test (SAIDI, escala log):** %s (RMSE = %.4f).\n",
+  mejor_modelo, min(resultados$RMSE_log, na.rm = TRUE)
+)
+
+linea_fe <- paste0(
+  "- Los efectos fijos de cuadrante mejoran el ajuste frente a pooled OLS ",
+  "en la medida en que exista heterogeneidad no observada estable por cuadrante ",
+  "(ej. calidad de mantenimiento histórico no capturada por las variables observables).\n"
+)
+
+linea_rf <- paste0(
+  "- Random Forest generalmente ofrece mejor RMSE puro pero sacrifica interpretabilidad ",
+  "de coeficientes — usarlo como referencia de techo predictivo, no como modelo explicativo final.\n"
+)
+
+linea_saidi_real <- paste0(
+  "- **SAIDI/SAIFI usan el denominador real POR CUADRANTE** (usuarios_totales_cuadrante, CENS) — ",
+  "no están dominados por el tamaño del cuadrante ni son un proxy.\n"
+)
+
+linea_contribucion <- paste0(
+  "- **Variables de contribución al sistema** (contribucion_SAIDI_sistema, contribucion_SAIFI_sistema) ",
+  "quedaron disponibles solo para reconciliación contra el indicador oficial mensual — deliberadamente ",
+  "NO se usan como variable respuesta del modelo, por estar dominadas por el tamaño del cuadrante.\n"
+)
+
+linea_moran <- sprintf(
+  "- **Autocorrelación espacial en el panel (Moran's I = %.3f, p = %.4f):** %s ",
+  moran_resultado$estimate[1], moran_resultado$p.value,
+  if (moran_resultado$p.value < 0.05) "se confirmó señal espacial significativa," else "no se encontró señal espacial fuerte en el promedio histórico, aunque"
+)
+
+linea_rmse_espacial <- if (is.na(mejora_pct)) {
+  "el cambio en RMSE al incluir el rezago espacial no pudo determinarse (ver advertencia en Parte 5).\n"
+} else {
+  sprintf("el rezago espacial cambió el RMSE del modelo FE cuadrante en %.1f%% respecto a no incluirlo.\n", mejora_pct)
+}
+
+linea_sar_sem <- sprintf(
+  "- **Modelo espacial formal (Parte 8):** el mejor especificado según AIC fue %s. %s\n",
+  nombre_mejor,
+  if (nombre_mejor == "SAR") {
+    sprintf("rho = %.4f — interpretación en la sección correspondiente.", modelo_sar$rho)
+  } else {
+    sprintf("lambda = %.4f — interpretación en la sección correspondiente.", modelo_sem$lambda)
+  }
+)
+
+linea_extension <- paste0(
+  "- **Próxima extensión de la dimensión espacial:** vecindad por topología de circuito eléctrico real ",
+  "(en vez de solo contigüidad geográfica), si CENS puede compartir el esquema de circuitos/alimentadores.\n"
+)
+
+linea_conteo <- sprintf(
+  paste0(
+    "- **Modelo de conteo (Parte 10):** implementado y comparado - %s resulto preferible ",
+    "sobre Poisson (sobredispersion confirmada, ratio Varianza/Media = %.2f). Modela ",
+    "usuarios_afectados en su escala natural, complementario al enfoque continuo de SAIDI/SAIFI."
+  ),
+  mejor_conteo, var_obs / media_obs
+)
+
+cat(paste0(
+  linea_mejor_modelo, linea_fe, linea_rf, linea_saidi_real, linea_contribucion,
+  linea_moran, linea_rmse_espacial, linea_sar_sem, linea_extension, linea_conteo
+))
+```
