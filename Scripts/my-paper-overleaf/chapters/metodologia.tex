@@ -565,7 +565,7 @@ NASA POWER
     El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}.
     
 \subsection{Descripción de la tabla base semanal cuadrante}
-    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textbf{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} presentan una muestra ilustrativa; por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación espacio-temporal e impacto operativo (Tabla~\ref{tab:muestra_semanal_cuadrante_1}), temperatura (Tabla~\ref{tab:muestra_semanal_cuadrante_2}), clima complementario (Tabla~\ref{tab:muestra_semanal_cuadrante_3}) y continuidad del servicio (Tabla~\ref{tab:muestra_semanal_cuadrante_4}).
+    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textbf{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Se incluyen además los bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y denominadores, composición de estrato/sector, fechas y reposiciones de transformadores, y las respuestas SAIDI/SAIFI. Las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} presentan una muestra ilustrativa; por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación espacio-temporal e impacto operativo (Tabla~\ref{tab:muestra_semanal_cuadrante_1}), temperatura (Tabla~\ref{tab:muestra_semanal_cuadrante_2}), clima complementario (Tabla~\ref{tab:muestra_semanal_cuadrante_3}) y continuidad del servicio (Tabla~\ref{tab:muestra_semanal_cuadrante_4}).
     
     \begin{table}[!htbp]
     \centering
@@ -621,10 +621,41 @@ NASA POWER
     \texttt{duracion\_total}
     \end{minipage} &
     \texttt{sum} \\
+    Usuarios$^{\ddagger}$ &
+    \begin{minipage}[t]{\linewidth}
+    \texttt{usuarios\_totales}\\[0.1em]
+    \texttt{cantidad\_usuarios\_cuadrante}
+    \end{minipage} &
+    Cruce por mes / cuadrante \\
+    Estrato y sector$^{\ddagger}$ &
+    \begin{minipage}[t]{\linewidth}
+    \texttt{ESTRATO\_1} \ldots{} \texttt{ESTRATO\_6}\\[0.1em]
+    \texttt{INDUSTRIAL}, \texttt{COMERCIAL}\\[0.1em]
+    \texttt{OFICIAL}, \texttt{PROVISIONAL}\\[0.1em]
+    \texttt{ALUMBRADO\_PUBLICO}
+    \end{minipage} &
+    Conteo por cuadrante \\
+    Activos$^{\ddagger}$ &
+    \begin{minipage}[t]{\linewidth}
+    \texttt{FECHA\_ACTIVO\_MAS\_VIEJO}\\[0.1em]
+    \texttt{FECHA\_ACTIVO\_MAS\_NUEVO}\\[0.1em]
+    \texttt{PROM\_CANT\_MODIFICACIONES}
+    \end{minipage} &
+    \begin{minipage}[t]{\linewidth}
+    \texttt{min}\\[0.1em]
+    \texttt{max}\\[0.1em]
+    \texttt{mean}
+    \end{minipage} \\
+    Respuestas$^{\ddagger}$ &
+    \begin{minipage}[t]{\linewidth}
+    \texttt{SAIDI}\\[0.1em]
+    \texttt{SAIFI}
+    \end{minipage} &
+    Cálculo derivado \\
     \bottomrule
     \end{tabular}
     
-    \noindent\textit{Nota:} $^{\dagger}$ el bloque climático se resume en dos etapas; la regla indicada opera sobre la serie diaria por cuadrante, obtenida tras colapsar las filas activo~$\times$~día que replican el mismo valor meteorológico.
+    \noindent\textit{Nota:} $^{\dagger}$ el bloque climático se resume en dos etapas; la regla indicada opera sobre la serie diaria por cuadrante, obtenida tras colapsar las filas activo~$\times$~día que replican el mismo valor meteorológico. $^{\ddagger}$ bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y composición de estrato/sector provienen de los maestros comerciales cruzados por mes y cuadrante; las fechas y el promedio de reposiciones se derivan de \texttt{TT2\_FMODIFICACION} por cuadrante; SAIDI y SAIFI se calculan a partir de la duración y frecuencia de interrupciones sobre \texttt{usuarios\_totales} y se emplean exclusivamente como variables de respuesta.
     \end{table}
     
     \begin{table}[!htbp]
@@ -1176,6 +1207,41 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \noindent En síntesis, el análisis temporal sobre $D_{\mathrm{EDA}}$ revela: (i)~un cambio de nivel de la serie a partir de 2024, reinterpretado como mayor homogeneización de la codificación activo/sitio bajo OMS-SP7, y no como incremento operativo aislado, lo que motiva la restricción del dataset de modelado a $D_{\mathrm{mod}}$ (2024--2025; Sección~\ref{sec:delimitacion_temporal_modelado}); (ii)~estacionalidad intra-anual en la actividad de interrupciones, cuya atribución al régimen de lluvias no se sostiene con el acumulado semanal de precipitación (Sección~\ref{sec:analisis_correlacion_asociacion}); y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores en $D_{\mathrm{mod}}$. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
     
     \paragraph{Materialización de $D_{\mathrm{mod}}$.} Para operacionalizar la delimitación temporal sin alterar el insumo exploratorio, se construyó el archivo \texttt{data\_agrupada\_mod.csv} como subconjunto de \texttt{data\_agrupada.csv} con filtro \texttt{year(semana)} $\in \{2024,\,2025\}$, conservando el grano cuadrante~$\times$~semana y el conjunto completo de variables climáticas y operativas. La tabla original 2021--2025 permanece intacta como $D_{\mathrm{EDA}}$; el resultado filtrado ($36{.}120$ filas; $344$ cuadrantes; $105$ semanas; $33{.}410$ eventos) constituye el insumo analítico para las Secciones~\ref{sec:identificacion_patrones_tendencias} en adelante y la Etapa~4, con partición natural entrenamiento 2024 / prueba 2025. El procedimiento reproducible, lectura, filtro, resumen por año y exportación, se documenta en el Apéndice~\ref{app:html-datamod}.
+
+    \paragraph{Enriquecimiento de $D_{\mathrm{mod}}$.} Sobre la llave
+    cuadrante--semana se incorporaron 16 variables destinadas a ampliar la
+    caracterización de exposición, composición de usuarios y trayectoria de
+    intervención de los activos. La serie mensual
+    \texttt{data\_usuarios\_totales\_sistema.csv} aporta
+    \texttt{usuarios\_totales}, asignada a cada semana de acuerdo con el mes
+    calendario de su fecha de inicio y utilizada como denominador en la
+    construcción de SAIDI y SAIFI. Por otra parte,
+    \texttt{cant\_usuarios\_x\_transformador.csv} aporta
+    \texttt{cantidad\_usuarios\_cuadrante}, calculada como la suma mensual de
+    usuarios de los transformadores asociados a cada cuadrante.
+
+    La composición socioeconómica y de uso del servicio se integró desde
+    \texttt{DATA\_ESTRATO\_SECTOR.csv}, agregando por cuadrante y mes las
+    variables \texttt{ESTRATO\_1} a \texttt{ESTRATO\_6},
+    \texttt{INDUSTRIAL}, \texttt{COMERCIAL}, \texttt{OFICIAL},
+    \texttt{PROVISIONAL} y \texttt{ALUMBRADO\_PUBLICO}. Para los meses
+    faltantes de los cuadrantes 258 y 273 se empleó la moda mensual del
+    respectivo cuadrante; los cuadrantes 68, 140, 333 y 344, ausentes en la
+    fuente, se asignaron en cero.
+
+    Finalmente, mediante la llave \texttt{ID\_CUADRANTE} se integró
+    \texttt{Fecha\_transformadores.csv}. Para cada elemento se contabilizaron
+    sus registros de modificación y se tomó la última
+    \texttt{TT2\_FMODIFICACION} en estado \texttt{OPERACION}; posteriormente,
+    por cuadrante, se derivaron \texttt{FECHA\_ACTIVO\_MAS\_VIEJO},
+    \texttt{FECHA\_ACTIVO\_MAS\_NUEVO} y
+    \texttt{PROM\_CANT\_MODIFICACIONES}. Estas variables permiten evaluar la
+    relación entre la trayectoria de intervención de la infraestructura y los
+    indicadores de continuidad. No obstante, las fechas representan
+    modificaciones registradas y no necesariamente la instalación original
+    del activo. Para evitar fuga de información, su uso predictivo debe
+    restringirse a registros conocidos antes de la semana pronosticada;
+    SAIDI y SAIFI se emplean exclusivamente como variables objetivo.
 
 \subsection{Identificación de patrones, tendencias y visualización exploratoria}
 \label{sec:identificacion_patrones_tendencias}

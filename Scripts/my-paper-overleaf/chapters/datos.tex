@@ -89,6 +89,36 @@ Variables objetivo &
 \end{tabular}
 \end{table}
 
+\subsection{Variables incorporadas al panel cuadrante--semana}
+
+Para complementar la caracterización técnica, demográfica y socioeconómica
+del panel de modelado se incorporaron 16 variables adicionales.
+\texttt{usuarios\_totales} permite construir los indicadores SAIDI y SAIFI
+con el denominador mensual del sistema, mientras que
+\texttt{cantidad\_usuarios\_cuadrante} representa la escala local de
+exposición al servicio. Las variables \texttt{ESTRATO\_1} a
+\texttt{ESTRATO\_6}, junto con \texttt{INDUSTRIAL}, \texttt{COMERCIAL},
+\texttt{OFICIAL}, \texttt{PROVISIONAL} y
+\texttt{ALUMBRADO\_PUBLICO}, describen la composición de los usuarios y
+permiten analizar si la frecuencia y la duración de las interrupciones
+presentan diferencias según el tipo de demanda y las características
+socioeconómicas del territorio.
+
+Por su parte, \texttt{FECHA\_ACTIVO\_MAS\_VIEJO},
+\texttt{FECHA\_ACTIVO\_MAS\_NUEVO} y
+\texttt{PROM\_CANT\_MODIFICACIONES} aportan información sobre la trayectoria
+de intervención y renovación de los transformadores. Estas variables
+permiten evaluar si los cuadrantes con activos menos renovados o con mayor
+número de modificaciones presentan comportamientos diferentes en SAIDI y
+SAIFI.
+
+Como salvedad metodológica, las fechas corresponden a
+\texttt{TT2\_FMODIFICACION} y no necesariamente a la instalación original
+del activo. Para evitar fuga de información, en los modelos predictivos
+solo deben emplearse modificaciones conocidas antes de la semana que se
+pretende pronosticar. Finalmente, SAIDI y SAIFI se incorporan como variables
+objetivo y no como predictoras contemporáneas.
+
 \paragraph{Número de observaciones.}
 La tabla consolidada final se estima como
 \[
