@@ -1,0 +1,528 @@
+---
+title: "Generación de ventanas temporales para el panel cuadrante por semana"
+author: "Equipo de proyecto"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+params:
+  data_path: !r NULL
+  output_dir: !r NULL
+---
+
+# Etapa 4 — Generación de ventanas temporales (Sección 5.4.7)
+
+Este informe construye variables temporales para el conjunto de modelado
+$D_{\mathrm{mod}}$, cuya unidad de observación es **cuadrante × semana**. El
+objetivo es representar la memoria reciente de cada cuadrante sin utilizar
+información de la semana que se desea pronosticar.
+
+Para una observación correspondiente a la semana $t$, todas las variables
+temporales se calculan con semanas cerradas anteriores a $t$. De esta manera,
+los valores contemporáneos de `n_eventos`, `duracion_total`,
+`usuarios_afectados` y `elementos_afectados` no se incorporan como
+predictoras.
+
+```{r setup}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(scales)
+```
+
+## Configuración de rutas
+
+La ruta del archivo puede recibirse mediante el parámetro `data_path`. Si no
+se proporciona, el informe busca `data_agrupada_mod.csv` en la variable de
+entorno `UBICACION_DATA`. El resultado se guarda fuera del repositorio de
+código, junto a los demás archivos de datos del proyecto.
+
+```{r entorno}
+rutas_env <- c(
+  ".env",
+  file.path("..", ".env"),
+  file.path("..", "..", ".env")
+)
+
+env_disponible <- rutas_env[file.exists(rutas_env)][1]
+if (!is.na(env_disponible)) {
+  readRenviron(env_disponible)
+}
+
+ubicacion_data <- Sys.getenv("UBICACION_DATA")
+
+resolver_ruta_datos <- function() {
+  if (!is.null(params$data_path) && nzchar(params$data_path)) {
+    return(params$data_path)
+  }
+
+  if (nzchar(ubicacion_data)) {
+    candidatos <- c(
+      file.path(ubicacion_data, "data_agrupada_mod.csv"),
+      file.path(ubicacion_data, "data_agrupada.csv")
+    )
+    existente <- candidatos[file.exists(candidatos)][1]
+    if (!is.na(existente)) {
+      return(existente)
+    }
+  }
+
+  stop(
+    "No se encontró data_agrupada_mod.csv. Define UBICACION_DATA o ",
+    "renderiza el informe con params$data_path."
+  )
+}
+
+path_datos <- resolver_ruta_datos()
+
+path_salida <- if (!is.null(params$output_dir) && nzchar(params$output_dir)) {
+  params$output_dir
+} else if (nzchar(ubicacion_data)) {
+  ubicacion_data
+} else {
+  dirname(path_datos)
+}
+
+dir.create(path_salida, recursive = TRUE, showWarnings = FALSE)
+path_img_tesis <- file.path("..", "my-paper-overleaf", "img")
+```
+
+```{r funciones}
+media_previa <- function(x, k) {
+  as.numeric(
+    stats::filter(
+      dplyr::lag(as.numeric(x), n = 1),
+      rep(1 / k, k),
+      sides = 1
+    )
+  )
+}
+
+suma_previa <- function(x, k) {
+  as.numeric(
+    stats::filter(
+      dplyr::lag(as.numeric(x), n = 1),
+      rep(1, k),
+      sides = 1
+    )
+  )
+}
+
+proporcion_previa <- function(x, k) {
+  media_previa(as.numeric(x > 0), k)
+}
+
+guardar_plot <- function(plot, archivo, width, height) {
+  destino_datos <- file.path(path_salida, archivo)
+  ggsave(
+    destino_datos,
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = 300,
+    bg = "white"
+  )
+
+  if (dir.exists(path_img_tesis)) {
+    file.copy(
+      destino_datos,
+      file.path(path_img_tesis, archivo),
+      overwrite = TRUE
+    )
+  }
+}
+```
+
+## Lectura y validación del panel
+
+Antes de crear rezagos se verifica que la llave `id_cuadrante`–`semana` sea
+única y que, dentro de cada cuadrante, las observaciones estén separadas por
+siete días. Este control evita interpretar como semana anterior un registro
+que en realidad pertenece a un periodo más lejano.
+
+```{r lectura-validacion}
+d_mod <- read_csv(path_datos, show_col_types = FALSE)
+
+variables_requeridas <- c(
+  "id_cuadrante", "semana", "n_eventos", "duracion_total",
+  "precip_total_semana", "temp_media_semana",
+  "humedad_media_semana", "viento_medio_semana"
+)
+
+variables_ausentes <- setdiff(variables_requeridas, names(d_mod))
+if (length(variables_ausentes) > 0) {
+  stop(
+    "Faltan variables requeridas: ",
+    paste(variables_ausentes, collapse = ", ")
+  )
+}
+
+d_mod <- d_mod %>%
+  mutate(semana = as.Date(semana)) %>%
+  filter(year(semana) %in% 2024:2025) %>%
+  arrange(id_cuadrante, semana)
+
+duplicados <- d_mod %>%
+  count(id_cuadrante, semana, name = "n") %>%
+  filter(n > 1)
+
+if (nrow(duplicados) > 0) {
+  stop("La llave id_cuadrante-semana contiene registros duplicados.")
+}
+
+continuidad <- d_mod %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    semanas = n(),
+    secuencia_semanal = all(diff(semana) == 7),
+    .groups = "drop"
+  )
+
+if (any(!continuidad$secuencia_semanal)) {
+  stop(
+    "Se detectaron saltos en la secuencia semanal de uno o más cuadrantes. ",
+    "Completa o documenta esos periodos antes de generar los rezagos."
+  )
+}
+
+resumen_panel <- tibble(
+  metrica = c(
+    "Filas cuadrante por semana",
+    "Cuadrantes",
+    "Semanas",
+    "Fecha inicial",
+    "Fecha final",
+    "Llaves duplicadas",
+    "Cuadrantes con secuencia semanal completa"
+  ),
+  valor = c(
+    format(nrow(d_mod), big.mark = ".", decimal.mark = ","),
+    format(n_distinct(d_mod$id_cuadrante), big.mark = "."),
+    format(n_distinct(d_mod$semana), big.mark = "."),
+    as.character(min(d_mod$semana)),
+    as.character(max(d_mod$semana)),
+    nrow(duplicados),
+    sum(continuidad$secuencia_semanal)
+  )
+)
+
+kable(resumen_panel, col.names = c("Métrica", "Valor"))
+```
+
+## Definición de las ventanas
+
+Se consideran cuatro rezagos puntuales para la historia operativa: 1, 2, 4 y
+12 semanas. Estos horizontes representan la semana inmediatamente anterior,
+la persistencia quincenal, la memoria mensual y la dinámica aproximada de un
+trimestre. Adicionalmente, se calculan medias móviles de 4 y 12 semanas para
+reducir la sensibilidad a episodios aislados.
+
+Para el bloque climático se conserva el valor de la semana anterior y se
+calculan resúmenes de las 4 y 12 semanas previas. La precipitación se acumula,
+mientras que temperatura, humedad y viento se promedian. También se incorporan
+dos términos cíclicos de calendario para representar la posición de cada
+semana dentro del año sin introducir un salto artificial entre diciembre y
+enero.
+
+```{r tabla-ventanas}
+tabla_ventanas <- tribble(
+  ~bloque, ~variable_origen, ~ventana, ~operacion,
+  "Historia operativa", "n_eventos", "1, 2, 4 y 12 semanas", "Rezago puntual",
+  "Historia operativa", "n_eventos", "4 y 12 semanas", "Media y proporción de semanas con evento",
+  "Historia operativa", "duracion_total", "1, 2, 4 y 12 semanas", "Rezago puntual",
+  "Historia operativa", "duracion_total", "4 y 12 semanas", "Media móvil",
+  "Clima", "precip_total_semana", "1, 4 y 12 semanas", "Rezago y acumulado previo",
+  "Clima", "temp_media_semana", "1, 4 y 12 semanas", "Rezago y promedio previo",
+  "Clima", "humedad_media_semana", "1, 4 y 12 semanas", "Rezago y promedio previo",
+  "Clima", "viento_medio_semana", "1, 4 y 12 semanas", "Rezago y promedio previo",
+  "Calendario", "semana", "Semana t", "Seno, coseno y tendencia"
+)
+
+kable(
+  tabla_ventanas,
+  col.names = c("Bloque", "Variable de origen", "Horizonte", "Transformación")
+)
+```
+
+## Construcción de variables temporales
+
+```{r construir-ventanas}
+d_ventanas <- d_mod %>%
+  group_by(id_cuadrante) %>%
+  arrange(semana, .by_group = TRUE) %>%
+  mutate(
+    n_eventos_lag_1 = lag(n_eventos, 1),
+    n_eventos_lag_2 = lag(n_eventos, 2),
+    n_eventos_lag_4 = lag(n_eventos, 4),
+    n_eventos_lag_12 = lag(n_eventos, 12),
+    n_eventos_media_4 = media_previa(n_eventos, 4),
+    n_eventos_media_12 = media_previa(n_eventos, 12),
+    prop_semanas_evento_4 = proporcion_previa(n_eventos, 4),
+    prop_semanas_evento_12 = proporcion_previa(n_eventos, 12),
+
+    duracion_lag_1 = lag(duracion_total, 1),
+    duracion_lag_2 = lag(duracion_total, 2),
+    duracion_lag_4 = lag(duracion_total, 4),
+    duracion_lag_12 = lag(duracion_total, 12),
+    duracion_media_4 = media_previa(duracion_total, 4),
+    duracion_media_12 = media_previa(duracion_total, 12),
+
+    precip_lag_1 = lag(precip_total_semana, 1),
+    precip_acum_4 = suma_previa(precip_total_semana, 4),
+    precip_acum_12 = suma_previa(precip_total_semana, 12),
+
+    temp_lag_1 = lag(temp_media_semana, 1),
+    temp_media_previa_4 = media_previa(temp_media_semana, 4),
+    temp_media_previa_12 = media_previa(temp_media_semana, 12),
+
+    humedad_lag_1 = lag(humedad_media_semana, 1),
+    humedad_media_previa_4 = media_previa(humedad_media_semana, 4),
+    humedad_media_previa_12 = media_previa(humedad_media_semana, 12),
+
+    viento_lag_1 = lag(viento_medio_semana, 1),
+    viento_medio_previo_4 = media_previa(viento_medio_semana, 4),
+    viento_medio_previo_12 = media_previa(viento_medio_semana, 12),
+
+    semana_iso = isoweek(semana),
+    semana_seno = sin(2 * pi * semana_iso / 52.18),
+    semana_coseno = cos(2 * pi * semana_iso / 52.18)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    tendencia_semana = as.integer((semana - min(semana)) / 7),
+    conjunto = if_else(year(semana) == 2024, "Entrenamiento", "Prueba")
+  )
+
+predictores_temporales <- c(
+  "n_eventos_lag_1", "n_eventos_lag_2", "n_eventos_lag_4",
+  "n_eventos_lag_12", "n_eventos_media_4", "n_eventos_media_12",
+  "prop_semanas_evento_4", "prop_semanas_evento_12",
+  "duracion_lag_1", "duracion_lag_2", "duracion_lag_4",
+  "duracion_lag_12", "duracion_media_4", "duracion_media_12",
+  "precip_lag_1", "precip_acum_4", "precip_acum_12",
+  "temp_lag_1", "temp_media_previa_4", "temp_media_previa_12",
+  "humedad_lag_1", "humedad_media_previa_4", "humedad_media_previa_12",
+  "viento_lag_1", "viento_medio_previo_4", "viento_medio_previo_12",
+  "semana_seno", "semana_coseno", "tendencia_semana"
+)
+
+d_ventanas <- d_ventanas %>%
+  mutate(
+    ventana_completa = if_all(
+      all_of(predictores_temporales),
+      ~ !is.na(.x)
+    )
+  )
+```
+
+## Controles contra fuga de información
+
+La construcción se valida comparando el rezago de una semana con el valor
+anterior observado dentro del mismo cuadrante. También se comprueba que las
+variables de impacto posterior no formen parte del vector de predictores
+temporales.
+
+```{r controles-fuga}
+control_rezagos <- d_ventanas %>%
+  group_by(id_cuadrante) %>%
+  summarise(
+    lag_eventos_correcto = isTRUE(all.equal(
+      n_eventos_lag_1,
+      lag(n_eventos, 1),
+      check.attributes = FALSE
+    )),
+    lag_duracion_correcto = isTRUE(all.equal(
+      duracion_lag_1,
+      lag(duracion_total, 1),
+      check.attributes = FALSE
+    )),
+    .groups = "drop"
+  )
+
+variables_prohibidas <- c(
+  "usuarios_afectados",
+  "elementos_afectados",
+  "n_eventos",
+  "duracion_total"
+)
+
+if (any(!control_rezagos$lag_eventos_correcto) ||
+    any(!control_rezagos$lag_duracion_correcto)) {
+  stop("La validación de los rezagos no fue satisfactoria.")
+}
+
+if (length(intersect(predictores_temporales, variables_prohibidas)) > 0) {
+  stop("Se detectó una variable contemporánea dentro de los predictores.")
+}
+
+tabla_control <- tibble(
+  control = c(
+    "Llave cuadrante-semana única",
+    "Secuencia semanal continua",
+    "Rezago de eventos calculado dentro del cuadrante",
+    "Rezago de duración calculado dentro del cuadrante",
+    "Sin variables contemporáneas entre los predictores"
+  ),
+  resultado = c(
+    nrow(duplicados) == 0,
+    all(continuidad$secuencia_semanal),
+    all(control_rezagos$lag_eventos_correcto),
+    all(control_rezagos$lag_duracion_correcto),
+    length(intersect(predictores_temporales, variables_prohibidas)) == 0
+  )
+)
+
+kable(tabla_control, col.names = c("Control", "Resultado"))
+```
+
+## Disponibilidad después de crear las ventanas
+
+Las primeras 12 semanas observadas de cada cuadrante funcionan como periodo
+de inicialización. Sus valores se conservan en el archivo completo, pero no se
+consideran elegibles para una matriz que requiera todas las ventanas. Este
+criterio evita imputar artificialmente una historia que no está disponible en
+$D_{\mathrm{mod}}$.
+
+```{r disponibilidad}
+disponibilidad_semana <- d_ventanas %>%
+  group_by(semana, conjunto) %>%
+  summarise(
+    filas = n(),
+    filas_ventana_completa = sum(ventana_completa),
+    porcentaje_disponible = 100 * mean(ventana_completa),
+    .groups = "drop"
+  )
+
+resumen_disponibilidad <- d_ventanas %>%
+  group_by(conjunto) %>%
+  summarise(
+    filas_totales = n(),
+    filas_con_ventana_completa = sum(ventana_completa),
+    porcentaje = round(100 * mean(ventana_completa), 1),
+    .groups = "drop"
+  )
+
+kable(
+  resumen_disponibilidad,
+  col.names = c("Conjunto", "Filas totales", "Ventana completa", "Porcentaje")
+)
+```
+
+```{r grafico-disponibilidad, fig.width=11, fig.height=5}
+p_disponibilidad <- ggplot(
+  disponibilidad_semana,
+  aes(x = semana, y = porcentaje_disponible, color = conjunto)
+) +
+  geom_line(linewidth = 0.8) +
+  geom_hline(yintercept = 100, linetype = "dotted", color = "grey45") +
+  scale_color_manual(values = c("Entrenamiento" = "#2C7BB6", "Prueba" = "#C44E52")) +
+  scale_x_date(date_breaks = "3 months", date_labels = "%b-%Y") +
+  scale_y_continuous(limits = c(0, 100), labels = label_percent(scale = 1)) +
+  labs(
+    title = "Disponibilidad de ventanas temporales por semana",
+    subtitle = "Porcentaje de cuadrantes con historia completa de 12 semanas",
+    x = "Semana",
+    y = "Cuadrantes con ventana completa",
+    color = "Conjunto"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+p_disponibilidad
+guardar_plot(
+  p_disponibilidad,
+  "disponibilidad_ventanas_temporales_mod.png",
+  11,
+  5
+)
+```
+
+## Esquema de disponibilidad temporal
+
+```{r esquema-ventana, fig.width=12, fig.height=3.8}
+esquema <- tibble(
+  posicion = -12:0,
+  etiqueta = c(paste0("t-", 12:1), "t"),
+  tipo = if_else(posicion == 0, "Respuesta", "Historia disponible")
+)
+
+p_esquema <- ggplot(esquema, aes(x = posicion, y = 1, fill = tipo)) +
+  geom_tile(color = "white", linewidth = 1.2, width = 0.95, height = 0.72) +
+  geom_text(aes(label = etiqueta), color = "white", fontface = "bold", size = 3.6) +
+  annotate(
+    "text",
+    x = -6.5,
+    y = 1.62,
+    label = "Información cerrada antes de la semana objetivo",
+    fontface = "bold",
+    size = 4
+  ) +
+  annotate(
+    "segment",
+    x = -12,
+    xend = -1,
+    y = 1.45,
+    yend = 1.45,
+    linewidth = 0.6,
+    arrow = arrow(length = unit(0.12, "inches"), ends = "both")
+  ) +
+  scale_fill_manual(
+    values = c("Historia disponible" = "#2C7BB6", "Respuesta" = "#C44E52")
+  ) +
+  coord_cartesian(ylim = c(0.45, 1.85), clip = "off") +
+  labs(x = "Posición temporal", y = NULL, fill = NULL) +
+  theme_void(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    plot.margin = margin(10, 12, 5, 12)
+  )
+
+p_esquema
+guardar_plot(p_esquema, "esquema_ventanas_temporales_mod.png", 12, 3.8)
+```
+
+## Exportación
+
+Se exportan dos archivos. El primero conserva todas las filas y permite
+auditar los valores faltantes introducidos por los rezagos. El segundo contiene
+únicamente observaciones con las 12 semanas previas completas y queda listo
+para las etapas posteriores de codificación, estandarización y construcción de
+matrices de diseño.
+
+```{r exportar}
+path_completo <- file.path(path_salida, "data_ventanas_temporales.csv")
+path_elegible <- file.path(path_salida, "data_ventanas_temporales_completa.csv")
+path_diccionario <- file.path(path_salida, "diccionario_ventanas_temporales.csv")
+
+write_csv(d_ventanas, path_completo)
+write_csv(d_ventanas %>% filter(ventana_completa), path_elegible)
+write_csv(tabla_ventanas, path_diccionario)
+
+tibble(
+  archivo = c(path_completo, path_elegible, path_diccionario),
+  existe = file.exists(c(path_completo, path_elegible, path_diccionario))
+) %>%
+  kable(col.names = c("Archivo", "Creado"))
+```
+
+## Síntesis
+
+La generación de ventanas conserva la unidad cuadrante~×~semana y respeta el
+orden temporal dentro de cada unidad territorial. Los rezagos puntuales
+representan episodios recientes, mientras que los resúmenes de 4 y 12 semanas
+capturan niveles persistentes de actividad y condiciones climáticas acumuladas.
+Las primeras 12 semanas se mantienen para trazabilidad, pero se excluyen de la
+versión con historia completa. Con ello, cada predictor de una observación en
+la semana $t$ puede reconstruirse utilizando exclusivamente información que ya
+estaba disponible al finalizar la semana $t-1$.

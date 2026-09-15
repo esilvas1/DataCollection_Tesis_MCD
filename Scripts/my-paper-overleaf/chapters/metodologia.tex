@@ -1643,6 +1643,44 @@ De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{
 \subsection{Estandarización de variables cuantitativas}
 
 \subsection{Generación de ventanas temporales}
+\label{sec:generacion_ventanas_temporales}
+
+Para representar la dependencia temporal identificada en la Sección~\ref{sec:identificacion_patrones_tendencias}, se construyeron variables rezagadas dentro de cada cuadrante, conservando el grano cuadrante~$\times$~semana de $D_{\mathrm{mod}}$. Antes de calcularlas, el panel se ordenó por \texttt{id\_cuadrante} y \texttt{semana}, y se verificó que la llave fuera única y que las observaciones de cada cuadrante mantuvieran una separación regular de siete días. De este modo, un rezago corresponde efectivamente a una semana anterior y no al registro previo disponible después de un salto temporal.
+
+La generación se planteó para un pronóstico móvil a una semana. Para una observación de la semana~$t$, solo se emplea información cerrada hasta $t-1$. La historia operativa se representa mediante rezagos de \texttt{n\_eventos} y \texttt{duracion\_total} a 1, 2, 4 y 12 semanas, complementados con medias móviles de 4 y 12 semanas. Los horizontes cortos recogen la persistencia reciente, mientras que la ventana de 12 semanas resume un comportamiento aproximadamente trimestral sin reducir de manera excesiva el periodo disponible para entrenamiento. No se generó un rezago de 52 semanas porque $D_{\mathrm{mod}}$ comienza en 2024 y su uso eliminaría prácticamente el año destinado al entrenamiento; la posición dentro del ciclo anual se representa mediante el seno y el coseno de la semana calendario.
+
+En el bloque climático se utilizó el valor rezagado una semana y se calcularon resúmenes de las 4 y 12 semanas anteriores. La precipitación se acumuló, dado que representa una cantidad recibida durante el periodo, mientras que temperatura media, humedad relativa y velocidad media del viento se promediaron. Esta decisión evita emplear como predictora la condición meteorológica observada durante la misma semana que se pretende anticipar. Si en una aplicación futura se dispone de pronósticos meteorológicos emitidos antes del inicio de la semana~$t$, estos podrán incorporarse como variables adicionales, manteniendo registrada su fecha de emisión.
+
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{Variables generadas mediante ventanas temporales por cuadrante}
+    \label{tab:ventanas_temporales}
+    \begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} p{2.8cm} X}
+        \toprule
+        \textbf{Bloque} & \textbf{Variable de origen} & \textbf{Ventana} & \textbf{Transformación} \\
+        \midrule
+        Historia operativa & \texttt{n\_eventos} & 1, 2, 4 y 12 semanas & Rezagos puntuales, medias móviles y proporción de semanas con evento. \\
+        Historia operativa & \texttt{duracion\_total} & 1, 2, 4 y 12 semanas & Rezagos puntuales y medias móviles de 4 y 12 semanas. \\
+        Clima & Precipitación semanal & 1, 4 y 12 semanas & Rezago semanal y precipitación acumulada en las ventanas previas. \\
+        Clima & Temperatura, humedad y viento & 1, 4 y 12 semanas & Rezago semanal y promedio de las ventanas previas. \\
+        Calendario & \texttt{semana} & Semana~$t$ & Componentes seno y coseno de la semana del año y tendencia temporal. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+La Figura~\ref{fig:esquema_ventanas_temporales} resume la regla de disponibilidad. Las columnas $t-12,\ldots,t-1$ representan información conocida al momento de construir los predictores y la columna~$t$ corresponde a la respuesta que se desea pronosticar. Por tanto, \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ no forman parte de las variables de entrada.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/esquema_ventanas_temporales_mod.png}
+    \caption{Esquema de disponibilidad de información para construir las ventanas temporales de la semana objetivo}
+    \label{fig:esquema_ventanas_temporales}
+\end{figure}
+
+La ventana máxima de 12 semanas introduce valores faltantes únicamente al inicio de la serie de cada cuadrante. Estas observaciones se conservan en el archivo completo para mantener la trazabilidad, pero se excluyen de la versión que requiere historia temporal completa; no se imputan rezagos inexistentes. Las ventanas se construyen antes de marcar la partición temporal, de manera que la primera semana de 2025 pueda utilizar la historia observada al cierre de 2024. Durante la evaluación de 2025 se adopta un esquema móvil de un paso: al pronosticar la semana~$t$, se asume que la respuesta de $t-1$ ya fue observada. Para pronósticos de varias semanas realizados desde un único origen, los rezagos de la respuesta deberán actualizarse de forma recursiva con valores pronosticados y no con observaciones futuras.
+
+El procedimiento se implementó en un informe reproducible en R Markdown. Este genera una versión auditable con todas las filas, una versión con ventanas completas y un diccionario de las variables construidas, además de controles sobre duplicados, continuidad semanal y correspondencia de los rezagos. Las variables resultantes se consideran candidatas; su permanencia definitiva se determina con los análisis de asociación, redundancia y desempeño predictivo de las etapas siguientes.
 
 \subsection{Partición de datos en entrenamiento y prueba}
     Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante~$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{.}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{.}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio.
