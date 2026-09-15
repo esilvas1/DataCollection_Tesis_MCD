@@ -1,0 +1,304 @@
+---
+title: "Etapa 2 — Corrección del bloque climático (agregación en dos etapas)"
+author: "Edwin Silva Salas"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Por qué existe este documento
+
+Se detectó un sesgo en la construcción original del bloque climático:
+la precipitación (y el resto de variables meteorológicas) se agregaba
+sumando directamente sobre las filas **activo × día** del panel
+consolidado. Como todos los activos de un mismo cuadrante comparten el
+mismo valor meteorológico diario (por el cruce de la Etapa 2 con NASA
+POWER por `FECHA_DIA`), esa serie diaria queda **replicada** tantas
+veces como activos tenga el cuadrante — sumarla directamente multiplica
+el acumulado de lluvia por el número de activos, un sesgo que además
+varía entre cuadrantes y contamina cualquier comparación territorial
+posterior.
+
+Este documento fusiona los dos scripts que resolvieron el problema:
+
+1. **Recalcular el clima correctamente**, en dos etapas (activo-día →
+   cuadrante-día → cuadrante-semana), en vez de agregar directamente
+   desde el panel activo-día.
+2. **Sustituir retroactivamente** el bloque climático ya inflado en
+   las tablas agregadas existentes (`data_agrupada.csv`,
+   `data_agrupada_mod.csv`, `data_agrupada_por_cuadrante_semana.csv`),
+   conservando un respaldo del original antes de sobrescribir.
+
+Este es el procedimiento que ya se documenta como oficial en el
+capítulo de metodología (Sección "Agrupación de data consolidada por
+semana y cuadrante", bloque climático en dos etapas).
+
+# 1. Preparación
+
+```{r paquetes}
+library(dplyr)
+library(readr)
+```
+
+## Entorno (.env)
+
+```{r entorno}
+buscar_env <- function() {
+  candidatos <- c(".env", file.path("..", ".env"), file.path("..", "..", ".env"),
+                  file.path("..", "..", "..", ".env"), file.path("..", "..", "..", "..", ".env"))
+  existentes <- candidatos[file.exists(candidatos)]
+  if (length(existentes) == 0) return(NA_character_)
+  existentes[1]
+}
+ruta_env <- buscar_env()
+if (!is.na(ruta_env)) {
+  readRenviron(ruta_env)
+} else {
+  warning("No se encontró un archivo .env. Copia .env.example como .env y ajusta UBICACION_DATA.")
+}
+
+UBICACION_DATA <- Sys.getenv("UBICACION_DATA")
+if (UBICACION_DATA == "") {
+  stop("UBICACION_DATA no esta definida. Verifica el archivo .env.")
+}
+cat(sprintf("UBICACION_DATA: %s\n", UBICACION_DATA))
+```
+
+---
+
+# Parte A — Recalcular el clima en dos etapas (activo-día → cuadrante-día → cuadrante-semana)
+
+Este bloque corresponde al script original
+`fix_clima_cuadrante_semana.py`, traducido a R y usando `UBICACION_DATA`
+en vez de rutas fijas de un usuario específico.
+
+## Insumos
+
+```{r rutas-insumos}
+ruta_consolidada <- file.path(UBICACION_DATA, "data_consolidada.csv")
+ruta_mapeo <- file.path(UBICACION_DATA, "Distribución de Cuadrantes", "ELEMENTO_FALLA_CUADRANTE_800.xls")
+
+ruta_salida_dia <- file.path(UBICACION_DATA, "clima_cuadrante_dia.csv")
+ruta_salida_semana <- file.path(UBICACION_DATA, "clima_cuadrante_semana.csv")
+```
+
+## Columnas climáticas y regla de agregación por variable
+
+No todas las variables climáticas se agregan igual — el promedio
+aplica a temperatura media/humedad/viento, el máximo a temperatura
+máxima y ráfaga de viento, el mínimo a temperatura mínima, y la suma
+solo a precipitación (variable acumulativa).
+
+```{r columnas-clima}
+MEAN_COLS <- c("temperatura_media_c", "humedad_relativa_pct", "velocidad_viento_ms",
+              "precipitacion_total_mm")
+MAX_COLS  <- c("temperatura_maxima_c", "velocidad_viento_ms")
+MIN_COLS  <- c("temperatura_minima_c")
+CLIMA_COLS <- sort(unique(c(MEAN_COLS, MAX_COLS, MIN_COLS)))
+USE_COLS <- c("ELEMENTO", "FECHA_DIA", CLIMA_COLS)
+```
+
+## Mapeo elemento → cuadrante
+
+```{r mapeo-elemento-cuadrante}
+mapeo <- readxl::read_excel(ruta_mapeo)
+col_cuad <- names(mapeo)[grepl("^CUADRANTE_1", toupper(names(mapeo)))][1]
+mapeo <- mapeo %>%
+  select(ELEMENTO, all_of(col_cuad)) %>%
+  distinct(ELEMENTO, .keep_all = TRUE)
+names(mapeo) <- c("ELEMENTO", "id_cuadrante")
+
+cat(sprintf("Mapeo de elementos: %d\n", nrow(mapeo)))
+```
+
+## Etapa 1 — Colapsar activo-día a cuadrante-día (por chunks, panel grande)
+
+El panel consolidado (activo × día) es demasiado grande para cargarlo
+completo en memoria — se procesa por bloques de 3 millones de filas,
+igual que en el script original.
+
+```{r colapsar-cuadrante-dia}
+library(readr)
+
+partes <- list()
+filas_acumuladas <- 0
+i <- 0
+
+callback_chunk <- function(chunk, pos) {
+  chunk <- chunk %>% inner_join(mapeo, by = "ELEMENTO")
+
+  agg <- chunk %>%
+    group_by(id_cuadrante, FECHA_DIA) %>%
+    summarise(
+      across(all_of(MEAN_COLS), list(sum = ~sum(.x, na.rm = TRUE), n = ~sum(!is.na(.x))),
+             .names = "{.col}__{.fn}"),
+      across(all_of(MAX_COLS), ~max(.x, na.rm = TRUE), .names = "{.col}__max"),
+      across(all_of(MIN_COLS), ~min(.x, na.rm = TRUE), .names = "{.col}__min"),
+      .groups = "drop"
+    )
+
+  partes[[length(partes) + 1]] <<- agg
+  filas_acumuladas <<- filas_acumuladas + nrow(chunk)
+  i <<- i + 1
+  cat(sprintf("chunk %d: acumuladas %s filas\n", i, format(filas_acumuladas, big.mark = ",")))
+}
+
+read_csv_chunked(
+  ruta_consolidada,
+  callback = SideEffectChunkCallback$new(callback_chunk),
+  chunk_size = 3000000,
+  col_select = all_of(USE_COLS),
+  show_col_types = FALSE
+)
+
+parcial <- bind_rows(partes)
+```
+
+## Consolidar los bloques (segunda pasada de agregación)
+
+```{r consolidar-bloques}
+dia <- parcial %>%
+  group_by(id_cuadrante, FECHA_DIA) %>%
+  summarise(
+    across(ends_with("__sum"), ~sum(.x, na.rm = TRUE)),
+    across(ends_with("__n"), ~sum(.x, na.rm = TRUE)),
+    across(ends_with("__max"), ~max(.x, na.rm = TRUE)),
+    across(ends_with("__min"), ~min(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+for (c in MEAN_COLS) {
+  suma_col <- paste0(c, "__sum")
+  n_col <- paste0(c, "__n")
+  dia[[c]] <- dia[[suma_col]] / pmax(dia[[n_col]], NA_real_)
+}
+
+dia$temperatura_maxima_c <- dia$temperatura_maxima_c__max
+dia$velocidad_viento_ms_max <- dia$velocidad_viento_ms__max
+dia$temperatura_minima_c <- dia$temperatura_minima_c__min
+dia$n_activos_dia <- dia$precipitacion_total_mm__n
+
+dia <- dia %>%
+  select(id_cuadrante, FECHA_DIA, n_activos_dia,
+         temperatura_media_c, temperatura_maxima_c, temperatura_minima_c,
+         humedad_relativa_pct, velocidad_viento_ms, velocidad_viento_ms_max,
+         precipitacion_total_mm) %>%
+  mutate(FECHA_DIA = as.Date(FECHA_DIA))
+
+write_csv(dia, ruta_salida_dia)
+cat(sprintf("clima cuadrante-dia: %d filas x %d columnas -> %s\n",
+            nrow(dia), ncol(dia), ruta_salida_dia))
+```
+
+## Etapa 2 — De cuadrante-día a cuadrante-semana
+
+```{r cuadrante-dia-a-semana}
+dia <- dia %>%
+  mutate(semana = FECHA_DIA - lubridate::wday(FECHA_DIA, week_start = 1) + 1)
+
+semana <- dia %>%
+  group_by(id_cuadrante, semana) %>%
+  summarise(
+    dias_semana = n_distinct(FECHA_DIA),
+    n_activos_medio = mean(n_activos_dia, na.rm = TRUE),
+    temp_media_semana = mean(temperatura_media_c, na.rm = TRUE),
+    temp_max_semana = max(temperatura_maxima_c, na.rm = TRUE),
+    temp_min_semana = min(temperatura_minima_c, na.rm = TRUE),
+    humedad_media_semana = mean(humedad_relativa_pct, na.rm = TRUE),
+    viento_medio_semana = mean(velocidad_viento_ms, na.rm = TRUE),
+    viento_max_semana = max(velocidad_viento_ms_max, na.rm = TRUE),
+    precip_total_semana = sum(precipitacion_total_mm, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+write_csv(semana, ruta_salida_semana)
+cat(sprintf("clima cuadrante-semana: %d filas x %d columnas -> %s\n",
+            nrow(semana), ncol(semana), ruta_salida_semana))
+
+summary(semana$precip_total_semana)
+```
+
+---
+
+# Parte B — Sustitución retroactiva en las tablas agregadas existentes
+
+Este bloque corresponde al script original `aplicar_correccion_clima.py`.
+**Se conserva como evidencia histórica de la corrección** — solo es
+necesario correrlo si ya existen versiones de `data_agrupada.csv`,
+`data_agrupada_mod.csv` o `data_agrupada_por_cuadrante_semana.csv`
+generadas **antes** de que la Parte A (arriba) quedara integrada
+directamente en el script de construcción del panel
+(`5_union_tabla_panel_semana.R` / `Etapa2_12_union_panel_semana.Rmd`).
+Si el panel se construye desde cero con la Parte A ya corregida, este
+bloque **no debería ser necesario**.
+
+```{r sustitucion-retroactiva, eval=FALSE}
+# ------------------------------------------------------------------
+# Se deja con eval=FALSE por defecto: es un parche retroactivo sobre
+# archivos que pueden ya no existir en su version "inflada" si el
+# pipeline se corre desde cero con la Parte A. Activar manualmente
+# (eval=TRUE) solo si se necesita reparar tablas generadas antes de
+# la correccion.
+# ------------------------------------------------------------------
+
+objetivos <- c("data_agrupada.csv", "data_agrupada_mod.csv",
+               "data_agrupada_por_cuadrante_semana.csv")
+
+clima_cols <- c("temp_media_semana", "temp_max_semana", "temp_min_semana",
+                "humedad_media_semana", "viento_medio_semana", "viento_max_semana",
+                "precip_total_semana")
+
+clima <- read_csv(ruta_salida_semana, show_col_types = FALSE) %>%
+  select(id_cuadrante, semana, all_of(clima_cols))
+
+for (nombre in objetivos) {
+  ruta <- file.path(UBICACION_DATA, nombre)
+
+  if (!file.exists(ruta)) {
+    cat(sprintf("omitido (no existe): %s\n", nombre))
+    next
+  }
+
+  # Respaldo del archivo original (con el bloque climatico inflado),
+  # solo si aun no existe un respaldo previo
+  respaldo <- sub("\\.csv$", "_precip_inflada.csv", ruta)
+  if (!file.exists(respaldo)) {
+    file.copy(ruta, respaldo)
+  }
+
+  df <- read_csv(ruta, show_col_types = FALSE)
+  orden <- names(df)
+  antes <- median(df$precip_total_semana, na.rm = TRUE)
+
+  df <- df %>%
+    select(-any_of(clima_cols)) %>%
+    left_join(clima, by = c("id_cuadrante", "semana")) %>%
+    select(all_of(orden))
+
+  faltan <- sum(is.na(df$precip_total_semana))
+  write_csv(df, ruta)
+
+  cat(sprintf("%s: %d filas x %d columnas, mediana precip %.1f -> %.2f mm, NA=%d\n",
+              nombre, nrow(df), ncol(df), antes, median(df$precip_total_semana, na.rm = TRUE), faltan))
+}
+```
+
+---
+
+# Conclusión
+
+La agregación climática correcta requiere colapsar primero la
+replicación por activo (Etapa 1: activo-día → cuadrante-día) antes de
+resumir a nivel semanal (Etapa 2). Omitir el primer paso deja el
+acumulado de precipitación (y el resto del bloque climático)
+multiplicado por el número de activos del cuadrante — un sesgo
+multiplicativo que varía entre cuadrantes y distorsiona cualquier
+comparación territorial. Esta es la lógica ya incorporada como
+procedimiento oficial en el capítulo de metodología de la tesis.

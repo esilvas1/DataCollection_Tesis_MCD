@@ -11,7 +11,7 @@
 
 <meta name="author" content="Cindy Carolina Lugo Rozo" />
 
-<meta name="date" content="2026-09-09" />
+<meta name="date" content="2026-09-14" />
 
 <title>Guía maestra del proyecto — Panel semana x cuadrante SAIDI/SAIFI</title>
 
@@ -1482,7 +1482,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Guía maestra del proyecto — Panel semana x
 cuadrante SAIDI/SAIFI</h1>
 <h4 class="author">Cindy Carolina Lugo Rozo</h4>
-<h4 class="date">2026-09-09</h4>
+<h4 class="date">2026-09-14</h4>
 
 </div>
 
@@ -2643,9 +2643,9 @@ Etapa 6 — Cierre y documentacion</code></pre>
 <div id="archivos-de-la-línea-d_mod-clasificación-y-decisiones-tomadas" class="section level2" number="13.3">
 <h2><span class="header-section-number">13.3</span> Archivos de la línea
 D_mod — clasificación y decisiones tomadas</h2>
-<div id="etapa-1-extracción-código-fuente-no-reproducible-como-.rmd-propio" class="section level3" number="13.3.1">
+<div id="etapa-1-extracción" class="section level3" number="13.3.1">
 <h3><span class="header-section-number">13.3.1</span> Etapa 1 —
-Extracción (código fuente, no reproducible como .Rmd propio)</h3>
+Extracción</h3>
 <table>
 <colgroup>
 <col width="33%" />
@@ -2661,12 +2661,20 @@ Extracción (código fuente, no reproducible como .Rmd propio)</h3>
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>informe_recoleccion.Rmd</code></td>
+<td><strong>Fuente reproducible canónica</strong> del capítulo de
+metodología (Etapas 1-2): objetivo, sistemas y fuentes consultadas,
+lógica de extracción BRAE/OMS SPARD/OMS SP7/GTECH/NASA POWER</td>
+<td>✅ <strong>Documento de referencia</strong> — es el
+<code>.Rmd</code> que genera el texto oficial ya redactado en LaTeX</td>
+</tr>
+<tr class="even">
 <td><code>Script.sql</code></td>
 <td>Extracción GIS (GTECH: transformadores, reconectadores,
 interruptores, cuchillas, aisladores)</td>
 <td>Mantener como apéndice de código SQL</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>Collection_Script.sqlnb</code>,
 <code>tabla_eventos.sqlnb</code>,
 <code>tabla_elemento_fallado_1.sqlnb</code>,
@@ -2674,23 +2682,23 @@ interruptores, cuchillas, aisladores)</td>
 <td>Notebooks SQL de extracción BRAE/OMS</td>
 <td>Mantener como apéndice</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>sqlldr.par</code></td>
 <td>Parámetros SQL*Loader (carga masiva Oracle)</td>
 <td>Mantener como evidencia técnica</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>consulta.py</code>, <code>consulta_por_item.py</code></td>
 <td>Extracción NASA POWER (clima)</td>
 <td>Mantener — documenta la fuente climática pendiente en
 <code>temp.md</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>leersharepoint.ipynb</code></td>
 <td>Acceso a documentos institucionales</td>
 <td>Mantener</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>consultaNASA_optimizada_elemento_grilla.py</code></td>
 <td>Versión con grilla NASA (optimización de consultas)</td>
 <td>⚠️ <strong>Archivar — es un script de prueba</strong>
@@ -2698,7 +2706,7 @@ interruptores, cuchillas, aisladores)</td>
 comentado). No incluir en la entrega final salvo que se confirme uso
 real a escala completa.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>prueba.py</code></td>
 <td><code>print(&quot;hola mundo&quot;)</code></td>
 <td>Descartar, no forma parte de la tesis</td>
@@ -2739,6 +2747,38 @@ cuadrante)</td>
 agregan a cuadrante-semana</td>
 </tr>
 <tr class="odd">
+<td><code>creacion_data_consolidada.R</code>,
+<code>Consolidada.Rmd</code></td>
+<td>Construcción del panel activo×día — <strong>posible redundancia con
+<code>informe_recoleccion.Rmd</code></strong></td>
+<td>⚠️ <strong>Pendiente de confirmar con Edwin cuál es la versión
+vigente</strong> — no archivar hasta confirmar; si
+<code>informe_recoleccion.Rmd</code> ya cubre esta lógica de forma más
+formal, estos dos quedan como historial de desarrollo</td>
+</tr>
+<tr class="even">
+<td><code>consolidado_data_mod.Rmd</code></td>
+<td>Construcción de <code>D_mod</code> (filtro 2024-2025, enriquecido
+con usuarios/estrato/activos)</td>
+<td>Activo — corresponde a “Materialización de D_mod” del capítulo
+oficial</td>
+</tr>
+<tr class="odd">
+<td><code>CONSULTAS.R</code></td>
+<td>Consultas exploratorias ad-hoc sobre
+<code>data_consolidada</code>/<code>data_agrupada_mod</code></td>
+<td>Apoyo, no forma parte del flujo reproducible principal</td>
+</tr>
+<tr class="even">
+<td><code>Etapa2_02_correccion_clima.Rmd</code></td>
+<td>✅ Convertido a <code>.Rmd</code> (fusión de
+<code>fix_clima_cuadrante_semana.py</code> +
+<code>aplicar_correccion_clima.py</code>), usa <code>.env</code></td>
+<td>Activo — Parte A (recálculo correcto) es el procedimiento canónico;
+Parte B (parche retroactivo) queda con <code>eval=FALSE</code>, solo
+para reparar tablas generadas antes de la corrección</td>
+</tr>
+<tr class="odd">
 <td><code>Etapa2_10_cargue_nasa_semana.Rmd</code></td>
 <td>✅ Convertido a <code>.Rmd</code>, usa <code>.env</code>, sin rutas
 absolutas</td>
@@ -2755,44 +2795,87 @@ absolutas</td>
 GIF opcional (<code>eval=FALSE</code>)</td>
 <td>Activo — produce <code>panel_semana.rds</code></td>
 </tr>
-<tr class="even">
-<td><code>fix_clima_cuadrante_semana.py</code></td>
-<td>Corrige el sesgo multiplicativo de precipitación (suma por
-activo-día)</td>
-<td>✅ <strong>Mantener como código canónico</strong> — implementa la
-agregación en dos etapas ya descrita como oficial en el capítulo de
-metodología</td>
-</tr>
-<tr class="odd">
-<td><code>aplicar_correccion_clima.py</code></td>
-<td>Parcha retroactivamente <code>data_agrupada*.csv</code> ya
-generados</td>
-<td>Archivar como evidencia histórica del bug — no debe ser parte del
-flujo reproducible si <code>fix_clima_cuadrante_semana.py</code> ya está
-integrado en la construcción desde cero</td>
-</tr>
 </tbody>
 </table>
 </div>
 <div id="etapa-3-eda" class="section level3" number="13.3.3">
 <h3><span class="header-section-number">13.3.3</span> Etapa 3 — EDA</h3>
-<p>Documentos de Edwin ya identificados en sesiones anteriores:
-<code>identificacion_datos_faltantes.Rmd</code>,
-<code>missing_values_grouped.Rmd</code>,
-<code>detection_outliers.Rmd</code>, <code>outliers_gruped.Rmd</code>,
-<code>calculo_estadistico_descriptivo.Rmd</code>,
-<code>distribucion_variables.Rmd</code>,
-<code>analisis_temporal_eventos.Rmd</code>,
-<code>emparejamiento_eventos.Rmd</code>,
-<code>identificacion_patrones.Rmd</code>,
-<code>analisis_correlacion.Rmd</code>,
-<code>analisis_multivariado.Rmd</code>,
-<code>segmentacion_exploratoria.Rmd</code>, <code>EDA.Rmd</code>
-(entregable consolidado).</p>
-<p><code>estadisticos_clima_corregido.py</code> — <strong>pendiente
-confirmar con Edwin</strong>: ¿es verificación cruzada tras el fix de
-precipitación, o duplica el mismo análisis ya hecho en R? No archivar
-hasta confirmar.</p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Archivo</th>
+<th>Sección oficial</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>identificacion_datos_faltantes.Rmd</code>,
+<code>missing_values_grouped.Rmd</code></td>
+<td>5.3.1 Datos faltantes</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="even">
+<td><code>detection_outliers.Rmd</code>,
+<code>outliers_gruped.Rmd</code></td>
+<td>5.3.2 Valores extremos</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="odd">
+<td><code>calculo_estadistico_descriptivo.Rmd</code></td>
+<td>5.3.3 Estadísticos descriptivos</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="even">
+<td><code>distribucion_variables.Rmd</code></td>
+<td>5.3.4 Distribución de variables</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="odd">
+<td><code>analisis_temporal_eventos.Rmd</code>,
+<code>emparejamiento_eventos.Rmd</code></td>
+<td>5.3.5 Análisis temporal</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="even">
+<td><code>identificacion_patrones.Rmd</code></td>
+<td>5.3.6 Patrones y tendencias</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="odd">
+<td><code>analisis_correlacion.Rmd</code></td>
+<td>5.3.7 Correlación y asociación</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="even">
+<td><code>analisis_multivariado.Rmd</code></td>
+<td>5.3.8 Relaciones multivariadas</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="odd">
+<td><code>segmentacion_exploratoria.Rmd</code></td>
+<td>5.3.9 Segmentación exploratoria</td>
+<td>✅ Activo</td>
+</tr>
+<tr class="even">
+<td><code>EDA.Rmd</code></td>
+<td>Entregable ejecutivo consolidado</td>
+<td>✅ Activo — síntesis de 5.3.1 a 5.3.9</td>
+</tr>
+<tr class="odd">
+<td><code>estadisticos_clima_corregido.py</code></td>
+<td>—</td>
+<td>⚠️ <strong>Pendiente confirmar con Edwin</strong>: ¿verificación
+cruzada tras el fix de precipitación, o duplica el mismo análisis ya
+hecho en R? No archivar hasta confirmar.</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="etapa-4-ingeniería-de-variables" class="section level3" number="13.3.4">
 <h3><span class="header-section-number">13.3.4</span> Etapa 4 —
@@ -2815,35 +2898,22 @@ Ingeniería de variables</h3>
 <td><code>asociacion_depuracion_cuantitativas.Rmd</code></td>
 <td>Depuración formal (27→13 variables) sobre <code>D_mod</code> con
 fórmula oficial</td>
-<td>Activo — es la versión que cuenta metodológicamente</td>
+<td>✅ Activo — es la versión que cuenta metodológicamente</td>
 </tr>
 <tr class="even">
 <td><code>Etapa4_01_feature_engineering_general.Rmd</code></td>
-<td>✅ Convertido a <code>.Rmd</code>. <strong>Usa SAIFI/SAIDI
+<td>Convertido a <code>.Rmd</code>. <strong>Usa SAIFI/SAIDI
 provisionales</strong>
 (<code>n_eventos</code>/<code>duracion_total</code> sin
 denominador)</td>
-<td>Activo, pero marcado con nota de alcance explícita — sus resultados
-no son los oficiales de SAIDI/SAIFI</td>
+<td>✅ Activo, con nota de alcance explícita — sus resultados no son los
+oficiales de SAIDI/SAIFI</td>
 </tr>
 <tr class="odd">
 <td><code>Etapa4_02_rezagos_SAIDI.Rmd</code></td>
-<td>✅ Convertido a <code>.Rmd</code>. Misma limitación que el
+<td>Convertido a <code>.Rmd</code>. Misma limitación que el
 anterior</td>
-<td>Activo con la misma nota de alcance</td>
-</tr>
-<tr class="even">
-<td><code>6_feature_graf_procesamiento.R</code>,
-<code>7_feature_rezagos_SAIDI.R</code></td>
-<td>Versiones <code>.R</code> originales de los dos anteriores</td>
-<td>Superados por sus versiones <code>.Rmd</code> — no mantener ambos
-formatos</td>
-</tr>
-<tr class="odd">
-<td><code>12_feature_rezagos_SAIFI.R</code></td>
-<td>Rezagos para SAIFI (numeración interna “Capítulo 7”, duplicada)</td>
-<td>Pendiente de convertir a <code>.Rmd</code> con el mismo
-tratamiento</td>
+<td>✅ Activo con la misma nota de alcance</td>
 </tr>
 </tbody>
 </table>
@@ -2851,38 +2921,14 @@ tratamiento</td>
 <div id="etapa-5-modelado-predictivo-línea-d_mod" class="section level3" number="13.3.5">
 <h3><span class="header-section-number">13.3.5</span> Etapa 5 — Modelado
 predictivo (línea D_mod)</h3>
-<table>
-<colgroup>
-<col width="50%" />
-<col width="50%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>Archivo</th>
-<th>Decisión</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>8_modelacion_SAIDI_reg_lineal.R</code></td>
-<td>Pendiente convertir a <code>.Rmd</code>; numerar
-<code>Etapa5_...</code> una vez resuelta la decisión de convivencia con
-la línea geoespacial</td>
-</tr>
-<tr class="even">
-<td><code>9_modelacion_SAIDI_RF.R</code></td>
-<td>Igual</td>
-</tr>
-<tr class="odd">
-<td><code>13_modelacion_panel_poisson_SAIFI.R</code></td>
-<td>Igual</td>
-</tr>
-<tr class="even">
-<td><code>14_modelacion_SAIFI_RF.R</code></td>
-<td>Igual</td>
-</tr>
-</tbody>
-</table>
+<p><strong>Los 4 scripts originales
+(<code>8_modelacion_SAIDI_reg_lineal.R</code>,
+<code>9_modelacion_SAIDI_RF.R</code>,
+<code>13_modelacion_panel_poisson_SAIFI.R</code>,
+<code>14_modelacion_SAIFI_RF.R</code>) fueron eliminados por decisión
+del equipo.</strong> La Etapa 5 de la línea D_mod queda, por ahora,
+<strong>sin contenido de modelación propio</strong> — ver la resolución
+del pendiente #00b más abajo.</p>
 <hr />
 <ol start="0" style="list-style-type: decimal">
 <li><strong><del>Sobrescritura del panel combinado entre
@@ -2901,18 +2947,19 @@ multiplicar). Confirmar si esto es una discrepancia real (en cuyo caso
 el R²=0.907 y las pruebas de robustez de la Parte 9 del modelo tendrían
 que rehacerse) o si son deliberadamente dos definiciones distintas para
 dos líneas de trabajo distintas, y documentarlo explícitamente. 00b.
-<strong>🚨 CRÍTICO — Decidir convivencia de las dos líneas de
-modelado.</strong> La línea geoespacial (documentos
-<code>Etapa5_01/02</code> o
-<code>modelo_SAIDI/SAIFI_cuadrantes_reales.Rmd</code>) y la línea D_mod
-(<code>8/9/13/14_modelacion_*.R</code>, Etapa 5 oficial) responden al
-mismo objetivo con datos y métodos distintos. Decidir con el director si
-la tesis presenta ambas como comparación metodológica, o si una es la
-línea principal y la otra queda como anexo/robustez — esta decisión
-bloquea la numeración final de todo el Capítulo 5. 00c.
-<strong>Verificar <code>estadisticos_clima_corregido.py</code> con
-Edwin</strong> — ¿es verificación cruzada tras el fix de precipitación,
-o duplica
+<strong><del>Decidir convivencia de las dos líneas de modelado</del> —
+Resuelto por eliminación.</strong> Los 4 scripts de modelado D_mod
+(<code>8/9/13/14_modelacion_*.R</code>) fueron eliminados por decisión
+del equipo. En consecuencia, <strong>la línea geoespacial
+(<code>Etapa5_01_modelo_SAIDI_espacial.Rmd</code>,
+<code>Etapa5_02_modelo_SAIFI_espacial.Rmd</code>) queda como la única
+especificación de modelado disponible para llenar el Capítulo 5
+oficial</strong> — ya verificada con 4 pruebas de robustez (R²=0.900 en
+SAIDI, R²=0.837 en SAIFI). Si el equipo decide más adelante reconstruir
+un enfoque de modelado sobre <code>D_mod</code> como comparación
+metodológica, deberá hacerse desde cero. 00c. <strong>Verificar
+<code>estadisticos_clima_corregido.py</code> con Edwin</strong> — ¿es
+verificación cruzada tras el fix de precipitación, o duplica
 <code>calculo_estadistico_descriptivo.Rmd</code>/<code>analisis_correlacion.Rmd</code>/
 <code>analisis_multivariado.Rmd</code>? Decide si se archiva o se
 conserva como apéndice de verificación.</li>

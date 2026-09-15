@@ -664,10 +664,11 @@ Etapa 6 — Cierre y documentacion
 
 ## Archivos de la línea D_mod — clasificación y decisiones tomadas
 
-### Etapa 1 — Extracción (código fuente, no reproducible como .Rmd propio)
+### Etapa 1 — Extracción
 
 | Archivo | Rol | Decisión |
 |---|---|---|
+| `informe_recoleccion.Rmd` | **Fuente reproducible canónica** del capítulo de metodología (Etapas 1-2): objetivo, sistemas y fuentes consultadas, lógica de extracción BRAE/OMS SPARD/OMS SP7/GTECH/NASA POWER | ✅ **Documento de referencia** — es el `.Rmd` que genera el texto oficial ya redactado en LaTeX |
 | `Script.sql` | Extracción GIS (GTECH: transformadores, reconectadores, interruptores, cuchillas, aisladores) | Mantener como apéndice de código SQL |
 | `Collection_Script.sqlnb`, `tabla_eventos.sqlnb`, `tabla_elemento_fallado_1.sqlnb`, `tipo_elemento.sqlnb` | Notebooks SQL de extracción BRAE/OMS | Mantener como apéndice |
 | `sqlldr.par` | Parámetros SQL*Loader (carga masiva Oracle) | Mantener como evidencia técnica |
@@ -682,45 +683,46 @@ Etapa 6 — Cierre y documentacion
 |---|---|---|
 | `1_Raw_Data_Proc.R` | Prototipo temprano (une `Eventos_BRAE_part1-4.csv`, rutas absolutas, sin `.env`) | ⚠️ **Archivar como historial de desarrollo** — superado por la extracción SQL directa (`BRAE.QA_TFDDREGISTRO`) del capítulo oficial |
 | `2_cargue_tablas__y_union.R` | Intermedio (agrega por `ELEMENTO_FALLADO`, no por cuadrante) | ⚠️ **Archivar** — superado por los scripts 3-5, que ya agregan a cuadrante-semana |
+| `creacion_data_consolidada.R`, `Consolidada.Rmd` | Construcción del panel activo×día — **posible redundancia con `informe_recoleccion.Rmd`** | ⚠️ **Pendiente de confirmar con Edwin cuál es la versión vigente** — no archivar hasta confirmar; si `informe_recoleccion.Rmd` ya cubre esta lógica de forma más formal, estos dos quedan como historial de desarrollo |
+| `consolidado_data_mod.Rmd` | Construcción de `D_mod` (filtro 2024-2025, enriquecido con usuarios/estrato/activos) | Activo — corresponde a "Materialización de D_mod" del capítulo oficial |
+| `CONSULTAS.R` | Consultas exploratorias ad-hoc sobre `data_consolidada`/`data_agrupada_mod` | Apoyo, no forma parte del flujo reproducible principal |
+| `Etapa2_02_correccion_clima.Rmd` | ✅ Convertido a `.Rmd` (fusión de `fix_clima_cuadrante_semana.py` + `aplicar_correccion_clima.py`), usa `.env` | Activo — Parte A (recálculo correcto) es el procedimiento canónico; Parte B (parche retroactivo) queda con `eval=FALSE`, solo para reparar tablas generadas antes de la corrección |
 | `Etapa2_10_cargue_nasa_semana.Rmd` | ✅ Convertido a `.Rmd`, usa `.env`, sin rutas absolutas | Activo — produce `clima_semana_spatial.rds` |
 | `Etapa2_11_cargue_eventos_semana.Rmd` | ✅ Convertido a `.Rmd`, usa `.env` | Activo — produce `eventos_semana_spatial.rds` |
 | `Etapa2_12_union_panel_semana.Rmd` | ✅ Convertido a `.Rmd`, usa `.env`, animación GIF opcional (`eval=FALSE`) | Activo — produce `panel_semana.rds` |
-| `fix_clima_cuadrante_semana.py` | Corrige el sesgo multiplicativo de precipitación (suma por activo-día) | ✅ **Mantener como código canónico** — implementa la agregación en dos etapas ya descrita como oficial en el capítulo de metodología |
-| `aplicar_correccion_clima.py` | Parcha retroactivamente `data_agrupada*.csv` ya generados | Archivar como evidencia histórica del bug — no debe ser parte del flujo reproducible si `fix_clima_cuadrante_semana.py` ya está integrado en la construcción desde cero |
 
 ### Etapa 3 — EDA
 
-Documentos de Edwin ya identificados en sesiones anteriores:
-`identificacion_datos_faltantes.Rmd`, `missing_values_grouped.Rmd`,
-`detection_outliers.Rmd`, `outliers_gruped.Rmd`,
-`calculo_estadistico_descriptivo.Rmd`, `distribucion_variables.Rmd`,
-`analisis_temporal_eventos.Rmd`, `emparejamiento_eventos.Rmd`,
-`identificacion_patrones.Rmd`, `analisis_correlacion.Rmd`,
-`analisis_multivariado.Rmd`, `segmentacion_exploratoria.Rmd`, `EDA.Rmd`
-(entregable consolidado).
-
-`estadisticos_clima_corregido.py` — **pendiente confirmar con Edwin**:
-¿es verificación cruzada tras el fix de precipitación, o duplica el
-mismo análisis ya hecho en R? No archivar hasta confirmar.
+| Archivo | Sección oficial | Estado |
+|---|---|---|
+| `identificacion_datos_faltantes.Rmd`, `missing_values_grouped.Rmd` | 5.3.1 Datos faltantes | ✅ Activo |
+| `detection_outliers.Rmd`, `outliers_gruped.Rmd` | 5.3.2 Valores extremos | ✅ Activo |
+| `calculo_estadistico_descriptivo.Rmd` | 5.3.3 Estadísticos descriptivos | ✅ Activo |
+| `distribucion_variables.Rmd` | 5.3.4 Distribución de variables | ✅ Activo |
+| `analisis_temporal_eventos.Rmd`, `emparejamiento_eventos.Rmd` | 5.3.5 Análisis temporal | ✅ Activo |
+| `identificacion_patrones.Rmd` | 5.3.6 Patrones y tendencias | ✅ Activo |
+| `analisis_correlacion.Rmd` | 5.3.7 Correlación y asociación | ✅ Activo |
+| `analisis_multivariado.Rmd` | 5.3.8 Relaciones multivariadas | ✅ Activo |
+| `segmentacion_exploratoria.Rmd` | 5.3.9 Segmentación exploratoria | ✅ Activo |
+| `EDA.Rmd` | Entregable ejecutivo consolidado | ✅ Activo — síntesis de 5.3.1 a 5.3.9 |
+| `estadisticos_clima_corregido.py` | — | ⚠️ **Pendiente confirmar con Edwin**: ¿verificación cruzada tras el fix de precipitación, o duplica el mismo análisis ya hecho en R? No archivar hasta confirmar. |
 
 ### Etapa 4 — Ingeniería de variables
 
 | Archivo | Estado | Decisión |
 |---|---|---|
-| `asociacion_depuracion_cuantitativas.Rmd` | Depuración formal (27→13 variables) sobre `D_mod` con fórmula oficial | Activo — es la versión que cuenta metodológicamente |
-| `Etapa4_01_feature_engineering_general.Rmd` | ✅ Convertido a `.Rmd`. **Usa SAIFI/SAIDI provisionales** (`n_eventos`/`duracion_total` sin denominador) | Activo, pero marcado con nota de alcance explícita — sus resultados no son los oficiales de SAIDI/SAIFI |
-| `Etapa4_02_rezagos_SAIDI.Rmd` | ✅ Convertido a `.Rmd`. Misma limitación que el anterior | Activo con la misma nota de alcance |
-| `6_feature_graf_procesamiento.R`, `7_feature_rezagos_SAIDI.R` | Versiones `.R` originales de los dos anteriores | Superados por sus versiones `.Rmd` — no mantener ambos formatos |
-| `12_feature_rezagos_SAIFI.R` | Rezagos para SAIFI (numeración interna "Capítulo 7", duplicada) | Pendiente de convertir a `.Rmd` con el mismo tratamiento |
+| `asociacion_depuracion_cuantitativas.Rmd` | Depuración formal (27→13 variables) sobre `D_mod` con fórmula oficial | ✅ Activo — es la versión que cuenta metodológicamente |
+| `Etapa4_01_feature_engineering_general.Rmd` | Convertido a `.Rmd`. **Usa SAIFI/SAIDI provisionales** (`n_eventos`/`duracion_total` sin denominador) | ✅ Activo, con nota de alcance explícita — sus resultados no son los oficiales de SAIDI/SAIFI |
+| `Etapa4_02_rezagos_SAIDI.Rmd` | Convertido a `.Rmd`. Misma limitación que el anterior | ✅ Activo con la misma nota de alcance |
 
 ### Etapa 5 — Modelado predictivo (línea D_mod)
 
-| Archivo | Decisión |
-|---|---|
-| `8_modelacion_SAIDI_reg_lineal.R` | Pendiente convertir a `.Rmd`; numerar `Etapa5_...` una vez resuelta la decisión de convivencia con la línea geoespacial |
-| `9_modelacion_SAIDI_RF.R` | Igual |
-| `13_modelacion_panel_poisson_SAIFI.R` | Igual |
-| `14_modelacion_SAIFI_RF.R` | Igual |
+**Los 4 scripts originales (`8_modelacion_SAIDI_reg_lineal.R`,
+`9_modelacion_SAIDI_RF.R`, `13_modelacion_panel_poisson_SAIFI.R`,
+`14_modelacion_SAIFI_RF.R`) fueron eliminados por decisión del
+equipo.** La Etapa 5 de la línea D_mod queda, por ahora, **sin
+contenido de modelación propio** — ver la resolución del pendiente #00b
+más abajo.
 
 ---
 
@@ -739,14 +741,17 @@ mismo análisis ya hecho en R? No archivar hasta confirmar.
     y las pruebas de robustez de la Parte 9 del modelo tendrían que
     rehacerse) o si son deliberadamente dos definiciones distintas para
     dos líneas de trabajo distintas, y documentarlo explícitamente.
-00b. **🚨 CRÍTICO — Decidir convivencia de las dos líneas de modelado.**
-    La línea geoespacial (documentos `Etapa5_01/02` o
-    `modelo_SAIDI/SAIFI_cuadrantes_reales.Rmd`) y la línea D_mod
-    (`8/9/13/14_modelacion_*.R`, Etapa 5 oficial) responden al mismo
-    objetivo con datos y métodos distintos. Decidir con el director si
-    la tesis presenta ambas como comparación metodológica, o si una es
-    la línea principal y la otra queda como anexo/robustez — esta
-    decisión bloquea la numeración final de todo el Capítulo 5.
+00b. **~~Decidir convivencia de las dos líneas de modelado~~ — Resuelto
+    por eliminación.** Los 4 scripts de modelado D_mod
+    (`8/9/13/14_modelacion_*.R`) fueron eliminados por decisión del
+    equipo. En consecuencia, **la línea geoespacial
+    (`Etapa5_01_modelo_SAIDI_espacial.Rmd`,
+    `Etapa5_02_modelo_SAIFI_espacial.Rmd`) queda como la única
+    especificación de modelado disponible para llenar el Capítulo 5
+    oficial** — ya verificada con 4 pruebas de robustez (R²=0.900 en
+    SAIDI, R²=0.837 en SAIFI). Si el equipo decide más adelante
+    reconstruir un enfoque de modelado sobre `D_mod` como comparación
+    metodológica, deberá hacerse desde cero.
 00c. **Verificar `estadisticos_clima_corregido.py` con Edwin** — ¿es
     verificación cruzada tras el fix de precipitación, o duplica
     `calculo_estadistico_descriptivo.Rmd`/`analisis_correlacion.Rmd`/
