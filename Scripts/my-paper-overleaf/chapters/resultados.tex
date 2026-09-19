@@ -1,36 +1,135 @@
-%--------------------------------------------------
 
-\section{Etapa 1}
+
+\label{sec:resultados}
+
+
+\section{Etapa 1 – Resultados de la extracción de datos}
 \label{sec:resultados-etapa1}
 
+La extracción documentada en la Sección~\ref{sec:metodología-etapa1} consolidó seis fuentes complementarias (BRAE, BRAE~+~QA\_TTC1, OMS SPARD, OMS SP7, GIS GTECH y NASA POWER), cuyo linaje de datos se resume en la Tabla~\ref{tab:data_lineage}. El resultado directo de esta etapa es la base transaccional de eventos de interrupción del sistema (\texttt{tabla\_eventos}), con $95{.}280$ eventos depurados tras el filtrado regulatorio del periodo 2021--2025, la exclusión de registros no válidos y la eliminación de duplicados. En paralelo, la extracción climática de NASA POWER produjo una serie diaria de $83{.}5$ millones de registros meteorológicos, con cobertura completa y homogénea sobre toda el área de concesión (Sección~\ref{sec:evidencia_calidad_fuentes}).
+
+Cada fuente quedó sujeta a reglas explícitas y verificables de filtrado y homologación (Tabla~\ref{tab:data_lineage}), lo que garantiza que el insumo inicial para la integración de la Etapa~2 sea trazable y reproducible: la totalidad del proceso de extracción está documentado mediante consultas SQL y fragmentos de código reproducible (Apéndice~\ref{app:codigo}).
 
 
-\section{Etapa 2}
+\section{Etapa 2 – Resultados de la integración y depuración de datos}
 \label{sec:resultados-etapa2}
 
+La integración secuencial descrita en la Sección~\ref{sec:metodología-etapa2} produjo dos tablas base. La primera, con grano activo eléctrico~$\times$~día (Tabla~\ref{tab:muestra_consolidado_preview}), alcanza $N = 87{.}007{.}074$ observaciones ($47{.}649$ activos únicos $\times$ $1{.}826$ días), preservando trazabilidad completa entre el inventario georreferenciado y el calendario de análisis 2021--2025. La segunda, agregada a grano cuadrante~$\times$~semana sobre la malla institucional de $800$ cuadrantes (Figura~\ref{fig:cuadrantes_800}), alcanza $N_{\mathrm{agr}} = 90{.}128$ observaciones (Tabla~\ref{tab:muestra_semanal_preview}) para el horizonte completo 2021--2025.
+
+Un hallazgo relevante de esta etapa es un sesgo sistemático detectado al contrastar el conteo anual de eventos de la base BRAE con la suma territorial de eventos de la tabla agregada durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). El diagnóstico descarta la ausencia de datos como causa —el campo \texttt{COMPONENTE\_FALLADO} está completo en el $100$~\% de los registros BRAE— y la atribuye a una incompatibilidad entre esquemas de codificación al cruzar eventos con el inventario georreferenciado. Este hallazgo, que no era anticipable antes del análisis, llevó a delimitar el subconjunto de datos con cobertura de emparejamiento confiable como el dataset de modelado $D_{\mathrm{mod}}$: $36{.}120$ filas cuadrante--semana, $105$ semanas y $33{.}410$ eventos georreferenciados en el periodo 2024--2025 ($15{.}211$ en 2024 y $18{.}199$ en 2025), que es el que efectivamente alimenta el modelado de la Etapa~5. El horizonte completo 2021--2025 ($D_{\mathrm{EDA}}$) se conserva para el análisis exploratorio de la Etapa~3.
+
+La confiabilidad institucional de las fuentes integradas está respaldada por la arquitectura de gobernanza de datos de CENS y por la documentación pública y versionada de NASA POWER (Sección~\ref{sec:evidencia_calidad_fuentes}), lo que sustenta la validez de ambas tablas base para las etapas siguientes.
 
 
-
-\section{Etapa 3}
+\section{Etapa 3 – Resultados del análisis descriptivo y exploratorio}
 \label{sec:resultados-etapa3}
 
+El diagnóstico de completitud sobre la tabla agregada ($N_{\mathrm{agr}} = 90{.}128$) no encontró valores faltantes: las $16$ variables registran $0$~\% de datos ausentes y ninguna fila queda incompleta (Sección~\ref{sec:identificacion_datos_faltantes}).
+
+El análisis de valores extremos (Sección~\ref{sec:identificacion_valores_extremos}) muestra que las variables climáticas diarias tienen baja dispersión relativa (CV entre $0{.}16$ y $0{.}20$) y una proporción marginal de extremos bajo la regla de Tukey, con la precipitación como excepción esperada (CV $=2{.}12$; Tabla~\ref{tab:extremos_clima}). En los días con evento, la severidad y la continuidad muestran alta dispersión relativa y colas pesadas: la duración de interrupción tiene una mediana de $417$ minutos pero un máximo de $332{.}395$ minutos (CV $=3{.}56$), y el número de usuarios afectados una mediana de $23$ pero un máximo de $34{.}622$ (CV $=3{.}97$; Tabla~\ref{tab:extremos_evento}). Estos extremos se marcan para revisión y tratamiento en la Etapa~4, sin excluirse en esta etapa.
+
+El análisis de correlación identificó redundancia operativa: los pares \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho=0{.}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho=0{.}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho=0{.}97$) presentan la mayor asociación del panel (Sección~\ref{sec:analisis_correlacion_asociacion}), en buena parte por construcción compartida desde la misma tabla de eventos. El diagnóstico de multicolinealidad climática (VIF) confirmó inflación severa en el bloque completo de variables meteorológicas (máximo VIF $=43{.}92$ en temperatura media), que se redujo a valores aceptables (máximo $7{.}21$) al restringir el bloque a precipitación, temperatura media, humedad media y viento medio (Sección~\ref{sec:evaluacion_multivariada}).
+
+En conjunto, estos hallazgos —señal climática contemporánea débil, redundancia en los bloques operativo y climático, y la taxonomía de tres grupos de variables (predictoras \emph{ex ante}, respuestas y variables de impacto posterior; Sección~\ref{sec:metodos-modelos})— definen los criterios de selección de variables aplicados en la ingeniería de la Etapa~4.
 
 
-
-\section{Etapa 4}
+\section{Etapa 4 – Resultados de la ingeniería de variables}
 \label{sec:resultados-etapa4}
 
+El resultado de esta etapa es el panel analítico final de modelado: un conjunto de predictoras restringido a variables disponibles \emph{ex ante} de la semana a pronosticar (clima rezagado, histórico de eventos, características del cuadrante y estacionalidad), con las variables de impacto posterior (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) excluidas explícitamente como predictoras contemporáneas (Sección~\ref{sec:enriquecimiento_panel_cuadrante}). Se incorporaron rezagos espaciales de vecinos (\texttt{SAIDI\_vecinos\_lag1}, \texttt{SAIFI\_vecinos\_lag1}, \texttt{n\_eventos\_vecinos}, \texttt{ndvi\_vecinos}) mediante contigüidad \emph{queen}, y transformaciones logarítmicas $\log(1+\mathrm{SAIDI})$ y $\log(1+\mathrm{SAIFI})$ para estabilizar la varianza de las variables respuesta.
+
+Este panel constituye el insumo directo para el entrenamiento y la validación de los modelos de la Etapa~5.
 
 
-\section{Etapa 5}
+\section{Etapa 5 – Resultados del modelado predictivo y evaluativo}
 \label{sec:resultados-etapa5}
 
+El diagnóstico de dependencia espacial confirmó autocorrelación positiva y significativa tanto en SAIDI (índice de Moran $I=0{.}154$; $p<0{.}001$) como en SAIFI ($I=0{.}179$; $p<0{.}001$), lo que justifica la incorporación de rezagos espaciales entre cuadrantes vecinos y la estimación de modelos espaciales formales (Sección~\ref{sec:metodología-etapa5}).
+
+La Tabla~\ref{tab:desempeno_saidi} presenta el desempeño en test (escala $\log(1+y)$) de los cuatro modelos de panel semanal para SAIDI. El modelo de efectos fijos de cuadrante~+~semana no resultó evaluable en el conjunto de prueba, ya que las semanas del periodo de prueba no están representadas en el entrenamiento. Entre los modelos evaluables, Random Forest obtiene el menor error (RMSE $=0{.}1195$; MAE $=0{.}0609$; $R^2=0{.}190$), seguido de efectos fijos de cuadrante (RMSE $=0{.}1341$) y Pooled OLS (RMSE $=0{.}1666$).
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Desempeño comparado en test para SAIDI (escala $\log(1+y)$)}
+\label{tab:desempeno_saidi}
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\
+\midrule
+Pooled OLS            & 0.1666 & 0.0627 & 0.0558 \\
+FE cuadrante          & 0.1341 & 0.0517 & 0.1087 \\
+FE cuadrante+semana   & --     & --     & --     \\
+Random Forest         & 0.1195 & 0.0609 & 0.1902 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para SAIFI, la Tabla~\ref{tab:desempeno_saifi} muestra un patrón distinto: el modelo de efectos fijos de cuadrante obtiene el menor error (RMSE $=0{.}0026$), levemente por debajo de Random Forest (RMSE $=0{.}0027$) y de Pooled OLS (RMSE $=0{.}0028$), aunque Random Forest alcanza el mayor $R^2$ ($0{.}234$ frente a $0{.}205$ de FE cuadrante).
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Desempeño comparado en test para SAIFI (escala $\log(1+y)$)}
+\label{tab:desempeno_saifi}
+\begin{tabular}{l r r r}
+\toprule
+\textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\
+\midrule
+Pooled OLS            & 0.0028 & 0.0011 & 0.1252 \\
+FE cuadrante          & 0.0026 & 0.0009 & 0.2052 \\
+FE cuadrante+semana   & --     & --     & --     \\
+Random Forest         & 0.0027 & 0.0012 & 0.2343 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para la explicación estructural en corte transversal ponderado, el modelo espacial SAR resultó ganador para SAIDI (AIC $=-1305{.}19$; $R^2=0{.}900$), y el modelo SEM para SAIFI (AIC $=-4267{.}92$; $R^2=0{.}837$), ambos verificados mediante cuatro pruebas de robustez que descartan que la asociación observada sea un artefacto de colinealidad estructural (Sección~\ref{sec:metodología-etapa5}).
+
+La importancia de variables del Random Forest y los coeficientes de los modelos espaciales coinciden en señalar como predictores más relevantes: el número de elementos de red y la longitud de red del cuadrante, la edad del activo más antiguo, la composición de estrato y el número de clientes no residenciales (para SAIDI), y adicionalmente la distancia promedio a eventos sísmicos y el NDVI promedio (vegetación) según el indicador. En síntesis: \textbf{para pronóstico semanal, Random Forest es el modelo recomendado para SAIDI y efectos fijos de cuadrante para SAIFI}; \textbf{para explicación estructural, SAR (SAIDI) y SEM (SAIFI) son los modelos espaciales recomendados}, ambos con alta capacidad explicativa ($R^2 > 0{.}83$) una vez verificada su robustez.
 
 
-\section{Etapa 6}
+\section{Etapa 6 – Síntesis general y cierre frente a los objetivos}
 \label{sec:resultados-etapa6}
-   
-   
-    
-        
-    
+
+El proyecto recorrió las seis etapas metodológicas descritas en el Capítulo~\ref{sec:metodologia} y produjo, de forma trazable y reproducible, un flujo completo desde la extracción de datos crudos hasta modelos predictivos y estructurales validados para SAIDI y SAIFI. La Tabla~\ref{tab:sintesis_etapas} resume el resultado principal de cada etapa.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Síntesis de resultados por etapa metodológica}
+\label{tab:sintesis_etapas}
+\begin{tabular}{p{2.6cm} p{9.5cm}}
+\toprule
+\textbf{Etapa} & \textbf{Resultado principal} \\
+\midrule
+Etapa 1 & Seis fuentes consolidadas (BRAE, OMS SPARD/SP7, GIS, NASA POWER); $95{.}280$ eventos depurados y $83{.}5$ millones de registros climáticos. \\
+Etapa 2 & Panel activo--día ($N=87{.}007{.}074$) y panel cuadrante--semana ($N_{\mathrm{agr}}=90{.}128$); detección de un sesgo sistemático de emparejamiento 2021--2023 que delimitó el dataset de modelado $D_{\mathrm{mod}}$ (2024--2025). \\
+Etapa 3 & Sin datos faltantes en la tabla agregada; redundancia identificada entre severidad y frecuencia; señal climática contemporánea débil; multicolinealidad climática corregida (VIF máximo de $43{.}92$ a $7{.}21$). \\
+Etapa 4 & Panel analítico final con predictoras disponibles \emph{ex ante}, rezagos espaciales de vecinos y transformación logarítmica de las respuestas. \\
+Etapa 5 & Random Forest (SAIDI) y FE cuadrante (SAIFI) como mejores modelos de pronóstico semanal; SAR (SAIDI) y SEM (SAIFI) como modelos estructurales robustos ($R^2>0{.}83$); autocorrelación espacial significativa en ambos indicadores (Moran's $I$). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Tabla~\ref{tab:cierre_objetivos} articula estos resultados con los tres objetivos específicos del proyecto (Sección~\ref{sec:objetivos}), evidenciando su cumplimiento.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Cierre de resultados frente a los objetivos específicos}
+\label{tab:cierre_objetivos}
+\begin{tabular}{p{4.3cm} p{7.8cm}}
+\toprule
+\textbf{Objetivo específico} & \textbf{Resultado que lo responde} \\
+\midrule
+1. Consolidar las fuentes de datos relevantes, documentando cobertura, calidad y limitaciones mediante un catálogo de datos y métricas de integridad. &
+Tabla de linaje de datos (Tabla~\ref{tab:data_lineage}) con las seis fuentes, sus reglas de depuración y su resultado; diagnóstico de completitud sin valores faltantes; identificación y documentación explícita del sesgo de cobertura 2021--2023 como limitación conocida (Sección~\ref{sec:resultados-etapa2}). \\
+2. Determinar qué variables operativas, técnicas y climáticas son más relevantes para predecir SAIDI y SAIFI mediante modelos estadísticos o de Machine Learning. &
+Importancia de variables del Random Forest y coeficientes de los modelos espaciales (Sección~\ref{sec:resultados-etapa5}): infraestructura de red (número de elementos, longitud de red), antigüedad de activos, composición de estrato y clientes no residenciales, exposición sísmica y vegetación (NDVI), además de la autocorrelación espacial confirmada por el índice de Moran. \\
+3. Evaluar el desempeño de diferentes métodos estadísticos o de Machine Learning para predecir SAIDI y SAIFI por circuito o zona. &
+Comparación de cuatro algoritmos de panel (Pooled OLS, FE cuadrante, FE cuadrante+semana, Random Forest) más dos modelos espaciales formales (SAR, SEM) para cada indicador, con métricas de desempeño en test (RMSE, MAE, $R^2$) y AIC (Tablas~\ref{tab:desempeno_saidi} y~\ref{tab:desempeno_saifi}), identificando el mejor modelo de pronóstico y el mejor modelo estructural para cada indicador. \\
+\bottomrule
+\end{tabular}
+\end{table}
+

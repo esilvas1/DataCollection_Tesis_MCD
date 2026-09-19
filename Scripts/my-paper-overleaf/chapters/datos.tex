@@ -1,4 +1,4 @@
-Para el desarrollo del modelo de pronóstico de $SAIFI$ y $SAIDI$, se utilizará una base de datos histórica de eventos de falla reportados en el sistema de distribución. La tabla principal consolidada tiene $N = 87{.}007{.}074$ observaciones ($A = 47{.}649$ activos eléctricos únicos $\times$ $T = 1{.}826$ días), correspondientes al panel \textbf{activo $\times$ día} entre el $1$ de enero de $2021$ y el $31$ de diciembre de $2025$.
+Para el desarrollo del modelo de pronóstico de $SAIFI$ y $SAIDI$, se utilizará una base de datos histórica de eventos de falla reportados en el sistema de distribución. La tabla principal consolidada tiene $N = 87{.}007{.}074$ observaciones ($A = 47{.}649$ activos eléctricos únicos $\times$ $T = 1{.}826$ días), correspondientes al panel \textit{activo $\times$ día} entre el $1$ de enero de $2021$ y el $31$ de diciembre de $2025$.
 
 \paragraph{Tiempo o periodo de estudio.}
 El periodo de estudio abarca desde el $1$ de enero de $2021$ hasta el $31$ de diciembre de $2025$.
@@ -31,9 +31,9 @@ La construcción del conjunto de datos sigue la siguiente lógica:
 Las variables de eventos se definen así:
 
 \begin{itemize}
-    \item \textbf{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo en el día de observación, prorrateados según la intersección de \texttt{[Fecha\_Desconexion, Fecha\_Conexion]} con ese día calendario. Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman. No se asigna la duración total del evento solo al día de desconexión. En días sin falla, el valor es $0$.
+    \item \textit{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo en el día de observación, prorrateados según la intersección de \texttt{[Fecha\_Desconexion, Fecha\_Conexion]} con ese día calendario. Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman. No se asigna la duración total del evento solo al día de desconexión. En días sin falla, el valor es $0$.
     
-    \item \textbf{Frecuencia} (\texttt{FRECUENCIA}): número de interrupciones cuyo inicio (\texttt{Fecha\_Desconexion}) ocurre en el día (sin prorrateo de la frecuencia).
+    \item \textit{Frecuencia} (\texttt{FRECUENCIA}): número de interrupciones cuyo inicio (\texttt{Fecha\_Desconexion}) ocurre en el día (sin prorrateo de la frecuencia).
 \end{itemize}
 
 \subsection{Estructura del dataset consolidado}
@@ -129,7 +129,7 @@ correspondiente a cinco años de información a nivel elemento-día.
 \section*{Procedencia de la información}
 
 \paragraph{Origen de la información.}
-La empresa origen de los datos operativos y técnicos es \textbf{Centrales Eléctricas de Norte de Santander S.A E.S.P (Cens S.A E.S.P)}.
+La empresa origen de los datos operativos y técnicos es Centrales Eléctricas de Norte de Santander S.A E.S.P (Cens S.A E.S.P).
 
 \paragraph{Lugar donde se registra la información.}
 Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER~\textcite{ref48}.

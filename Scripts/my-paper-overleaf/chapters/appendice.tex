@@ -253,16 +253,6 @@ Informe \texttt{Etapa2\_11\_cargue\_eventos\_semana.html}: agregación de evento
 Informe \texttt{Etapa2\_12\_union\_panel\_semana.html}: unión semanal de clima, eventos y atributos territoriales.
 \href{\urlEtapaDosDoce}{Abrir informe}.
 
-\subsection{Feature engineering general}
-\label{app:html-etapa4-01}
-Informe \texttt{Etapa4\_01\_feature\_engineering\_general.html}: ingeniería de variables predictoras y preparación del diseño analítico.
-\href{\urlEtapaCuatroUno}{Abrir informe}.
-
-\subsection{Rezagos para SAIDI}
-\label{app:html-etapa4-02}
-Informe \texttt{Etapa4\_02\_rezagos\_SAIDI.html}: construcción y selección de rezagos temporales para modelar SAIDI.
-\href{\urlEtapaCuatroDos}{Abrir informe}.
-
 \subsection{Modelo espacial de SAIDI}
 \label{app:html-etapa5-01}
 Informe \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html}: estimación, validación e interpretación del modelo espacial de SAIDI.
@@ -272,3 +262,194 @@ Informe \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html}: estimación, validaci
 \label{app:html-etapa5-02}
 Informe \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html}: estimación, validación e interpretación del modelo espacial de SAIFI.
 \href{\urlEtapaCincoDos}{Abrir informe}.
+
+\section{Muestra completa de tablas base del proyecto}
+\label{app:muestra-tablas-base}
+
+Esta sección presenta, con todas las columnas y divididas en los bloques temáticos originales, las muestras ilustrativas de las dos tablas base descritas en la Etapa~2 de la metodología (Secciones~\ref{sec:logica_integracion} y~\ref{sec:agrupacion_cuadrante_semana}). Las vistas previas de estas mismas filas, con un subconjunto representativo de columnas, se presentan en el cuerpo del documento (Tablas~\ref{tab:muestra_consolidado_preview} y~\ref{tab:muestra_semanal_preview}).
+
+\subsection{Tabla base consolidada (activo--día)}
+\label{app:muestra-consolidado-completa}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 1: activo y fecha}
+    \label{tab:muestra_consolidado_final_1}
+    \begin{tabular}{l l r r r l}
+    \toprule
+    \textbf{Id activo} & \textbf{Tipo} & \textbf{Lat.} & \textbf{Lon.} & \textbf{Alt.} & \textbf{Fecha día} \\
+    \midrule
+    AASW4819 & Aisladero      & 8.5786778 & -72.92349 & 219  & 01/01/2021 \\
+    1T12452  & Transformador  & 8.5839989 & -72.92248 & 241  & 01/01/2021 \\
+    REC21365 & Reconectador   & 8.5840628 & -72.92246 & 241  & 01/01/2021 \\
+    CUC12345 & Cuchilla       & 7.7523729 & -73.23971 & 1236 & 01/01/2021 \\
+    INT39845 & Interruptor    & 7.7476080 & -73.25551 & 1359 & 02/01/2021 \\
+    AASW4820 & Aisladero      & 7.7561057 & -73.26037 & 1169 & 02/01/2021 \\
+    1T12453  & Aisladero      & 7.7409332 & -73.20825 & 1636 & 02/01/2021 \\
+    REC21366 & Transformador  & 7.7428641 & -73.18990 & 1542 & 02/01/2021 \\
+    CUC12346 & Reconectador   & 7.7538839 & -73.17721 & 1707 & 03/01/2021 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 2: severidad y clima inicial (continuación)}
+    \label{tab:muestra_consolidado_final_2}
+    \begin{tabular}{l l r r r r}
+    \toprule
+    \textbf{Id activo} & \textbf{Fecha día} & \textbf{C. elem.} & \textbf{C. usu.} & \textbf{Vel. viento} & \textbf{Temp. med.} \\
+    \midrule
+    AASW4819 & 01/01/2021 & 0   & 0    & 1.11 & 23.91 \\
+    1T12452  & 01/01/2021 & 0   & 0    & 1.23 & 24.58 \\
+    REC21365 & 01/01/2021 & 125 & 2015 & 0.96 & 23.04 \\
+    CUC12345 & 01/01/2021 & 0   & 0    & 0.81 & 23.02 \\
+    INT39845 & 02/01/2021 & 0   & 0    & 1.05 & 23.83 \\
+    AASW4820 & 02/01/2021 & 0   & 0    & 1.12 & 24.08 \\
+    1T12453  & 02/01/2021 & 0   & 0    & 1.08 & 24.52 \\
+    REC21366 & 02/01/2021 & 0   & 0    & 1.26 & 24.37 \\
+    CUC12346 & 03/01/2021 & 0   & 0    & 1.41 & 24.34 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 3: clima complementario (continuación)}
+    \label{tab:muestra_consolidado_final_3}
+    \begin{tabular}{l l r r r r}
+    \toprule
+    \textbf{Id activo} & \textbf{Fecha día} & \textbf{Hum. rel.} & \textbf{Temp. min.} & \textbf{Temp. max.} & \textbf{Precip.} \\
+    \midrule
+    AASW4819 & 01/01/2021 & 78.91 & 20.06 & 29.98 & 3.19 \\
+    1T12452  & 01/01/2021 & 75.79 & 20.27 & 30.90 & 1.31 \\
+    REC21365 & 01/01/2021 & 83.94 & 20.26 & 27.82 & 3.19 \\
+    CUC12345 & 01/01/2021 & 79.55 & 17.92 & 30.09 & 7.28 \\
+    INT39845 & 02/01/2021 & 69.70 & 19.35 & 30.79 & 1.99 \\
+    AASW4820 & 02/01/2021 & 61.99 & 17.20 & 30.81 & 0.98 \\
+    1T12453  & 02/01/2021 & 72.16 & 20.38 & 30.59 & 2.70 \\
+    REC21366 & 02/01/2021 & 75.50 & 20.18 & 30.63 & 3.29 \\
+    CUC12346 & 03/01/2021 & 74.34 & 20.40 & 30.43 & 1.86 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 4: variables de continuidad (continuación)}
+    \label{tab:muestra_consolidado_final_4}
+    \begin{tabular}{r r}
+    \toprule
+    \textbf{Duración (min)} & \textbf{Frecuencia} \\
+    \midrule
+    0     & 0 \\
+    0     & 0 \\
+    421.5 & 3 \\
+    0     & 0 \\
+    0     & 0 \\
+    0     & 0 \\
+    0     & 0 \\
+    0     & 0 \\
+    0     & 0 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} corresponden al mismo conjunto de observaciones en el mismo orden.
+
+\subsection{Tabla base semanal cuadrante}
+\label{app:muestra-semanal-completa}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 1: cuadrante, semana, coordenadas e impacto operativo}
+    \label{tab:muestra_semanal_cuadrante_1}
+    \begin{tabular}{r l r r r r r}
+    \toprule
+    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Lat.} & \textbf{Lon.} & \textbf{Alt.} & \textbf{Usu. afect.} & \textbf{Elem. afect.} \\
+    \midrule
+      1 & 28/12/2020 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+      1 & 04/01/2021 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
+      3 & 04/01/2021 & 7.1548 & -72.7196 & 2850 &    0 &   0 \\
+     12 & 11/01/2021 & 7.4521 & -72.8903 & 1240 &  842 &  18 \\
+     45 & 18/01/2021 & 7.7539 & -73.1204 &  890 &    0 &   0 \\
+    117 & 25/01/2021 & 7.9215 & -72.5021 &  286 & 1254 &  24 \\
+    203 & 01/02/2021 & 8.0812 & -72.4108 &  312 &    0 &   0 \\
+     45 & 08/02/2021 & 7.7539 & -73.1204 &  890 &  315 &   6 \\
+    117 & 15/02/2021 & 7.9215 & -72.5021 &  286 &  680 &  11 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 2: temperatura (continuación)}
+    \label{tab:muestra_semanal_cuadrante_2}
+    \begin{tabular}{r l r r r}
+    \toprule
+    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Temp. med.} & \textbf{Temp. max.} & \textbf{Temp. min.} \\
+    \midrule
+      1 & 28/12/2020 & 13.6 & 19.8 &  6.2 \\
+      1 & 04/01/2021 & 12.8 & 18.5 &  5.8 \\
+      3 & 04/01/2021 & 13.1 & 19.2 &  6.0 \\
+     12 & 11/01/2021 & 22.4 & 28.6 & 16.8 \\
+     45 & 18/01/2021 & 23.8 & 30.1 & 18.2 \\
+    117 & 25/01/2021 & 24.1 & 30.4 & 18.9 \\
+    203 & 01/02/2021 & 24.5 & 30.8 & 19.1 \\
+     45 & 08/02/2021 & 23.5 & 29.7 & 17.8 \\
+    117 & 15/02/2021 & 24.3 & 30.2 & 18.6 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 3: clima complementario (continuación)}
+    \label{tab:muestra_semanal_cuadrante_3}
+    \begin{tabular}{r l r r r r}
+    \toprule
+    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Hum. med.} & \textbf{Vel. med.} & \textbf{Vel. max.} & \textbf{Precip.} \\
+    \midrule
+      1 & 28/12/2020 & 82.4 & 1.15 & 2.31 & 18.5 \\
+      1 & 04/01/2021 & 80.1 & 1.08 & 2.18 & 12.3 \\
+      3 & 04/01/2021 & 81.6 & 1.12 & 2.25 & 15.7 \\
+     12 & 11/01/2021 & 76.3 & 0.98 & 1.95 &  8.4 \\
+     45 & 18/01/2021 & 74.8 & 1.05 & 2.10 &  6.2 \\
+    117 & 25/01/2021 & 73.5 & 1.18 & 2.42 &  9.8 \\
+    203 & 01/02/2021 & 72.9 & 1.22 & 2.55 &  4.1 \\
+     45 & 08/02/2021 & 75.2 & 1.09 & 2.08 & 11.6 \\
+    117 & 15/02/2021 & 74.1 & 1.14 & 2.35 &  7.3 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\begin{table}[!htbp]
+\centering
+    \small
+    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 4: continuidad del servicio (continuación)}
+    \label{tab:muestra_semanal_cuadrante_4}
+    \begin{tabular}{r r}
+    \toprule
+    \textbf{N eventos} & \textbf{Duración total (h)} \\
+    \midrule
+     0 &   0.0 \\
+     0 &   0.0 \\
+     0 &   0.0 \\
+     5 &  28.4 \\
+     0 &   0.0 \\
+     8 &  41.7 \\
+     0 &   0.0 \\
+     2 &  12.6 \\
+     4 &  22.3 \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+
+\noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} corresponden al mismo conjunto de observaciones en el mismo orden. Cadena de unidades de continuidad: panel diario en minutos (\texttt{DURACION\_min}) $\rightarrow$ conversión \texttt{/60} $\rightarrow$ \texttt{duracion\_total} semanal en horas.

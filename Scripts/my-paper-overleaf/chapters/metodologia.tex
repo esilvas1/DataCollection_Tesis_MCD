@@ -32,9 +32,9 @@ Se integran datos de cinco fuentes de información principales:
 \begin{itemize}
         \item \textbf{BRAE}: base regulatoria e histórica de eventos.
         
-        \item \textbf{OMS SPARD} (sistema histórico): fuente de elemento causante antes de la migración.
+        \item \textit{OMS SPARD} (sistema histórico): fuente de elemento causante antes de la migración.
         
-        \item \textbf{OMS SP7} (sistema actual): fuente de elemento causante en archivos CSV mensuales.
+        \item \textit{OMS SP7} (sistema actual): fuente de elemento causante en archivos CSV mensuales.
         
         \item \textbf{GTECH (GIS)}: inventario y georreferenciación de activos eléctricos.
         
@@ -44,7 +44,7 @@ Se integran datos de cinco fuentes de información principales:
 
 \subsection{Extracción base y depuración de eventos de interrupción (BRAE)}
 \label{sec:extraccion_brae}
-La construcción de la base de eventos de interrupción se realizó a partir de la tabla transaccional \texttt{BRAE.QA\_TFDDREGISTRO}, la cual contiene el registro histórico de eventos de desconexión del sistema eléctrico. A partir de esta fuente, se ejecutó una consulta SQL orientada a depurar inconsistencias, restringir el periodo de análisis y estandarizar la estructura del identificador de evento.
+La construcción de la base de eventos de interrupción se realizó a partir de la tabla transaccional \texttt{BRAE.QA\_TFDDREGISTRO}, perteneciente a la Base Regulatoria de Activos Eléctricos (BRAE), la cual contiene el registro histórico de eventos de desconexión del sistema eléctrico. A partir de esta fuente, se ejecutó una consulta SQL orientada a depurar inconsistencias, restringir el periodo de análisis y estandarizar la estructura del identificador de evento.
 
 En primer lugar, se seleccionaron únicamente los campos relevantes para el análisis: el identificador del evento (\texttt{FDD\_CODIGOEVENTO}), la fecha de inicio de la desconexión (\texttt{FDD\_FINICIAL}) y la fecha de reconexión (\texttt{FDD\_FFINAL}). Adicionalmente, se incluyó un campo vacío para \texttt{ELEMENTO\_FALLADO}, con el fin de mantener compatibilidad estructural con otras fuentes que sí contienen este nivel de desagregación.
 
@@ -245,7 +245,7 @@ Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformad
     \begin{table}[!htbp]
 \centering
 \small
-\caption{Muestra de variables meteorológicas (NASA POWER) - Parte 1}
+\caption{Muestra de variables meteorológicas (NASA POWER)}
 \label{tab:muestra_nasa_power_1}
 \begin{tabularx}{\textwidth}{
 >{\centering\arraybackslash}p{2.0cm}
@@ -334,49 +334,49 @@ NASA POWER
     \renewcommand{\theenumi}{\thesubsection.\arabic{enumi}}
     \renewcommand{\labelenumi}{\theenumi}
 \begin{enumerate}
-        \item\label{paso:int-1} \textbf{Construcción de la tabla base de eventos (BRAE).}\mbox{}\par\vspace{0.2em}\noindent
+        \item\label{paso:int-1} \textit{Construcción de la tabla base de eventos (BRAE).}\mbox{}\par\vspace{0.2em}\noindent
         A partir de \texttt{BRAE.QA\_TFDDREGISTRO} se genera la tabla \texttt{tabla\_eventos} con \texttt{ID\_EVENTO}, \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}, aplicando filtros regulatorios del periodo 2021--2025, exclusión de eventos no válidos y eliminación de duplicados. Esta tabla define el universo analítico de interrupciones (95{.}280 eventos).
     
-        \item\label{paso:int-2} \textbf{Construcción de la tabla de afectación por evento (Tabla~\ref{tab:muestra_afectacion_evento}).}\mbox{}\par\vspace{0.2em}\noindent
+        \item\label{paso:int-2} \textit{Construcción de la tabla de afectación por evento (Tabla~\ref{tab:muestra_afectacion_evento}).}\mbox{}\par\vspace{0.2em}\noindent
         En la Sección~\ref{sec:extraccion_afectacion} se construye la Tabla~\ref{tab:muestra_afectacion_evento} de afectación por evento, la cual consolida las columnas \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} a nivel de \texttt{ID\_EVENTO}. Su integración a la tabla base consolidada se realiza en el paso~\ref{paso:int-5}.
     
-        \item\label{paso:int-3} \textbf{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
+        \item\label{paso:int-3} \textit{Completar \texttt{ELEMENTO\_FALLADO} (OMS SPARD + OMS SP7).}\mbox{}\par\vspace{0.2em}\noindent
         La tabla base de eventos obtenida en la Sección~\ref{sec:extraccion_brae} se construyó con el campo \texttt{ELEMENTO\_FALLADO} vacío, reservado para su completamiento en la integración. Dado el cambio de sistema OMS en el año 2023, la información del elemento causante se extrajo de forma separada en dos fuentes: la Sección~\ref{sec:extraccion_oms_historico} (\emph{Extracción del elemento causante histórico}, OMS SPARD) y la Sección~\ref{sec:extraccion_oms_actual} (\emph{Extracción del elemento causante actual}, OMS SP7). En este paso, la tabla de la Sección~\ref{sec:extraccion_brae} se cruza con ambas tablas OMS, aplicando en cada caso la lógica de emparejamiento definida en su extracción:
         
         \begin{itemize}
-            \item \textbf{Histórico (Sección~\ref{sec:extraccion_oms_historico} -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
+            \item \textit{Histórico (Sección~\ref{sec:extraccion_oms_historico} -- OMS SPARD):} cruce por \texttt{CODIGO\_MANIOBRA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{BREAKER} en eventos del periodo pre-migración.
             
-            \item \textbf{Actual (Sección~\ref{sec:extraccion_oms_actual} -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
+            \item \textit{Actual (Sección~\ref{sec:extraccion_oms_actual} -- OMS SP7):} cruce por \texttt{MANIOBRA\_APERTURA} $\leftrightarrow$ \texttt{ID\_EVENTO} para completar \texttt{ELEMENTO\_FALLADO} con el valor de \texttt{ELEMENTO\_FALLA}, junto con \texttt{TIPO\_ELEMENTO}, en eventos del periodo post-migración.
         \end{itemize}
     
-        \item\label{paso:int-4} \textbf{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-        A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~\ref{tab:muestra_inventario_gis} (inventario georreferenciado de activos obtenido en la Sección~\ref{sec:extraccion_gis}), del cual se conserva un registro por \texttt{ELEMENTO} ($47{.}649$ activos únicos), y se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31 ($1{.}826$ días), empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, con $87{.}007{.}074$ observaciones ($47{.}649 \times 1{.}826$), definiendo la estructura panel \textbf{activo $\times$ día} sobre la cual, en los pasos~\ref{paso:int-5} a~\ref{paso:int-8}, se anexan los valores restantes de la secuencia de integración. El detalle del procedimiento para los pasos~\ref{paso:int-4} a~\ref{paso:int-8} se documenta en el Apéndice~\ref{app:html-consolidada}.
+        \item\label{paso:int-4} \textit{Construcción de la tabla base consolidada (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+        A partir de este paso se inicia la construcción de la tabla base consolidada del proyecto. Como insumo inicial se toma la Tabla~\ref{tab:muestra_inventario_gis} (inventario georreferenciado de activos obtenido en la Sección~\ref{sec:extraccion_gis}), del cual se conserva un registro por \texttt{ELEMENTO} ($47{.}649$ activos únicos), y se cruza con un calendario diario comprendido entre el 2021-01-01 y el 2025-12-31 ($1{.}826$ días), empleando el campo \texttt{FECHA\_DIA}. Este cruce genera un producto cartesiano entre el universo de activos eléctricos y el horizonte temporal de análisis, con $87{.}007{.}074$ observaciones ($47{.}649 \times 1{.}826$), definiendo la estructura panel \textit{activo $\times$ día} sobre la cual, en los pasos~\ref{paso:int-5} a~\ref{paso:int-8}, se anexan los valores restantes de la secuencia de integración. El detalle del procedimiento para los pasos~\ref{paso:int-4} a~\ref{paso:int-8} se documenta en el Apéndice~\ref{app:html-consolidada}.
     
-        \item\label{paso:int-5} \textbf{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (afectación por evento).}\mbox{}\par\vspace{0.2em}\noindent
-        Sobre la tabla base consolidada del paso~\ref{paso:int-4}, se anexan las métricas de \textbf{severidad del evento} (\texttt{ELEMENTOS\_AFECTADOS} y \texttt{USUARIOS\_AFECTADOS} de \texttt{tabla\_eventos\_ajustado.csv}, alineadas con la Tabla~\ref{tab:muestra_afectacion_evento}). Estas cantidades se miden a nivel de \texttt{ID\_EVENTO}, tamaño del impacto de la interrupción, y se atribuyen al activo fallado mediante las llaves:
+        \item\label{paso:int-5} \textit{Integración de \texttt{CANTIDAD\_ELEMENTOS} y \texttt{CANTIDAD\_USUARIOS} (afectación por evento).}\mbox{}\par\vspace{0.2em}\noindent
+        Sobre la tabla base consolidada del paso~\ref{paso:int-4}, se anexan las métricas de \textit{severidad del evento} (\texttt{ELEMENTOS\_AFECTADOS} y \texttt{USUARIOS\_AFECTADOS} de \texttt{tabla\_eventos\_ajustado.csv}, alineadas con la Tabla~\ref{tab:muestra_afectacion_evento}). Estas cantidades se miden a nivel de \texttt{ID\_EVENTO}, tamaño del impacto de la interrupción, y se atribuyen al activo fallado mediante las llaves:
         \begin{itemize}
             \item \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} (activo de red, no el identificador del evento);
             \item \texttt{as.Date(FECHA\_DESCONEXION)} $=$ \texttt{FECHA\_DIA}.
         \end{itemize}
-        El cruce es izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}) y conserva $N = 87{.}007{.}074$ filas. Si un activo registra varios eventos el mismo día, se conserva un único valor de afectación (el primer \texttt{ID\_EVENTO} ordenado); \textbf{no} se suman las severidades de esos eventos en el panel diario. La frecuencia de todas las desconexiones del día se construye por separado en el paso~\ref{paso:int-7}. En días sin falla, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+        El cruce es izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}) y conserva $N = 87{.}007{.}074$ filas. Si un activo registra varios eventos el mismo día, se conserva un único valor de afectación (el primer \texttt{ID\_EVENTO} ordenado); \textit{no} se suman las severidades de esos eventos en el panel diario. La frecuencia de todas las desconexiones del día se construye por separado en el paso~\ref{paso:int-7}. En días sin falla, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
         
-        \noindent\textit{Nota metodológica:} bajo esta regla, \texttt{CANTIDAD\_*} no representa ``usuarios del activo'', sino la severidad del evento anclada al breaker en el día de inicio. En la taxonomía de modelado (Sección~\ref{sec:metodos-modelos}), estas cantidades pertenecen al \textbf{impacto posterior}: describen severidad una vez ocurrido el evento y \textbf{no} son predictoras contemporáneas de frecuencia o duración. Definiciones alternativas de agregación, suma o máximo de todos los eventos del mismo activo--día, o conteo de usuarios únicos por cuadrante--semana, pueden reelaborarse en la Etapa~4 sin alterar ese rol.
+        \noindent\textit{Nota metodológica:} bajo esta regla, \texttt{CANTIDAD\_*} no representa ``usuarios del activo'', sino la severidad del evento anclada al breaker en el día de inicio. En la taxonomía de modelado (Sección~\ref{sec:metodos-modelos}), estas cantidades pertenecen al \textit{impacto posterior}: describen severidad una vez ocurrido el evento y \textit{no} son predictoras contemporáneas de frecuencia o duración. Definiciones alternativas de agregación, suma o máximo de todos los eventos del mismo activo--día, o conteo de usuarios únicos por cuadrante--semana, pueden reelaborarse en la Etapa~4 sin alterar ese rol.
     
-        \item\label{paso:int-6} \textbf{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
+        \item\label{paso:int-6} \textit{Integración de variables climáticas (NASA POWER).}\mbox{}\par\vspace{0.2em}\noindent
         Sobre la tabla resultante del paso~\ref{paso:int-5} ($N = 87{.}007{.}074$ filas), se anexan las variables de la serie diaria \texttt{nasa\_power\_consolidado} mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}), incorporando precipitación, temperatura (media, máxima, mínima), humedad relativa y velocidad del viento, sin modificar el cardinal del panel.
     
-        \item\label{paso:int-7} \textbf{Agregación de variables objetivo (\texttt{DURACION\_min} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
+        \item\label{paso:int-7} \textit{Agregación de variables objetivo (\texttt{DURACION\_min} y \texttt{FRECUENCIA}).}\mbox{}\par\vspace{0.2em}\noindent
         En este paso se construyen las columnas \texttt{DURACION\_min} y \texttt{FRECUENCIA} sobre la tabla resultante del paso~\ref{paso:int-6} ($N = 87{.}007{.}074$ filas). Para ello, se expanden previamente los eventos de la Tabla~\ref{tab:muestra_eventos_brae} (Sección~\ref{sec:extraccion_brae}) a nivel (\texttt{COMPONENTE\_FALLADO}, \texttt{FECHA\_DIA}) y el resultado se integra al panel mediante cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}). La Tabla~\ref{tab:muestra_eventos_brae} contiene los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}. Con base en las fechas de desconexión y reconexión, se asignan los valores diarios de la siguiente forma:
         \begin{itemize}
-            \item \textbf{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo \textbf{en} \texttt{FECHA\_DIA}, prorrateados por día. Cuando un evento abarca varios días, su duración se reparte entre cada \texttt{FECHA\_DIA} según los minutos que el evento ocupa dentro de ese día (intersección del intervalo \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con cada día calendario). El día de inicio recibe los minutos desde \texttt{FECHA\_DESCONEXION} hasta la medianoche; los días intermedios, $1{.}440$~min cada uno; y el día de cierre, los minutos desde la medianoche hasta \texttt{FECHA\_CONEXION}. Si varios eventos ocupan el mismo día, se suman los minutos prorrateados de cada uno. \textbf{No} se carga la duración total del evento únicamente en el día de desconexión.
-            \item \textbf{Frecuencia} (\texttt{FRECUENCIA}): número de desconexiones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA} (no se prorratea; se cuenta solo en el día de inicio).
+            \item \textit{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo \textit{en} \texttt{FECHA\_DIA}, prorrateados por día. Cuando un evento abarca varios días, su duración se reparte entre cada \texttt{FECHA\_DIA} según los minutos que el evento ocupa dentro de ese día (intersección del intervalo \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con cada día calendario). El día de inicio recibe los minutos desde \texttt{FECHA\_DESCONEXION} hasta la medianoche; los días intermedios, $1{.}440$~min cada uno; y el día de cierre, los minutos desde la medianoche hasta \texttt{FECHA\_CONEXION}. Si varios eventos ocupan el mismo día, se suman los minutos prorrateados de cada uno. \textit{No} se carga la duración total del evento únicamente en el día de desconexión.
+            \item \textit{Frecuencia} (\texttt{FRECUENCIA}): número de desconexiones cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA} (no se prorratea; se cuenta solo en el día de inicio).
         \end{itemize}
-        \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. El cruce exige que \texttt{COMPONENTE\_FALLADO} coincida con \texttt{ELEMENTO} del inventario \texttt{tipo\_elemento.csv} (Tabla~\ref{tab:muestra_inventario_gis}), el cual emplea el \textbf{código de sitio} georreferenciado. Cuando OMS registra el \textbf{código del activo} reemplazado en lugar del código de sitio, el emparejamiento falla y el evento no se propaga al panel espacial (Sección~\ref{sec:delimitacion_temporal_modelado}).
+        \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. El cruce exige que \texttt{COMPONENTE\_FALLADO} coincida con \texttt{ELEMENTO} del inventario \texttt{tipo\_elemento.csv} (Tabla~\ref{tab:muestra_inventario_gis}), el cual emplea el \textit{código de sitio} georreferenciado. Cuando OMS registra el \textit{código del activo} reemplazado en lugar del código de sitio, el emparejamiento falla y el evento no se propaga al panel espacial (Sección~\ref{sec:delimitacion_temporal_modelado}).
     
-        \item\label{paso:int-8} \textbf{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-        Sobre la tabla base consolidada definida en el paso~\ref{paso:int-4}, y una vez anexados los valores de los pasos~\ref{paso:int-5} a~\ref{paso:int-7}, se obtiene el dataset final con grano \textbf{activo eléctrico $\times$ día} y $87{.}007{.}074$ observaciones ($47{.}649$ activos $\times$ $1{.}826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+        \item\label{paso:int-8} \textit{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
+        Sobre la tabla base consolidada definida en el paso~\ref{paso:int-4}, y una vez anexados los valores de los pasos~\ref{paso:int-5} a~\ref{paso:int-7}, se obtiene el dataset final con grano \textit{activo eléctrico $\times$ día} y $87{.}007{.}074$ observaciones ($47{.}649$ activos $\times$ $1{.}826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
     
-        La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textbf{activo eléctrico observado diariamente}. Cada observación se identifica mediante el par activo--día dentro del periodo de análisis, lo que permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio. Con $47{.}649$ activos eléctricos únicos en la Tabla~\ref{tab:muestra_inventario_gis} (inventario GIS, un registro por \texttt{ELEMENTO}) y $1{.}826$ días observados (cinco años de información diaria), el panel balanceado comprende $87{.}007{.}074$ observaciones.
+        La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textit{activo eléctrico observado diariamente}. Cada observación se identifica mediante el par activo--día dentro del periodo de análisis, lo que permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio. Con $47{.}649$ activos eléctricos únicos en la Tabla~\ref{tab:muestra_inventario_gis} (inventario GIS, un registro por \texttt{ELEMENTO}) y $1{.}826$ días observados (cinco años de información diaria), el panel balanceado comprende $87{.}007{.}074$ observaciones.
     
     
 \end{enumerate}
@@ -388,132 +388,62 @@ NASA POWER
 
 
 \subsection{Descripción de la tabla base consolidada}
-    Las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} presentan una muestra de la tabla base consolidada resultante del paso~\ref{paso:int-8}, con grano \textbf{activo eléctrico $\times$ día}. Por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación del activo (Tabla~\ref{tab:muestra_consolidado_final_1}), severidad y clima inicial (Tabla~\ref{tab:muestra_consolidado_final_2}), clima complementario (Tabla~\ref{tab:muestra_consolidado_final_3}) y variables de continuidad (Tabla~\ref{tab:muestra_consolidado_final_4}).
+    La Tabla~\ref{tab:muestra_consolidado_preview} presenta una vista previa de la tabla base consolidada resultante del paso~\ref{paso:int-8}, con grano \textit{activo eléctrico $\times$ día}. La muestra completa, con todas las columnas del panel divididas en bloques temáticos (identificación del activo, severidad, clima y continuidad), se documenta en el Apéndice~\ref{app:muestra-consolidado-completa}.
 
 \begin{table}[!htbp]
 \centering
     \small
-    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 1: activo y fecha}
-    \label{tab:muestra_consolidado_final_1}
-    \begin{tabular}{l l r r r l}
+    \caption{Vista previa de la tabla base consolidada (grano activo--día)}
+    \label{tab:muestra_consolidado_preview}
+    \begin{tabular}{l l r r r r r}
     \toprule
-    \textbf{Id activo} & \textbf{Tipo} & \textbf{Lat.} & \textbf{Lon.} & \textbf{Alt.} & \textbf{Fecha día} \\
+    \textbf{Id activo} & \textbf{Fecha día} & \textbf{C. elem.} & \textbf{C. usu.} & \textbf{Temp. med.} & \textbf{Precip.} & \textbf{Duración (min)} \\
     \midrule
-    AASW4819 & Aisladero      & 8.5786778 & -72.92349 & 219  & 01/01/2021 \\
-    1T12452  & Transformador  & 8.5839989 & -72.92248 & 241  & 01/01/2021 \\
-    REC21365 & Reconectador   & 8.5840628 & -72.92246 & 241  & 01/01/2021 \\
-    CUC12345 & Cuchilla       & 7.7523729 & -73.23971 & 1236 & 01/01/2021 \\
-    INT39845 & Interruptor    & 7.7476080 & -73.25551 & 1359 & 02/01/2021 \\
-    AASW4820 & Aisladero      & 7.7561057 & -73.26037 & 1169 & 02/01/2021 \\
-    1T12453  & Aisladero      & 7.7409332 & -73.20825 & 1636 & 02/01/2021 \\
-    REC21366 & Transformador  & 7.7428641 & -73.18990 & 1542 & 02/01/2021 \\
-    CUC12346 & Reconectador   & 7.7538839 & -73.17721 & 1707 & 03/01/2021 \\
+    AASW4819 & 01/01/2021 & 0   & 0    & 23.91 & 3.19 & 0     \\
+    1T12452  & 01/01/2021 & 0   & 0    & 24.58 & 1.31 & 0     \\
+    REC21365 & 01/01/2021 & 125 & 2015 & 23.04 & 3.19 & 421.5 \\
+    CUC12345 & 01/01/2021 & 0   & 0    & 23.02 & 7.28 & 0     \\
+    INT39845 & 02/01/2021 & 0   & 0    & 23.83 & 1.99 & 0     \\
     \bottomrule
     \end{tabular}
     \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-\small
-    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 2: severidad y clima inicial (continuación)}
-    \label{tab:muestra_consolidado_final_2}
-    \begin{tabular}{l l r r r r}
-    \toprule
-    \textbf{Id activo} & \textbf{Fecha día} & \textbf{C. elem.} & \textbf{C. usu.} & \textbf{Vel. viento} & \textbf{Temp. med.} \\
-    \midrule
-    AASW4819 & 01/01/2021 & 0   & 0    & 1.11 & 23.91 \\
-    1T12452  & 01/01/2021 & 0   & 0    & 1.23 & 24.58 \\
-    REC21365 & 01/01/2021 & 125 & 2015 & 0.96 & 23.04 \\
-    CUC12345 & 01/01/2021 & 0   & 0    & 0.81 & 23.02 \\
-    INT39845 & 02/01/2021 & 0   & 0    & 1.05 & 23.83 \\
-    AASW4820 & 02/01/2021 & 0   & 0    & 1.12 & 24.08 \\
-    1T12453  & 02/01/2021 & 0   & 0    & 1.08 & 24.52 \\
-    REC21366 & 02/01/2021 & 0   & 0    & 1.26 & 24.37 \\
-    CUC12346 & 03/01/2021 & 0   & 0    & 1.41 & 24.34 \\
-    \bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 3: clima complementario (continuación)}
-    \label{tab:muestra_consolidado_final_3}
-    \begin{tabular}{l l r r r r}
-\toprule
-    \textbf{Id activo} & \textbf{Fecha día} & \textbf{Hum. rel.} & \textbf{Temp. min.} & \textbf{Temp. max.} & \textbf{Precip.} \\
-\midrule
-    AASW4819 & 01/01/2021 & 78.91 & 20.06 & 29.98 & 3.19 \\
-    1T12452  & 01/01/2021 & 75.79 & 20.27 & 30.90 & 1.31 \\
-    REC21365 & 01/01/2021 & 83.94 & 20.26 & 27.82 & 3.19 \\
-    CUC12345 & 01/01/2021 & 79.55 & 17.92 & 30.09 & 7.28 \\
-    INT39845 & 02/01/2021 & 69.70 & 19.35 & 30.79 & 1.99 \\
-    AASW4820 & 02/01/2021 & 61.99 & 17.20 & 30.81 & 0.98 \\
-    1T12453  & 02/01/2021 & 72.16 & 20.38 & 30.59 & 2.70 \\
-    REC21366 & 02/01/2021 & 75.50 & 20.18 & 30.63 & 3.29 \\
-    CUC12346 & 03/01/2021 & 74.34 & 20.40 & 30.43 & 1.86 \\
-    \bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Muestra de la tabla base consolidada (grano activo--día) -- Parte 4: variables de continuidad (continuación)}
-    \label{tab:muestra_consolidado_final_4}
-    \begin{tabular}{r r}
-    \toprule
-    \textbf{Duración (min)} & \textbf{Frecuencia} \\
-    \midrule
-    0     & 0 \\
-    0     & 0 \\
-    421.5 & 3 \\
-    0     & 0 \\
-    0     & 0 \\
-    0     & 0 \\
-    0     & 0 \\
-    0     & 0 \\
-    0     & 0 \\
-    \bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_consolidado_final_1} a~\ref{tab:muestra_consolidado_final_4} corresponden al mismo conjunto de observaciones en el mismo orden. Los registros sin interrupción en el día presentan \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. La duración del panel diario se expresa en \textbf{minutos} (columna \texttt{DURACION\_min} en \texttt{data\_consolidada.csv}).
+
+    \noindent\textit{Nota:} los registros sin interrupción en el día presentan \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. La duración del panel diario se expresa en \textit{minutos} (columna \texttt{DURACION\_min} en \texttt{data\_consolidada.csv}).
     
 \subsection{Descripción de las variables}
-    \paragraph{Tabla~\ref{tab:muestra_consolidado_final_2} (severidad y clima inicial).}
+    \paragraph{Severidad y clima inicial (Tabla~\ref{tab:muestra_consolidado_preview}; detalle completo en el Apéndice~\ref{app:muestra-consolidado-completa}).}
     Las columnas \texttt{ID ACTIVO} y \texttt{FECHA DIA} se repiten en esta tabla para facilitar la trazabilidad de filas entre bloques consecutivos. Las variables propias de este bloque son:
     
     \begin{itemize}
-        \item \textbf{C. elem.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el \textbf{evento} de interrupción atribuido al activo fallado (\texttt{COMPONENTE\_FALLADO}) en el día de desconexión (paso~\ref{paso:int-5}). No es el inventario del activo ni un conteo de usuarios únicos del cuadrante. Si hay varios eventos el mismo activo--día, el panel conserva la severidad de un solo evento. Cuando el activo no registra falla en el día, el valor es 0. En el modelado es \textbf{impacto posterior} (Sección~\ref{sec:metodos-modelos}), no predictora contemporánea. \textbf{Clasificación:} cuantitativa discreta.
+        \item \textit{C. elem.} (\texttt{CANTIDAD\_ELEMENTOS}): número de elementos de red afectados por el \textit{evento} de interrupción atribuido al activo fallado (\texttt{COMPONENTE\_FALLADO}) en el día de desconexión (paso~\ref{paso:int-5}). No es el inventario del activo ni un conteo de usuarios únicos del cuadrante. Si hay varios eventos el mismo activo--día, el panel conserva la severidad de un solo evento. Cuando el activo no registra falla en el día, el valor es 0. En el modelado es \textit{impacto posterior} (Sección~\ref{sec:metodos-modelos}), no predictora contemporánea. \textit{Clasificación:} cuantitativa discreta.
     
-        \item \textbf{C. usu.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el mismo evento, con la misma atribución espacial y temporal que \texttt{CANTIDAD\_ELEMENTOS}. Es una medida de severidad operativa del impacto sobre la demanda (impacto posterior; Sección~\ref{sec:metodos-modelos}), no una covariable disponible antes del evento ni una predictora válida de su ocurrencia o duración. En días sin interrupción, el valor es 0. \textbf{Clasificación:} cuantitativa discreta.
+        \item \textit{C. usu.} (\texttt{CANTIDAD\_USUARIOS}): número de usuarios afectados por el mismo evento, con la misma atribución espacial y temporal que \texttt{CANTIDAD\_ELEMENTOS}. Es una medida de severidad operativa del impacto sobre la demanda (impacto posterior; Sección~\ref{sec:metodos-modelos}), no una covariable disponible antes del evento ni una predictora válida de su ocurrencia o duración. En días sin interrupción, el valor es 0. \textit{Clasificación:} cuantitativa discreta.
     
-        \item \textbf{Vel. viento} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~\ref{sec:extraccion_nasa}) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{paso:int-6}. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Vel. viento} (\texttt{WS2M}): velocidad del viento a 2\,m de altura, expresada en m/s. Corresponde a la variable \texttt{WS2M} de NASA POWER (Sección~\ref{sec:extraccion_nasa}) e integra al panel por \texttt{FECHA\_DIA} en el paso~\ref{paso:int-6}. \textit{Clasificación:} cuantitativa continua.
     
-        \item \textbf{Temp. med.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Temp. med.} (\texttt{T2M}): temperatura media del aire en el día, expresada en \textdegree C. Proviene del parámetro \texttt{T2M} de NASA POWER y captura las condiciones térmicas promedio del entorno asociadas a cada observación activo--día. \textit{Clasificación:} cuantitativa continua.
     \end{itemize}
     
-        \paragraph{Tabla~\ref{tab:muestra_consolidado_final_3} (clima complementario).}
-        Al igual que en la Tabla~\ref{tab:muestra_consolidado_final_2}, \texttt{ID ACTIVO} y \texttt{FECHA DIA} permiten alinear filas entre tablas. Las variables climáticas restantes del bloque son:
+        \paragraph{Clima complementario (detalle completo en el Apéndice~\ref{app:muestra-consolidado-completa}).}
+        Al igual que en la Tabla~\ref{tab:muestra_consolidado_preview}, \texttt{ID ACTIVO} y \texttt{FECHA DIA} permiten alinear filas entre tablas. Las variables climáticas restantes del bloque son:
         
     \begin{itemize}
-        \item \textbf{Hum. rel.} (\texttt{RH2M}): humedad relativa del aire a 2\,m, expresada en porcentaje (\%). Proviene del parámetro \texttt{RH2M} de NASA POWER e integra al panel por \texttt{FECHA\_DIA}. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Hum. rel.} (\texttt{RH2M}): humedad relativa del aire a 2\,m, expresada en porcentaje (\%). Proviene del parámetro \texttt{RH2M} de NASA POWER e integra al panel por \texttt{FECHA\_DIA}. \textit{Clasificación:} cuantitativa continua.
     
-        \item \textbf{Temp. min.} (\texttt{T2M\_MIN}): temperatura mínima diaria del aire, expresada en \textdegree C. Corresponde al parámetro \texttt{T2M\_MIN} de NASA POWER y complementa la temperatura media con el extremo inferior del rango térmico del día. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Temp. min.} (\texttt{T2M\_MIN}): temperatura mínima diaria del aire, expresada en \textdegree C. Corresponde al parámetro \texttt{T2M\_MIN} de NASA POWER y complementa la temperatura media con el extremo inferior del rango térmico del día. \textit{Clasificación:} cuantitativa continua.
     
-        \item \textbf{Temp. max.} (\texttt{T2M\_MAX}): temperatura máxima diaria del aire, expresada en \textdegree C. Proviene del parámetro \texttt{T2M\_MAX} de NASA POWER y representa el extremo superior del rango térmico observado en el día. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Temp. max.} (\texttt{T2M\_MAX}): temperatura máxima diaria del aire, expresada en \textdegree C. Proviene del parámetro \texttt{T2M\_MAX} de NASA POWER y representa el extremo superior del rango térmico observado en el día. \textit{Clasificación:} cuantitativa continua.
     
-        \item \textbf{Precip.} (\texttt{PRECTOT}): precipitación total acumulada en el día, expresada en mm. Corresponde al parámetro \texttt{PRECTOT} de NASA POWER y permite incorporar la exposición del activo a condiciones de lluvia en la fecha de observación. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Precip.} (\texttt{PRECTOT}): precipitación total acumulada en el día, expresada en mm. Corresponde al parámetro \texttt{PRECTOT} de NASA POWER y permite incorporar la exposición del activo a condiciones de lluvia en la fecha de observación. \textit{Clasificación:} cuantitativa continua.
     \end{itemize}
     
-    \paragraph{Tabla~\ref{tab:muestra_consolidado_final_4} (variables de continuidad).}
+    \paragraph{Variables de continuidad (Tabla~\ref{tab:muestra_consolidado_preview}).}
     Este bloque concentra las variables objetivo del análisis, construidas en el paso~\ref{paso:int-7} a partir de la Tabla~\ref{tab:muestra_eventos_brae} (eventos depurados, Sección~\ref{sec:extraccion_brae}) y de los campos \texttt{FECHA\_DESCONEXION} y \texttt{FECHA\_CONEXION}:
     
     \begin{itemize}
-        \item \textbf{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo \textbf{en} \texttt{FECHA\_DIA}, obtenidos prorrateando cada evento según la intersección de \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con ese día (paso~\ref{paso:int-7}). Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman los minutos prorrateados. No equivale a colocar la duración total del evento solo en el día de desconexión. En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa continua.
+        \item \textit{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo \textit{en} \texttt{FECHA\_DIA}, obtenidos prorrateando cada evento según la intersección de \texttt{[FECHA\_DESCONEXION, FECHA\_CONEXION]} con ese día (paso~\ref{paso:int-7}). Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman los minutos prorrateados. No equivale a colocar la duración total del evento solo en el día de desconexión. En días sin falla, el valor es $0$. \textit{Clasificación:} cuantitativa continua.
     
-        \item \textbf{Frecuencia} (\texttt{FRECUENCIA}): número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de inicio y \textbf{no} se prorratea entre días. En días sin falla, el valor es $0$. \textbf{Clasificación:} cuantitativa discreta.
+        \item \textit{Frecuencia} (\texttt{FRECUENCIA}): número de interrupciones del activo cuyo inicio (\texttt{FECHA\_DESCONEXION}) ocurre en \texttt{FECHA\_DIA}. La frecuencia se contabiliza únicamente en el día de inicio y \textit{no} se prorratea entre días. En días sin falla, el valor es $0$. \textit{Clasificación:} cuantitativa discreta.
     \end{itemize}
     
     
@@ -525,9 +455,9 @@ NASA POWER
     
     \subsubsection{Definición del grano analítico (cuadrante $\times$ semana)}
     
-    El panel consolidado con grano \textbf{activo eléctrico $\times$ día} ($N = 87{.}007{.}074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~\ref{sec:logica_integracion}. No obstante, el objetivo del estudio, pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión, exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
+    El panel consolidado con grano \textit{activo eléctrico $\times$ día} ($N = 87{.}007{.}074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~\ref{sec:logica_integracion}. No obstante, el objetivo del estudio, pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión, exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
     
-    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textbf{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{.}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
+    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textit{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{.}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio.
     
     \begin{figure}[!htbp]
 \centering
@@ -536,36 +466,36 @@ NASA POWER
         \label{fig:cuadrantes_800}
     \end{figure}
     
-    Desde el punto de vista temporal, la granularidad diaria del panel es necesaria para la integración de eventos, clima y severidad, pero resulta excesivamente ruidosa para el análisis exploratorio espacial y para la modelación orientada a dinámicas semanales de continuidad y clima. Por ello, se define la \textbf{semana calendario} (con inicio en lunes) como periodo de agregación temporal, lo que permite suavizar fluctuaciones diarias, estabilizar las series de interrupción y alinear las covariables meteorológicas en un horizonte compatible con la gestión operativa y con visualizaciones espacio-temporales (mapas por cuadrante y series semanales).
+    Desde el punto de vista temporal, la granularidad diaria del panel es necesaria para la integración de eventos, clima y severidad, pero resulta excesivamente ruidosa para el análisis exploratorio espacial y para la modelación orientada a dinámicas semanales de continuidad y clima. Por ello, se define la \textit{semana calendario} (con inicio en lunes) como periodo de agregación temporal, lo que permite suavizar fluctuaciones diarias, estabilizar las series de interrupción y alinear las covariables meteorológicas en un horizonte compatible con la gestión operativa y con visualizaciones espacio-temporales (mapas por cuadrante y series semanales).
     
-    Bajo esta definición, la unidad muestral del dataset agregado es el par \textbf{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
+    Bajo esta definición, la unidad muestral del dataset agregado es el par \textit{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
     
     \subsubsection{Procedimiento de agregación}
     
-    Con el panel consolidado \texttt{data\_consolidada.csv}, se construyó la tabla de análisis a grano \textbf{cuadrante $\times$ semana}. El procedimiento se documenta en el Apéndice~\ref{app:html-agrupacion}.
+    Con el panel consolidado \texttt{data\_consolidada.csv}, se construyó la tabla de análisis a grano \textit{cuadrante $\times$ semana}. El procedimiento se documenta en el Apéndice~\ref{app:html-agrupacion}.
     
     El insumo principal es el panel del paso~\ref{paso:int-8}. Para asignar cada activo a su zona de análisis espacial, se utiliza el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, del cual se extrae la relación \texttt{ELEMENTO} $\rightarrow$ \texttt{id\_cuadrante} (campo \texttt{CUADRANTE\_1}). La asignación se integra al panel mediante cruce izquierdo por \texttt{ELEMENTO}, conservando todas las filas del panel y anexando el identificador de cuadrante cuando existe emparejamiento. Complementariamente, el archivo \texttt{CUADRANTE\_CORD\_800} aporta la referencia de centroides por cuadrante.
     
-    Sobre el panel enriquecido, cada observación diaria se asigna a una semana calendario mediante \texttt{floor\_date(FECHA\_DIA, unit = ``week'', week\_start = 1)}, de modo que la semana inicia en lunes. La duración del panel activo~$\times$~día se conserva en \textbf{minutos} (\texttt{DURACION\_min}; paso~\ref{paso:int-7}). Para la agregación semanal se convierte a horas como \texttt{duracion\_horas = DURACION\_min / 60}. Esta conversión \textbf{no} vuelve a prorratear entre días: el prorrateo temporal ya se resolvió al construir el panel diario; aquí solo se unifican unidades y se suman los minutos diarios (ya prorrateados) de los activos del cuadrante.
+    Sobre el panel enriquecido, cada observación diaria se asigna a una semana calendario mediante \texttt{floor\_date(FECHA\_DIA, unit = ``week'', week\_start = 1)}, de modo que la semana inicia en lunes. La duración del panel activo~$\times$~día se conserva en \textit{minutos} (\texttt{DURACION\_min}; paso~\ref{paso:int-7}). Para la agregación semanal se convierte a horas como \texttt{duracion\_horas = DURACION\_min / 60}. Esta conversión \textit{no} vuelve a prorratear entre días: el prorrateo temporal ya se resolvió al construir el panel diario; aquí solo se unifican unidades y se suman los minutos diarios (ya prorrateados) de los activos del cuadrante.
     
-    La agregación distingue dos naturalezas de variable. Las variables \textbf{operativas} (impacto y continuidad) son propias de cada activo: dos activos del mismo cuadrante pueden fallar el mismo día y sus conteos deben sumarse, por lo que se agregan directamente sobre las filas activo~$\times$~día con \texttt{group\_by(id\_cuadrante, semana)}. Las variables \textbf{climáticas}, en cambio, describen un campo espacial común: como consecuencia del cruce del paso~\ref{paso:int-6}, todos los activos de un mismo cuadrante comparten el valor meteorológico del día, de modo que la serie diaria aparece replicada tantas veces como activos tenga el cuadrante. Por ello el bloque climático se agrega en \textbf{dos etapas}: primero se colapsa el panel a un registro por (\texttt{id\_cuadrante}, \texttt{FECHA\_DIA}), eliminando la replicación por activo, y sobre esa serie diaria del cuadrante se calcula el resumen semanal. Omitir la primera etapa dejaría el acumulado de lluvia multiplicado por el número de activos del cuadrante, un sesgo multiplicativo que además varía entre cuadrantes y contamina cualquier comparación territorial posterior.
+    La agregación distingue dos naturalezas de variable. Las variables \textit{operativas} (impacto y continuidad) son propias de cada activo: dos activos del mismo cuadrante pueden fallar el mismo día y sus conteos deben sumarse, por lo que se agregan directamente sobre las filas activo~$\times$~día con \texttt{group\_by(id\_cuadrante, semana)}. Las variables \textit{climáticas}, en cambio, describen un campo espacial común: como consecuencia del cruce del paso~\ref{paso:int-6}, todos los activos de un mismo cuadrante comparten el valor meteorológico del día, de modo que la serie diaria aparece replicada tantas veces como activos tenga el cuadrante. Por ello el bloque climático se agrega en \textit{dos etapas}: primero se colapsa el panel a un registro por (\texttt{id\_cuadrante}, \texttt{FECHA\_DIA}), eliminando la replicación por activo, y sobre esa serie diaria del cuadrante se calcula el resumen semanal. Omitir la primera etapa dejaría el acumulado de lluvia multiplicado por el número de activos del cuadrante, un sesgo multiplicativo que además varía entre cuadrantes y contamina cualquier comparación territorial posterior.
 
     Las reglas de resumen son las siguientes:
     
     \begin{itemize}
-        \item \textbf{Coordenadas del cuadrante} (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}): primer valor registrado en el grupo (\texttt{first}), tomado del inventario georreferenciado del panel.
+        \item \textit{Coordenadas del cuadrante} (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}): primer valor registrado en el grupo (\texttt{first}), tomado del inventario georreferenciado del panel.
         
-        \item \textbf{Impacto operativo:} \texttt{usuarios\_afectados} $=$ \texttt{sum(CANTIDAD\_USUARIOS)} y \texttt{elementos\_afectados} $=$ \texttt{sum(CANTIDAD\_ELEMENTOS)} en la semana, sumando las severidades de evento ya atribuidas a los activos del cuadrante (paso~\ref{paso:int-5}). Esta suma agrega \textbf{impactos de evento}, no un conteo de usuarios o elementos únicos de la semana; tampoco multiplica la severidad por el número de activos del cuadrante (a diferencia del clima, que sí requería colapsar la replicación diario--activo). En el modelado pertenecen al grupo de \textbf{impacto posterior} (Sección~\ref{sec:metodos-modelos}): se conservan para el EDA y la descripción de severidad, pero \textbf{no} entran como predictoras contemporáneas de \texttt{n\_eventos} ni de \texttt{duracion\_total}. Una reelaboración de la regla de agregación, si procede, se documenta en la Etapa~4 sin cambiar esa exclusión.
+        \item \textit{Impacto operativo:} \texttt{usuarios\_afectados} $=$ \texttt{sum(CANTIDAD\_USUARIOS)} y \texttt{elementos\_afectados} $=$ \texttt{sum(CANTIDAD\_ELEMENTOS)} en la semana, sumando las severidades de evento ya atribuidas a los activos del cuadrante (paso~\ref{paso:int-5}). Esta suma agrega \textit{impactos de evento}, no un conteo de usuarios o elementos únicos de la semana; tampoco multiplica la severidad por el número de activos del cuadrante (a diferencia del clima, que sí requería colapsar la replicación diario--activo). En el modelado pertenecen al grupo de \textit{impacto posterior} (Sección~\ref{sec:metodos-modelos}): se conservan para el EDA y la descripción de severidad, pero \textit{no} entran como predictoras contemporáneas de \texttt{n\_eventos} ni de \texttt{duracion\_total}. Una reelaboración de la regla de agregación, si procede, se documenta en la Etapa~4 sin cambiar esa exclusión.
         
-        \item \textbf{Variables climáticas semanales:} sobre la serie diaria por cuadrante de la primera etapa, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana} como promedio de los días de la semana; \texttt{temp\_max\_semana} y \texttt{viento\_max\_semana} como máximo; \texttt{temp\_min\_semana} como mínimo; y \texttt{precip\_total\_semana} como suma de la precipitación diaria del cuadrante, es decir el acumulado de lluvia de la semana en milímetros.
+        \item \textit{Variables climáticas semanales:} sobre la serie diaria por cuadrante de la primera etapa, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana} como promedio de los días de la semana; \texttt{temp\_max\_semana} y \texttt{viento\_max\_semana} como máximo; \texttt{temp\_min\_semana} como mínimo; y \texttt{precip\_total\_semana} como suma de la precipitación diaria del cuadrante, es decir el acumulado de lluvia de la semana en milímetros.
         
-        \item \textbf{Continuidad del servicio:} \texttt{n\_eventos} $=$ \texttt{sum(FRECUENCIA)} (total de desconexiones \textbf{iniciadas} en la semana, sin prorrateo de la frecuencia) y \texttt{duracion\_total} $=$ \texttt{sum(duracion\_horas)} (suma semanal, en horas, de los minutos diarios de interrupción ya prorrateados en el panel activo~$\times$~día; unidad resultante: horas).
+        \item \textit{Continuidad del servicio:} \texttt{n\_eventos} $=$ \texttt{sum(FRECUENCIA)} (total de desconexiones \textit{iniciadas} en la semana, sin prorrateo de la frecuencia) y \texttt{duracion\_total} $=$ \texttt{sum(duracion\_horas)} (suma semanal, en horas, de los minutos diarios de interrupción ya prorrateados en el panel activo~$\times$~día; unidad resultante: horas).
     \end{itemize}
     
     El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}.
     
 \subsection{Descripción de la tabla base semanal cuadrante}
-    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textbf{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Se incluyen además los bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y denominadores, composición de estrato/sector, fechas y reposiciones de transformadores, y las respuestas SAIDI/SAIFI. Las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} presentan una muestra ilustrativa; por limitaciones de ancho en la página, la muestra se divide en cuatro bloques consecutivos que conservan el mismo orden de filas: identificación espacio-temporal e impacto operativo (Tabla~\ref{tab:muestra_semanal_cuadrante_1}), temperatura (Tabla~\ref{tab:muestra_semanal_cuadrante_2}), clima complementario (Tabla~\ref{tab:muestra_semanal_cuadrante_3}) y continuidad del servicio (Tabla~\ref{tab:muestra_semanal_cuadrante_4}).
+    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textit{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Se incluyen además los bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y denominadores, composición de estrato/sector, fechas y reposiciones de transformadores, y las respuestas SAIDI/SAIFI. La Tabla~\ref{tab:muestra_semanal_preview} presenta una vista previa; la muestra completa por bloques temáticos se documenta en el Apéndice~\ref{app:muestra-semanal-completa}.
     
     \begin{table}[!htbp]
     \centering
@@ -661,92 +591,22 @@ NASA POWER
     \begin{table}[!htbp]
     \centering
     \small
-    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 1: cuadrante, semana, coordenadas e impacto operativo}
-    \label{tab:muestra_semanal_cuadrante_1}
+    \caption{Vista previa de la tabla base semanal cuadrante (grano cuadrante--semana)}
+    \label{tab:muestra_semanal_preview}
     \begin{tabular}{r l r r r r r}
     \toprule
-    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Lat.} & \textbf{Lon.} & \textbf{Alt.} & \textbf{Usu. afect.} & \textbf{Elem. afect.} \\
+    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Usu. afect.} & \textbf{Temp. med.} & \textbf{Precip.} & \textbf{N eventos} & \textbf{Dur. total (h)} \\
     \midrule
-      1 & 28/12/2020 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
-      1 & 04/01/2021 & 7.0012 & -72.6855 & 3418 &    0 &   0 \\
-      3 & 04/01/2021 & 7.1548 & -72.7196 & 2850 &    0 &   0 \\
-     12 & 11/01/2021 & 7.4521 & -72.8903 & 1240 &  842 &  18 \\
-     45 & 18/01/2021 & 7.7539 & -73.1204 &  890 &    0 &   0 \\
-    117 & 25/01/2021 & 7.9215 & -72.5021 &  286 & 1254 &  24 \\
-    203 & 01/02/2021 & 8.0812 & -72.4108 &  312 &    0 &   0 \\
-     45 & 08/02/2021 & 7.7539 & -73.1204 &  890 &  315 &   6 \\
-    117 & 15/02/2021 & 7.9215 & -72.5021 &  286 &  680 &  11 \\
+      1 & 28/12/2020 &    0 & 13.6 & 18.5 & 0 &  0.0 \\
+     12 & 11/01/2021 &  842 & 22.4 &  8.4 & 5 & 28.4 \\
+     45 & 18/01/2021 &    0 & 23.8 &  6.2 & 0 &  0.0 \\
+    117 & 25/01/2021 & 1254 & 24.1 &  9.8 & 8 & 41.7 \\
+    203 & 01/02/2021 &    0 & 24.5 &  4.1 & 0 &  0.0 \\
     \bottomrule
     \end{tabular}
     \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 2: temperatura (continuación)}
-    \label{tab:muestra_semanal_cuadrante_2}
-    \begin{tabular}{r l r r r}
-    \toprule
-    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Temp. med.} & \textbf{Temp. max.} & \textbf{Temp. min.} \\
-    \midrule
-      1 & 28/12/2020 & 13.6 & 19.8 &  6.2 \\
-      1 & 04/01/2021 & 12.8 & 18.5 &  5.8 \\
-      3 & 04/01/2021 & 13.1 & 19.2 &  6.0 \\
-     12 & 11/01/2021 & 22.4 & 28.6 & 16.8 \\
-     45 & 18/01/2021 & 23.8 & 30.1 & 18.2 \\
-    117 & 25/01/2021 & 24.1 & 30.4 & 18.9 \\
-    203 & 01/02/2021 & 24.5 & 30.8 & 19.1 \\
-     45 & 08/02/2021 & 23.5 & 29.7 & 17.8 \\
-    117 & 15/02/2021 & 24.3 & 30.2 & 18.6 \\
-\bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 3: clima complementario (continuación)}
-    \label{tab:muestra_semanal_cuadrante_3}
-    \begin{tabular}{r l r r r r}
-    \toprule
-    \textbf{Id cuad.} & \textbf{Semana} & \textbf{Hum. med.} & \textbf{Vel. med.} & \textbf{Vel. max.} & \textbf{Precip.} \\
-    \midrule
-      1 & 28/12/2020 & 82.4 & 1.15 & 2.31 & 18.5 \\
-      1 & 04/01/2021 & 80.1 & 1.08 & 2.18 & 12.3 \\
-      3 & 04/01/2021 & 81.6 & 1.12 & 2.25 & 15.7 \\
-     12 & 11/01/2021 & 76.3 & 0.98 & 1.95 &  8.4 \\
-     45 & 18/01/2021 & 74.8 & 1.05 & 2.10 &  6.2 \\
-    117 & 25/01/2021 & 73.5 & 1.18 & 2.42 &  9.8 \\
-    203 & 01/02/2021 & 72.9 & 1.22 & 2.55 &  4.1 \\
-     45 & 08/02/2021 & 75.2 & 1.09 & 2.08 & 11.6 \\
-    117 & 15/02/2021 & 74.1 & 1.14 & 2.35 &  7.3 \\
-    \bottomrule
-    \end{tabular}
-    \end{table}
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Muestra de la tabla base semanal cuadrante (grano cuadrante--semana) -- Parte 4: continuidad del servicio (continuación)}
-    \label{tab:muestra_semanal_cuadrante_4}
-    \begin{tabular}{r r}
-    \toprule
-    \textbf{N eventos} & \textbf{Duración total (h)} \\
-    \midrule
-     0 &   0.0 \\
-     0 &   0.0 \\
-     0 &   0.0 \\
-     5 &  28.4 \\
-     0 &   0.0 \\
-     8 &  41.7 \\
-     0 &   0.0 \\
-     2 &  12.6 \\
-     4 &  22.3 \\
-    \bottomrule
-    \end{tabular}
-\end{table}
 
-    \noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} corresponden al mismo conjunto de observaciones en el mismo orden. Cadena de unidades de continuidad: panel diario en \textbf{minutos} (\texttt{DURACION\_min}) $\rightarrow$ conversión \texttt{/60} $\rightarrow$ \texttt{duracion\_total} semanal en \textbf{horas}. El prorrateo entre días se aplica solo al construir \texttt{DURACION\_min} (paso~\ref{paso:int-7}); la agregación semanal suma esos minutos ya prorrateados, convertidos a horas. Las semanas sin interrupciones registran \texttt{n\_eventos = 0} y \texttt{duracion\_total = 0}. Las unidades de temperatura, humedad, viento y precipitación coinciden con las del panel diario (°C, \%, m/s y mm, respectivamente).
+    \noindent\textit{Nota:} la muestra completa, con coordenadas, temperaturas máxima/mínima, viento y humedad por bloques temáticos, se documenta en el Apéndice~\ref{app:muestra-semanal-completa}. Cadena de unidades de continuidad: panel diario en \textit{minutos} (\texttt{DURACION\_min}) $\rightarrow$ conversión \texttt{/60} $\rightarrow$ \texttt{duracion\_total} semanal en \textit{horas}. El prorrateo entre días se aplica solo al construir \texttt{DURACION\_min} (paso~\ref{paso:int-7}); la agregación semanal suma esos minutos ya prorrateados, convertidos a horas. Las semanas sin interrupciones registran \texttt{n\_eventos = 0} y \texttt{duracion\_total = 0}. Las unidades de temperatura, humedad, viento y precipitación coinciden con las del panel diario (°C, \%, m/s y mm, respectivamente).
 
 
 \subsection{Justificación y enriquecimiento del panel cuadrante--semana}
@@ -795,11 +655,11 @@ Mediante intersección espacial entre polígonos de cuadrante y la capa oficial 
     \label{fig:estrato_distribucion}
 \end{figure}
 
-\noindent Se reconoce que el estrato es una variable \textbf{municipal}, no predial dentro del cuadrante. Detalle: Apéndice~\ref{app:html-etapa2-05}.
+\noindent Se reconoce que el estrato es una variable \textit{municipal}, no predial dentro del cuadrante. Detalle: Apéndice~\ref{app:html-etapa2-05}.
 
 \subsubsection{Eventos catastróficos (UNGRD)}
 \label{sec:desastres_ungrd}
-Los registros de emergencias de la UNGRD se agregan a municipio--semana y se trasladan al cuadrante vía la asignación municipal previa (\texttt{Etapa2\_06}). La Figura~\ref{fig:desastres_serie} describe la dinámica temporal de eventos catastróficos; la Figura~\ref{fig:desastres_tipo} la frecuencia por tipo de emergencia.
+Los registros de emergencias de la Unidad Nacional para la Gestión del Riesgo de Desastres (UNGRD) se agregan a municipio--semana y se trasladan al cuadrante vía la asignación municipal previa (\texttt{Etapa2\_06}). La Figura~\ref{fig:desastres_serie} describe la dinámica temporal de eventos catastróficos; la Figura~\ref{fig:desastres_tipo} la frecuencia por tipo de emergencia.
 
 \begin{figure}[!htbp]
     \centering
@@ -1263,13 +1123,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \paragraph{Diagnóstico de cobertura del emparejamiento evento--elemento.}
     \label{sec:delimitacion_temporal_modelado}
     
-    Al contrastar el conteo anual de eventos en \texttt{tabla\_eventos\_ajustado.csv} (BRAE) con la suma territorial de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}, se identificó un \textbf{sesgo sistemático} en el grano espacial durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). La causa no es la ausencia del campo \texttt{COMPONENTE\_FALLADO}, completo en el $100$~\% de los registros BRAE, sino la \textbf{incompatibilidad entre esquemas de codificación} al cruzar eventos con el inventario georreferenciado \texttt{tipo\_elemento.csv} (Tabla~\ref{tab:muestra_inventario_gis}).
+    Al contrastar el conteo anual de eventos en \texttt{tabla\_eventos\_ajustado.csv} (BRAE) con la suma territorial de \texttt{n\_eventos} en \texttt{data\_agrupada.csv}, se identificó un \textit{sesgo sistemático} en el grano espacial durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). La causa no es la ausencia del campo \texttt{COMPONENTE\_FALLADO}, completo en el $100$~\% de los registros BRAE, sino la \textit{incompatibilidad entre esquemas de codificación} al cruzar eventos con el inventario georreferenciado \texttt{tipo\_elemento.csv} (Tabla~\ref{tab:muestra_inventario_gis}).
     
-    En la operación de la red coexisten dos identificadores para un mismo punto de conexión: (i)~el \textbf{código de sitio} (ubicación), estable en el tiempo y empleado por el inventario GIS como \texttt{ELEMENTO}; y (ii)~el \textbf{código de activo}, asociado al equipo instalado y \textbf{sujeto a cambio} cuando el activo se repone por mantenimiento o renovación, mientras el código de sitio permanece invariante. El panel consolidado y la agregación cuadrante~$\times$~semana se construyen sobre el código de sitio. No obstante, en el sistema histórico OMS-SPARD (Sección~\ref{sec:extraccion_oms_historico}) el elemento fallado (\texttt{BREAKER} $\rightarrow$ \texttt{COMPONENTE\_FALLADO}) se registraba con frecuencia mediante el \textbf{código del activo} y no el del sitio. Ello impide el seguimiento histórico del punto de desconexión, unidad espacial central para el pronóstico territorial de $SAIDI$ y $SAIFI$ en esta tesis, pues el cruce \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} no encuentra coincidencia en el inventario y el evento no genera \texttt{FRECUENCIA} en el panel activo~$\times$~día.
+    En la operación de la red coexisten dos identificadores para un mismo punto de conexión: (i)~el \textit{código de sitio} (ubicación), estable en el tiempo y empleado por el inventario GIS como \texttt{ELEMENTO}; y (ii)~el \textit{código de activo}, asociado al equipo instalado y \textit{sujeto a cambio} cuando el activo se repone por mantenimiento o renovación, mientras el código de sitio permanece invariante. El panel consolidado y la agregación cuadrante~$\times$~semana se construyen sobre el código de sitio. No obstante, en el sistema histórico OMS-SPARD (Sección~\ref{sec:extraccion_oms_historico}) el elemento fallado (\texttt{BREAKER} $\rightarrow$ \texttt{COMPONENTE\_FALLADO}) se registraba con frecuencia mediante el \textit{código del activo} y no el del sitio. Ello impide el seguimiento histórico del punto de desconexión, unidad espacial central para el pronóstico territorial de $SAIDI$ y $SAIFI$ en esta tesis, pues el cruce \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} no encuentra coincidencia en el inventario y el evento no genera \texttt{FRECUENCIA} en el panel activo~$\times$~día.
     
-    El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{.}5$~\% (2021), $30{.}9$~\% (2022) y $31{.}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{.}1$~\%, $28{.}1$~\% y $29{.}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~\ref{sec:extraccion_oms_actual}), la coincidencia asciende al $79{.}8$~\% (2024) y al $95{.}0$~\% (2025), acompañada por coberturas del panel del $77{.}7$~\% y $92{.}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textbf{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
+    El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{.}5$~\% (2021), $30{.}9$~\% (2022) y $31{.}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{.}1$~\%, $28{.}1$~\% y $29{.}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~\ref{sec:extraccion_oms_actual}), la coincidencia asciende al $79{.}8$~\% (2024) y al $95{.}0$~\% (2025), acompañada por coberturas del panel del $77{.}7$~\% y $92{.}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textit{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
     
-    El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-emparejamiento}. Con base en este hallazgo, emergido en el presente análisis temporal, se define el \textbf{dataset de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36{.}120$ filas cuadrante~$\times$~semana, $105$ semanas y $33{.}410$ eventos georreferenciados en total ($15{.}211$ en 2024 y $18{.}199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:analisis_temporal_eventos}, pero \textbf{no} se empleará para estimar el modelo predictivo de la Etapa~4.
+    El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-emparejamiento}. Con base en este hallazgo, emergido en el presente análisis temporal, se define el \textit{dataset de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36{.}120$ filas cuadrante~$\times$~semana, $105$ semanas y $33{.}410$ eventos georreferenciados en total ($15{.}211$ en 2024 y $18{.}199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:analisis_temporal_eventos}, pero \textit{no} se empleará para estimar el modelo predictivo de la Etapa~4.
     
     \begin{table}[!htbp]
     \centering
@@ -1374,7 +1234,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 
 \subsection{Identificación de patrones, tendencias y visualización exploratoria}
 \label{sec:identificacion_patrones_tendencias}
-    Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{.}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{.}410$ eventos en 2024--2025). En esta misma subsección se integra la \textbf{visualización exploratoria} sobre $D_{\mathrm{mod}}$: series de tiempo, diagramas de dispersión y mapas temáticos que complementan el análisis cuantitativo de patrones. El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-patrones}.
+    Con fundamento en la delimitación de $D_{\mathrm{mod}}$ (Sección~\ref{sec:delimitacion_temporal_modelado}), se identifican patrones temporales, espaciales y de asociación clima--evento sobre la tabla \texttt{data\_agrupada\_mod.csv} ($36{.}120$ filas cuadrante~$\times$~semana; $344$ cuadrantes; $105$ semanas; $33{.}410$ eventos en 2024--2025). En esta misma subsección se integra la \textit{visualización exploratoria} sobre $D_{\mathrm{mod}}$: series de tiempo, diagramas de dispersión y mapas temáticos que complementan el análisis cuantitativo de patrones. El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-patrones}.
     
     \paragraph{Patrones temporales.} La Figura~\ref{fig:serie_semanal_patrones_mod} presenta la serie semanal territorial de eventos en $D_{\mathrm{mod}}$, con media de $\approx 318$ eventos por semana. Aunque las etiquetas del eje horizontal se muestran cada 3 meses para facilitar la lectura, cada tramo de la linea corresponde a observaciones semanales consecutivas. La intensidad promedio asciende de $287$ eventos/semana en 2024 a $350$ en 2025. La estacionalidad mensual (Figura~\ref{fig:estacionalidad_patrones_mod}) confirma la heterogeneidad entre meses observada en la Sección~\ref{sec:analisis_temporal_eventos} sobre $D_{\mathrm{EDA}}$, sin que el acumulado semanal de lluvia explique ese patrón. La ACF de la serie semanal (Figura~\ref{fig:acf_patrones_mod}) mantiene persistencia elevada (rezago~$1 = 0{.}80$), lo que respalda el uso de rezagos como predictores en la Etapa~4.
     
@@ -1408,7 +1268,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:ranking_cuadrantes_mod}
     \end{figure}
     
-    \noindent La Figura~\ref{fig:ubicacion_top_cuadrantes_mod} complementa el ranking anterior con la \textbf{ubicación geográfica} de los cuadrantes más activos sobre la malla territorial del área de estudio. Los recuadros resaltados corresponden a los primeros cuadrantes \emph{top} del periodo 2024--2025 y muestran una concentración en cuatro zonas: (i)~el área metropolitana de Cúcuta y Villa del Rosario; (ii)~un corredor al suroccidente, en torno a Salazar, Arboledas, Durania y Chinácota; (iii)~la subregión de Tibú, al norte del departamento; y (iv)~los municipios de Ocaña y Aguachica, al occidente. Esta distribución espacial confirma que la mayor actividad de interrupciones no es aleatoria, sino que se agrupa en núcleos urbanos y corredores de servicio de la red.
+    \noindent La Figura~\ref{fig:ubicacion_top_cuadrantes_mod} complementa el ranking anterior con la \textit{ubicación geográfica} de los cuadrantes más activos sobre la malla territorial del área de estudio. Los recuadros resaltados corresponden a los primeros cuadrantes \emph{top} del periodo 2024--2025 y muestran una concentración en cuatro zonas: (i)~el área metropolitana de Cúcuta y Villa del Rosario; (ii)~un corredor al suroccidente, en torno a Salazar, Arboledas, Durania y Chinácota; (iii)~la subregión de Tibú, al norte del departamento; y (iv)~los municipios de Ocaña y Aguachica, al occidente. Esta distribución espacial confirma que la mayor actividad de interrupciones no es aleatoria, sino que se agrupa en núcleos urbanos y corredores de servicio de la red.
     
     \begin{figure}[!htbp]
         \centering
@@ -1445,9 +1305,9 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
 \subsection{Análisis de correlación y asociación}
 \label{sec:analisis_correlacion_asociacion}
-    Con fundamento en los patrones preliminares de la Sección~\ref{sec:identificacion_patrones_tendencias}, se realizó un análisis sistemático de asociación pareada sobre \texttt{data\_agrupada\_mod.csv} ($D_{\mathrm{mod}}$; $36{.}120$ filas cuadrante~$\times$~semana). Dado el carácter asimétrico, cero-inflado y de colas pesadas de las variables operativas (Sección~\ref{sec:distribucion_variables}), se empleó el coeficiente de correlación de \textbf{Spearman} en lugar de Pearson. El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-correlacion}.
+    Con fundamento en los patrones preliminares de la Sección~\ref{sec:identificacion_patrones_tendencias}, se realizó un análisis sistemático de asociación pareada sobre \texttt{data\_agrupada\_mod.csv} ($D_{\mathrm{mod}}$; $36{.}120$ filas cuadrante~$\times$~semana). Dado el carácter asimétrico, cero-inflado y de colas pesadas de las variables operativas (Sección~\ref{sec:distribucion_variables}), se empleó el coeficiente de correlación de \textit{Spearman} en lugar de Pearson. El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-correlacion}.
     
-    \paragraph{Matriz de asociación global.} Se calcularon las correlaciones de Spearman entre las variables operativas (\texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total}), las siete variables climáticas semanales y las coordenadas geográficas (\texttt{altitud}, \texttt{latitud}, \texttt{longitud}). La Figura~\ref{fig:heatmap_cor_clima_operativo} resume la submatriz clima--operativo. Los pares con mayor asociación absoluta del panel completo concentran redundancia operativa: \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho = 0{.}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho = 0{.}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho = 0{.}97$). Parte de esta magnitud es \textbf{mecánica}: las tres métricas provienen de la misma tabla de eventos, comparten la masa de ceros en semanas sin interrupción y, al agregarse por suma, crecen juntas cuando aumenta el número de eventos. Por ello no deben interpretarse como evidencia de tres dimensiones independientes ni usarse simultáneamente como respuesta y predictoras; la definición definitiva del rol de la severidad se aplaza a la Etapa~4.
+    \paragraph{Matriz de asociación global.} Se calcularon las correlaciones de Spearman entre las variables operativas (\texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}, \texttt{duracion\_total}), las siete variables climáticas semanales y las coordenadas geográficas (\texttt{altitud}, \texttt{latitud}, \texttt{longitud}). La Figura~\ref{fig:heatmap_cor_clima_operativo} resume la submatriz clima--operativo. Los pares con mayor asociación absoluta del panel completo concentran redundancia operativa: \texttt{usuarios\_afectados}--\texttt{elementos\_afectados} ($\rho = 0{.}99$), \texttt{n\_eventos}--\texttt{elementos\_afectados} ($\rho = 0{.}98$) y \texttt{n\_eventos}--\texttt{usuarios\_afectados} ($\rho = 0{.}97$). Parte de esta magnitud es \textit{mecánica}: las tres métricas provienen de la misma tabla de eventos, comparten la masa de ceros en semanas sin interrupción y, al agregarse por suma, crecen juntas cuando aumenta el número de eventos. Por ello no deben interpretarse como evidencia de tres dimensiones independientes ni usarse simultáneamente como respuesta y predictoras; la definición definitiva del rol de la severidad se aplaza a la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1456,7 +1316,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_clima_operativo}
     \end{figure}
     
-    \paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textbf{diez} pares con $|\rho| \geq 0{.}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{.}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{.}91$) y entre componentes de viento ($\rho = 0{.}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{.}76$ a $-0{.}80$) y con el viento ($\rho \approx -0{.}70$ a $-0{.}81$). La precipitación no participa en ninguno de estos pares: su mayor asociación dentro del bloque queda por debajo del umbral, lo que la señala como la única covariable climática no redundante. Estos resultados anticipan \textbf{multicolinealidad} entre temperaturas y vientos, y orientan la depuración de variables en la Etapa~4.
+    \paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textit{diez} pares con $|\rho| \geq 0{.}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{.}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{.}91$) y entre componentes de viento ($\rho = 0{.}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{.}76$ a $-0{.}80$) y con el viento ($\rho \approx -0{.}70$ a $-0{.}81$). La precipitación no participa en ninguno de estos pares: su mayor asociación dentro del bloque queda por debajo del umbral, lo que la señala como la única covariable climática no redundante. Estos resultados anticipan \textit{multicolinealidad} entre temperaturas y vientos, y orientan la depuración de variables en la Etapa~4.
     
     \begin{figure}[!htbp]
         \centering
@@ -1474,7 +1334,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_operativo}
     \end{figure}
     
-    \paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. Todas las asociaciones son estadísticamente significativas, consecuencia esperable del tamaño del panel, pero de magnitud pequeña. Las variables de \textbf{viento} encabezan el bloque: \texttt{viento\_max\_semana} con \texttt{n\_eventos} ($\rho = 0{.}139$) y \texttt{viento\_medio\_semana} con \texttt{n\_eventos} ($\rho = 0{.}135$), con valores del mismo orden frente a \texttt{usuarios\_afectados} ($\rho \approx 0{.}12$), \texttt{elementos\_afectados} ($\rho \approx 0{.}11$) y \texttt{duracion\_total} ($\rho \approx 0{.}11$). La \texttt{precip\_total\_semana} le sigue con asociaciones positivas débiles ($\rho = 0{.}069$ con \texttt{duracion\_total} y $\rho = 0{.}065$ con \texttt{n\_eventos}), mientras la humedad ($\rho \approx 0{.}05$) y las temperaturas ($|\rho| < 0{.}05$, con signo negativo) resultan prácticamente irrelevantes en el grano semanal.
+    \paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. Todas las asociaciones son estadísticamente significativas, consecuencia esperable del tamaño del panel, pero de magnitud pequeña. Las variables de \textit{viento} encabezan el bloque: \texttt{viento\_max\_semana} con \texttt{n\_eventos} ($\rho = 0{.}139$) y \texttt{viento\_medio\_semana} con \texttt{n\_eventos} ($\rho = 0{.}135$), con valores del mismo orden frente a \texttt{usuarios\_afectados} ($\rho \approx 0{.}12$), \texttt{elementos\_afectados} ($\rho \approx 0{.}11$) y \texttt{duracion\_total} ($\rho \approx 0{.}11$). La \texttt{precip\_total\_semana} le sigue con asociaciones positivas débiles ($\rho = 0{.}069$ con \texttt{duracion\_total} y $\rho = 0{.}065$ con \texttt{n\_eventos}), mientras la humedad ($\rho \approx 0{.}05$) y las temperaturas ($|\rho| < 0{.}05$, con signo negativo) resultan prácticamente irrelevantes en el grano semanal.
 
     Conviene precisar el alcance de este resultado. La magnitud reducida de la asociación no implica ausencia de efecto físico de la lluvia sobre la red, sino que el acumulado semanal por cuadrante es un descriptor grueso del fenómeno: promedia días secos y días de tormenta, y no captura la intensidad horaria ni la coincidencia temporal exacta entre el evento meteorológico y la desconexión. Con este descriptor, la asociación bivariada disponible en el grano cuadrante~$\times$~semana es débil, y así se reporta.
     
@@ -1517,13 +1377,13 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cor_condicionado}
     \end{figure}
     
-    \noindent En síntesis, el análisis de correlación sobre $D_{\mathrm{mod}}$ confirma: (i)~\textbf{alta redundancia} entre variables operativas de severidad y entre temperaturas/vientos del bloque climático; (ii)~una \textbf{señal climática débil en términos bivariados}, encabezada por el viento ($\rho \approx 0{.}14$) y seguida por la precipitación ($\rho \approx 0{.}07$); y (iii)~\textbf{asociaciones prácticamente nulas} de temperatura y humedad en el grano semanal. Estos hallazgos fundamentan conservar \texttt{viento\_medio\_semana} y \texttt{precip\_total\_semana} como candidatas climáticas, sujetas a la regla de disponibilidad \emph{ex ante} (rezago o pronóstico; Sección~\ref{sec:metodos-modelos}), la exclusión de variables climáticas redundantes y la fijación de la respuesta en \texttt{n\_eventos} y/o \texttt{duracion\_total}, dejando \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} fuera del conjunto de predictoras contemporáneas (impacto posterior). Asimismo advierten que la Etapa~4 no debe apoyarse únicamente en covariables meteorológicas de la misma semana: la estructura temporal y territorial de la propia serie de eventos (Secciones~\ref{sec:analisis_temporal_eventos} y~\ref{sec:segmentacion_exploratoria}) concentra la mayor parte de la señal predictiva disponible. El análisis multivariado formal (VIF, redundancia simultánea) se desarrolla en la Sección~\ref{sec:evaluacion_multivariada}.
+    \noindent En síntesis, el análisis de correlación sobre $D_{\mathrm{mod}}$ confirma: (i)~\textit{alta redundancia} entre variables operativas de severidad y entre temperaturas/vientos del bloque climático; (ii)~una \textit{señal climática débil en términos bivariados}, encabezada por el viento ($\rho \approx 0{.}14$) y seguida por la precipitación ($\rho \approx 0{.}07$); y (iii)~\textit{asociaciones prácticamente nulas} de temperatura y humedad en el grano semanal. Estos hallazgos fundamentan conservar \texttt{viento\_medio\_semana} y \texttt{precip\_total\_semana} como candidatas climáticas, sujetas a la regla de disponibilidad \emph{ex ante} (rezago o pronóstico; Sección~\ref{sec:metodos-modelos}), la exclusión de variables climáticas redundantes y la fijación de la respuesta en \texttt{n\_eventos} y/o \texttt{duracion\_total}, dejando \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} fuera del conjunto de predictoras contemporáneas (impacto posterior). Asimismo advierten que la Etapa~4 no debe apoyarse únicamente en covariables meteorológicas de la misma semana: la estructura temporal y territorial de la propia serie de eventos (Secciones~\ref{sec:analisis_temporal_eventos} y~\ref{sec:segmentacion_exploratoria}) concentra la mayor parte de la señal predictiva disponible. El análisis multivariado formal (VIF, redundancia simultánea) se desarrolla en la Sección~\ref{sec:evaluacion_multivariada}.
     
 \subsection{Evaluación inicial de relaciones multivariadas}
 \label{sec:evaluacion_multivariada}
-    Con fundamento en las redundancias bivariadas identificadas en la Sección~\ref{sec:analisis_correlacion_asociacion}, se evaluaron las relaciones \textbf{simultáneas} entre covariables sobre $D_{\mathrm{mod}}$ mediante VIF, PCA exploratorio, agrupamiento jerárquico de variables climáticas, correlación parcial y un GLM Poisson de diagnóstico (Sección~\ref{sec:metodos-modelos}). El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-multivariado}.
+    Con fundamento en las redundancias bivariadas identificadas en la Sección~\ref{sec:analisis_correlacion_asociacion}, se evaluaron las relaciones \textit{simultáneas} entre covariables sobre $D_{\mathrm{mod}}$ mediante VIF, PCA exploratorio, agrupamiento jerárquico de variables climáticas, correlación parcial y un GLM Poisson de diagnóstico (Sección~\ref{sec:metodos-modelos}). El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-multivariado}.
     
-    \paragraph{Multicolinealidad climática (VIF).} Se estimó un modelo auxiliar lineal \texttt{n\_eventos $\sim$} bloque climático completo para calcular el factor de inflación de la varianza (VIF) de cada covariable. La Figura~\ref{fig:vif_clima_multivariado} muestra VIF elevados en \texttt{temp\_media\_semana} ($43{.}92$), \texttt{viento\_medio\_semana} ($24{.}22$), \texttt{viento\_max\_semana} ($22{.}58$), \texttt{temp\_max\_semana} ($17{.}27$) y \texttt{temp\_min\_semana} ($14{.}37$), mientras \texttt{precip\_total\_semana} ($1{.}50$) presenta inflación baja y \texttt{humedad\_media\_semana} ($5{.}68$) apenas moderada. Al restringir el bloque a \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, los VIF descienden a valores aceptables (máximo $7{.}21$ en temperatura media; Tabla~\ref{tab:vif_reducido}).
+    \paragraph{Multicolinealidad climática (VIF).} Se estimó un modelo auxiliar lineal \texttt{n\_eventos $\sim$} bloque climático completo para calcular el VIF de cada covariable. La Figura~\ref{fig:vif_clima_multivariado} muestra VIF elevados en \texttt{temp\_media\_semana} ($43{.}92$), \texttt{viento\_medio\_semana} ($24{.}22$), \texttt{viento\_max\_semana} ($22{.}58$), \texttt{temp\_max\_semana} ($17{.}27$) y \texttt{temp\_min\_semana} ($14{.}37$), mientras \texttt{precip\_total\_semana} ($1{.}50$) presenta inflación baja y \texttt{humedad\_media\_semana} ($5{.}68$) apenas moderada. Al restringir el bloque a \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, los VIF descienden a valores aceptables (máximo $7{.}21$ en temperatura media; Tabla~\ref{tab:vif_reducido}).
     
     \begin{figure}[!htbp]
         \centering
@@ -1559,9 +1419,9 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     \subparagraph{Varianza retenida y pesos (loadings).} Las dos primeras componentes condensan el $87{.}3$~\% de la varianza (PC1: $66{.}9$~\%; PC2: $20{.}4$~\%) y PC3 aporta un $8{.}3$~\% adicional (acumulado $95{.}6$~\%; Figura~\ref{fig:pca_scree_clima}). La Tabla~\ref{tab:pca_loadings_clima} y la Figura~\ref{fig:pca_loadings_clima} reportan las cargas; se interpretan como variables relevantes en cada componente aquellas con $|loading|\geq 0{.}40$ (Sección~\ref{sec:metodos-modelos}):
     \begin{itemize}
-        \item \textbf{PC1 (eje térmico--viento):} dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_max\_semana} $0{.}43$, \texttt{temp\_min\_semana} $0{.}43$), con cargas negativas de viento (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$). La precipitación es irrelevante en este eje ($-0{.}08$).
-        \item \textbf{PC2 (eje de humedad--lluvia):} la variable más importante es \texttt{precip\_total\_semana} ($0{.}70$), seguida de \texttt{humedad\_media\_semana} ($0{.}51$).
-        \item \textbf{PC3:} contrastan precipitación ($-0{.}66$) y viento máximo ($-0{.}43$) frente a humedad ($0{.}32$), con contribución adicional del viento medio ($-0{.}37$).
+        \item \textit{PC1 (eje térmico--viento):} dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_max\_semana} $0{.}43$, \texttt{temp\_min\_semana} $0{.}43$), con cargas negativas de viento (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$). La precipitación es irrelevante en este eje ($-0{.}08$).
+        \item \textit{PC2 (eje de humedad--lluvia):} la variable más importante es \texttt{precip\_total\_semana} ($0{.}70$), seguida de \texttt{humedad\_media\_semana} ($0{.}51$).
+        \item \textit{PC3:} contrastan precipitación ($-0{.}66$) y viento máximo ($-0{.}43$) frente a humedad ($0{.}32$), con contribución adicional del viento medio ($-0{.}37$).
     \end{itemize}
     En síntesis, las temperaturas (y, en sentido opuesto, el viento) concentran el peso en PC1, mientras la precipitación, variable de mayor interés operativo, concentra su importancia en PC2--PC3. Ello respalda conservar precipitación como predictora no redundante y depurar temperaturas/vientos extremos del conjunto reducido.
     
@@ -1709,26 +1569,26 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:heatmap_cluster_segmentacion}
     \end{figure}
     
-    \noindent En síntesis, la segmentación exploratoria sobre $D_{\mathrm{mod}}$ evidencia: (i)~heterogeneidad territorial persistente (14{.}2~\% de cuadrantes en nivel alta concentran actividad desproporcionada); (ii)~incremento homogéneo 2024$\rightarrow$2025 en todos los estratos; (iii)~\textbf{ausencia} de diferencia significativa en la frecuencia de interrupciones entre semanas lluviosas y secas cuando la lluvia se mide como acumulado semanal; y (iv)~cuatro perfiles espaciales distinguibles por clustering, ordenados principalmente por severidad y altitud más que por régimen de lluvia. Estos criterios orientan la estratificación territorial y la partición entrenamiento/prueba de la Etapa~4.
+    \noindent En síntesis, la segmentación exploratoria sobre $D_{\mathrm{mod}}$ evidencia: (i)~heterogeneidad territorial persistente (14{.}2~\% de cuadrantes en nivel alta concentran actividad desproporcionada); (ii)~incremento homogéneo 2024$\rightarrow$2025 en todos los estratos; (iii)~\textit{ausencia} de diferencia significativa en la frecuencia de interrupciones entre semanas lluviosas y secas cuando la lluvia se mide como acumulado semanal; y (iv)~cuatro perfiles espaciales distinguibles por clustering, ordenados principalmente por severidad y altitud más que por régimen de lluvia. Estos criterios orientan la estratificación territorial y la partición entrenamiento/prueba de la Etapa~4.
     
 \subsection{Resultados y entregables de la etapa}
 \label{sec:resultados_eda}
-    La Etapa~3 sobre $D_{\mathrm{mod}}$ (2024--2025; $36{.}120$ filas cuadrante~$\times$~semana) produjo un diagnóstico exploratorio integrado: calidad y distribución de variables (Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:distribucion_variables}), delimitación temporal y materialización del panel de modelado (Sección~\ref{sec:analisis_temporal_eventos}), patrones y visualización (Sección~\ref{sec:identificacion_patrones_tendencias}), correlación bivariada (Sección~\ref{sec:analisis_correlacion_asociacion}), evaluación multivariada con recomendación de predictoras y respuesta (Sección~\ref{sec:evaluacion_multivariada}) y segmentación territorial (Sección~\ref{sec:segmentacion_exploratoria}). Los hallazgos convergentes son: (i)~señal climática contemporánea \textbf{débil} en el grano semanal (viento por delante de precipitación); (ii)~\textbf{redundancia} en bloques operativo y climático que justifica subconjuntos reducidos, con la severidad (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) altamente alineada a \texttt{n\_eventos} en parte por construcción; (iii)~\textbf{taxonomía de tres grupos} (Sección~\ref{sec:metodos-modelos}): predictoras disponibles \emph{ex ante}, respuestas $SAIFI$/$SAIDI$, e impacto posterior excluido como predictor contemporáneo; (iv)~\textbf{heterogeneidad espacial} y clusters territoriales que sugieren estratificación en el modelado; y (v)~\textbf{partición natural} entrenamiento 2024 / prueba 2025 bajo cobertura homogénea de emparejamiento evento--elemento. Los informes HTML reproducibles se consolidan en el Apéndice~\ref{app:informes-html}; el \textbf{entregable ejecutivo consolidado} corresponde al Apéndice~\ref{app:html-eda} (síntesis de las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:resultados_eda} con hallazgos, figuras representativas y lineamientos para la Etapa~4). La ingeniería de variables de la Etapa~4 operacionaliza esa taxonomía, incluidos rezagos climáticos/operativos y, si procede, la reelaboración de la métrica de severidad solo con fines descriptivos,.
+    La Etapa~3 sobre $D_{\mathrm{mod}}$ (2024--2025; $36{.}120$ filas cuadrante~$\times$~semana) produjo un diagnóstico exploratorio integrado: calidad y distribución de variables (Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:distribucion_variables}), delimitación temporal y materialización del panel de modelado (Sección~\ref{sec:analisis_temporal_eventos}), patrones y visualización (Sección~\ref{sec:identificacion_patrones_tendencias}), correlación bivariada (Sección~\ref{sec:analisis_correlacion_asociacion}), evaluación multivariada con recomendación de predictoras y respuesta (Sección~\ref{sec:evaluacion_multivariada}) y segmentación territorial (Sección~\ref{sec:segmentacion_exploratoria}). Los hallazgos convergentes son: (i)~señal climática contemporánea \textit{débil} en el grano semanal (viento por delante de precipitación); (ii)~\textit{redundancia} en bloques operativo y climático que justifica subconjuntos reducidos, con la severidad (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) altamente alineada a \texttt{n\_eventos} en parte por construcción; (iii)~\textit{taxonomía de tres grupos} (Sección~\ref{sec:metodos-modelos}): predictoras disponibles \emph{ex ante}, respuestas $SAIFI$/$SAIDI$, e impacto posterior excluido como predictor contemporáneo; (iv)~\textit{heterogeneidad espacial} y clusters territoriales que sugieren estratificación en el modelado; y (v)~\textit{partición natural} entrenamiento 2024 / prueba 2025 bajo cobertura homogénea de emparejamiento evento--elemento. Los informes HTML reproducibles se consolidan en el Apéndice~\ref{app:informes-html}; el \textit{entregable ejecutivo consolidado} corresponde al Apéndice~\ref{app:html-eda} (síntesis de las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:resultados_eda} con hallazgos, figuras representativas y lineamientos para la Etapa~4). La ingeniería de variables de la Etapa~4 operacionaliza esa taxonomía, incluidos rezagos climáticos/operativos y, si procede, la reelaboración de la métrica de severidad solo con fines descriptivos,.
     
-    \textbf{Resultado:} conocimiento exploratorio del comportamiento de los datos y hallazgos relevantes para el modelado.
+    \textit{Resultado:} conocimiento exploratorio del comportamiento de los datos y hallazgos relevantes para el modelado.
     
-    \textbf{Entregable:} Documento de análisis descriptivo y exploratorio (EDA), Apéndice~\ref{app:html-eda}.
+    \textit{Entregable:} Documento de análisis descriptivo y exploratorio (EDA), Apéndice~\ref{app:html-eda}.
     
 
 \section{Etapa 4 – Ingeniería de variables y preparación del modelo}
 \label{sec:metodología-etapa4}
 
-A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:metodos-modelos}, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. El criterio rector es evitar \textbf{fuga de información}: solo entran como predictoras variables disponibles \emph{antes} de la semana~$t$ a pronosticar. Las actividades incluyen la definición formal de la variable respuesta, la construcción de predictoras informadas por el EDA (clima rezagado o pronosticado, histórico de eventos, rasgos del cuadrante, estacionalidad), la depuración y codificación de covariables, la estandarización de variables continuas y la partición temporal entrenamiento/prueba. \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} se tratan como \textbf{impacto posterior}: el primero entra en el numerador de $SAIFI$ y $SAIDI$, pero ninguno se habilita como predictora contemporánea. El preprocesamiento, incluida la selección de variables con base en el EDA, se concentra aquí, en coherencia con estabilidad numérica, identificabilidad y validez operativa del pronóstico.
+A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:metodos-modelos}, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. El criterio rector es evitar \textit{fuga de información}: solo entran como predictoras variables disponibles \emph{antes} de la semana~$t$ a pronosticar. Las actividades incluyen la definición formal de la variable respuesta, la construcción de predictoras informadas por el EDA (clima rezagado o pronosticado, histórico de eventos, rasgos del cuadrante, estacionalidad), la depuración y codificación de covariables, la estandarización de variables continuas y la partición temporal entrenamiento/prueba. \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} se tratan como \textit{impacto posterior}: el primero entra en el numerador de $SAIFI$ y $SAIDI$, pero ninguno se habilita como predictora contemporánea. El preprocesamiento, incluida la selección de variables con base en el EDA, se concentra aquí, en coherencia con estabilidad numérica, identificabilidad y validez operativa del pronóstico.
 
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
 \subsection{Construcción de variables predictoras}
-Se construyen únicamente variables del grupo \textbf{disponibles antes del periodo a pronosticar}: (i)~clima rezagado ($t-1,\ldots,t-h$) o, cuando exista, clima pronosticado para~$t$ con fecha de emisión anterior al inicio de la semana; (ii)~histórico de eventos del cuadrante (conteos o duraciones rezagadas) y, si procede, de vecinos espaciales; (iii)~características del cuadrante enriquecidas en la Sección~\ref{sec:enriquecimiento_panel_cuadrante} (infraestructura, estrato municipal, topología de red, edad/modificaciones de activos); (iv)~exposición externa (NDVI, UNGRD, sismicidad); (v)~estacionalidad y calendario (mes, semana del año, indicadores de régimen). Quedan \textbf{excluidas} como predictoras contemporáneas \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ al pronosticar $\mathrm{SAIFI}_t$ o $\mathrm{SAIDI}_t$. El feature engineering reproducible se documenta en el Apéndice~\ref{app:html-etapa4-01}.
+Se construyen únicamente variables del grupo \textit{disponibles antes del periodo a pronosticar}: (i)~clima rezagado ($t-1,\ldots,t-h$) o, cuando exista, clima pronosticado para~$t$ con fecha de emisión anterior al inicio de la semana; (ii)~histórico de eventos del cuadrante (conteos o duraciones rezagadas) y, si procede, de vecinos espaciales; (iii)~características del cuadrante enriquecidas en la Sección~\ref{sec:enriquecimiento_panel_cuadrante} (infraestructura, estrato municipal, topología de red, edad/modificaciones de activos); (iv)~exposición externa (NDVI, UNGRD, sismicidad); (v)~estacionalidad y calendario (mes, semana del año, indicadores de régimen). Quedan \textit{excluidas} como predictoras contemporáneas \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ al pronosticar $\mathrm{SAIFI}_t$ o $\mathrm{SAIDI}_t$.
 
 \subsection{Construcción de la variable respuesta}
 Las respuestas son $Y_t=\mathrm{SAIFI}_t$ y $Y'_t=\mathrm{SAIDI}_t$, calculadas en cada fila cuadrante~$\times$~semana como
@@ -1767,7 +1627,7 @@ De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{
 \end{figure}
 
 \subsection{Análisis de asociación y depuración de variables cualitativas}
-Las cualitativas candidatas (\texttt{estrato\_predominante\_municipal}, tipología de zona, indicadores de régimen lluvioso/seco y flags de exposición) se depuran por cobertura de categorías y por asociación con $SAIFI$/$SAIDI$ en el entrenamiento. Categorías raras se colapsan; las variables sin contraste útil se excluyen de la matriz de diseño sin borrarlas del panel. El procedimiento reproducible se documenta en los Apéndices~\ref{app:html-etapa4-01} y~\ref{app:html-asociacion-cuanti}.
+Las cualitativas candidatas (\texttt{estrato\_predominante\_municipal}, tipología de zona, indicadores de régimen lluvioso/seco y flags de exposición) se depuran por cobertura de categorías y por asociación con $SAIFI$/$SAIDI$ en el entrenamiento. Categorías raras se colapsan; las variables sin contraste útil se excluyen de la matriz de diseño sin borrarlas del panel. El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-asociacion-cuanti}.
 
 \subsection{Codificación de variables categóricas}
 Las categóricas retenidas se codifican como \emph{dummy} de referencia (contrastes tratamiento) o, cuando el orden es informativo (estrato), como factor ordinal. No se usan codificaciones posteriores al corte de prueba. En el panel de modelado espacial, las proporciones de estrato (\texttt{prop\_estrato\_*}, \texttt{prop\_no\_residencial}) entran ya como proporciones numéricas y no requieren \emph{dummy} adicional.
@@ -1776,13 +1636,13 @@ Las categóricas retenidas se codifican como \emph{dummy} de referencia (contras
 Las cuantitativas continuas se estandarizan (\emph{z}-score) solo cuando el algoritmo lo exige (p.~ej.~regularización o distancias); en OLS/FE de \texttt{fixest} se mantienen en escala original para interpretar coeficientes. Las respuestas $SAIDI$ y $SAIFI$ se transforman con $\log(1+y)$ ante asimetría y ceros, según \texttt{Etapa5\_01}/\texttt{Etapa5\_02}.
 
 \subsection{Generación de ventanas temporales}
-Por cuadrante se construyen rezagos $t-1,\ldots,t-h$ de clima y de la respuesta, medias móviles (p.~ej.~precipitación y viento a 4 semanas) e indicadores de calendario (mes, trimestre). El documento \texttt{Etapa4\_01} exporta \texttt{panel\_semana\_con\_rezagos.rds}; \texttt{Etapa4\_02} selecciona el orden de rezagos de $SAIDI$ por AIC, contrastando especificaciones estáticas frente a dinámicas con/sin persistencia ($SAIDI_{t-1}$, precipitación rezagada). La evidencia de dependencia temporal motiva incluir al menos el primer rezago de la respuesta como predictora \emph{ex ante}. Detalle reproducible: Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa4-02}.
+Por cuadrante se construyen rezagos $t-1,\ldots,t-h$ de clima y de la respuesta, medias móviles (p.~ej.~precipitación y viento a 4 semanas) e indicadores de calendario (mes, trimestre), a partir de la persistencia temporal identificada en el análisis exploratorio (Sección~\ref{sec:analisis_temporal_eventos}), que motiva incluir al menos el primer rezago de la respuesta como predictora \emph{ex ante}.
 
 \subsection{Partición de datos en entrenamiento y prueba}
-Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{.}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{.}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio. En los modelos espaciales de \texttt{Etapa5\_01}/\texttt{Etapa5\_02} se aplica además un corte temporal del 15~\% final de semanas como \emph{holdout}, nunca una partición aleatoria.
+Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{.}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textit{2024} al conjunto de entrenamiento y las de \textit{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{.}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio. En los modelos espaciales de \texttt{Etapa5\_01}/\texttt{Etapa5\_02} se aplica además un corte temporal del 15~\% final de semanas como \emph{holdout}, nunca una partición aleatoria.
 
 \subsection{Construcción de matrices de diseño}
-La matriz de diseño retiene las predictoras \emph{ex ante} depuradas: clima (contemporáneo o rezagado según la especificación), NDVI, desastres UNGRD, sismicidad, topología de red, composición socioeconómica, edad/modificaciones de activos, rezagos de la respuesta y rezagos espaciales de vecinos. Se excluyen impacto posterior y respuestas contemporáneas cruzadas. Los insumos se materializan en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} (Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa5-02}).
+La matriz de diseño retiene las predictoras \emph{ex ante} depuradas: clima (contemporáneo o rezagado según la especificación), NDVI, desastres UNGRD, sismicidad, topología de red, composición socioeconómica, edad/modificaciones de activos, rezagos de la respuesta y rezagos espaciales de vecinos. Se excluyen impacto posterior y respuestas contemporáneas cruzadas. Los insumos se materializan en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}).
 
 \subsection{Reducción de dimensionalidad}
 Además del filtrado por Spearman/VIF (Sección~\ref{sec:asociacion_depuracion_cuanti}), se eliminan variables estáticas absorbidas por efectos fijos de cuadrante cuando la especificación es FE, y se retienen en Pooled OLS y en el corte transversal SAR/SEM. No se aplica PCA como paso obligatorio: la reducción se guía por redundancia y por el aporte marginal del bloque espacial.
@@ -1794,17 +1654,17 @@ El modelado principal opera sobre semanas con falla (\texttt{hubo\_falla}$=1$) p
 Se construyen: (i)~$\log(1+\mathrm{SAIDI})$ y $\log(1+\mathrm{SAIFI})$; (ii)~rezagos espaciales \texttt{SAIDI\_vecinos\_lag1}/\texttt{SAIFI\_vecinos\_lag1}, \texttt{n\_eventos\_vecinos} y \texttt{ndvi\_vecinos} vía contigüidad \emph{queen} (\texttt{spdep}); (iii)~interacciones exposición estática~$\times$~dinámica (p.~ej.~\texttt{ndvi\_x\_elementos}). Detalle en \texttt{Etapa5\_01} y \texttt{Etapa5\_02}.
 
 \subsection{Resultados y entregables de la etapa}
-\textbf{Resultado:} panel analítico con predictoras \emph{ex ante}, rezagos temporales/espaciales y partición temporal documentada.
+\textit{Resultado:} panel analítico con predictoras \emph{ex ante}, rezagos temporales/espaciales y partición temporal documentada.
 
-\textbf{Entregable:} reportes \texttt{Etapa4\_01\_feature\_engineering\_general.html} y \texttt{Etapa4\_02\_rezagos\_SAIDI.html} (Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa4-02}), más la matriz depurada de la Sección~\ref{sec:asociacion_depuracion_cuanti}.
+\textit{Entregable:} matriz depurada de predictoras (Sección~\ref{sec:asociacion_depuracion_cuanti}) y panel analítico final documentado en los Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}.
 
 \section{Etapa 5 – Modelado predictivo y evaluativo}
 \label{sec:metodología-etapa5}
 
-En esta etapa se estiman y comparan modelos para \textbf{SAIDI} y \textbf{SAIFI} por separado a grano cuadrante~$\times$~semana, siguiendo \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.Rmd} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.Rmd} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}). El diseño combina (i)~modelos de panel para pronóstico semanal y (ii)~modelos espaciales formales SAR/SEM en corte transversal ponderado. La validación es temporal; las métricas de referencia son $RMSE$, $MAE$ y $R^2$ en escala $\log(1+y)$.
+En esta etapa se estiman y comparan modelos para \textit{SAIDI} y \textit{SAIFI} por separado a grano cuadrante~$\times$~semana, siguiendo \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.Rmd} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.Rmd} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}). El diseño combina (i)~modelos de panel para pronóstico semanal y (ii)~modelos espaciales formales SAR/SEM en corte transversal ponderado. La validación es temporal; las métricas de referencia son $RMSE$, $MAE$ y $R^2$ en escala $\log(1+y)$.
 
 \subsection{Selección de algoritmos}
-Se seleccionan cuatro familias para el panel semanal: (1)~\textbf{Pooled OLS}; (2)~\textbf{efectos fijos de cuadrante} (\texttt{feols}, \texttt{fixest}); (3)~\textbf{efectos fijos de cuadrante y semana}; (4)~\textbf{Random Forest} ($500$ árboles). En el corte transversal se estiman \textbf{SAR} y \textbf{SEM} (\texttt{spatialreg}). La dependencia espacial se diagnostica previamente con el índice de Moran; la Figura~\ref{fig:saidi_moran} ilustra el patrón territorial de $SAIDI$ promedio por cuadrante.
+Se seleccionan cuatro familias para el panel semanal: (1)~\textit{Pooled OLS}; (2)~\textit{efectos fijos de cuadrante} (\texttt{feols}, \texttt{fixest}); (3)~\textit{efectos fijos de cuadrante y semana}; (4)~\textit{Random Forest} ($500$ árboles). En el corte transversal se estiman \textit{SAR} y \textit{SEM} (\texttt{spatialreg}). La dependencia espacial se diagnostica previamente con el índice de Moran; la Figura~\ref{fig:saidi_moran} ilustra el patrón territorial de $SAIDI$ promedio por cuadrante.
 
 \begin{figure}[!htbp]
     \centering
@@ -1824,7 +1684,7 @@ El entrenamiento usa solo semanas anteriores al corte temporal. La fórmula base
 \end{figure}
 
 \subsection{Validación del modelo}
-La validación es \textbf{holdout temporal}: se reserva aproximadamente el $15$~\% final de semanas ordenadas; no se permite muestreo aleatorio. El FE de cuadrante+semana puede no ser evaluable fuera de muestra cuando las semanas de prueba no están en el entrenamiento; en ese caso se priorizan Pooled OLS, FE de cuadrante y Random Forest.
+La validación es \textit{holdout temporal}: se reserva aproximadamente el $15$~\% final de semanas ordenadas; no se permite muestreo aleatorio. El FE de cuadrante+semana puede no ser evaluable fuera de muestra cuando las semanas de prueba no están en el entrenamiento; en ese caso se priorizan Pooled OLS, FE de cuadrante y Random Forest.
 
 \subsection{Ajuste de hiperparámetros}
 En Random Forest se fija \texttt{ntree}$=500$ con semilla reproducible. En SAR/SEM se compara AIC entre especificaciones y se verifica robustez ante colinealidad estructural. El detalle de sensibilidad queda en los HTML de \texttt{Etapa5\_01}/\texttt{Etapa5\_02}.
@@ -1847,7 +1707,7 @@ Sobre el test se calculan $RMSE$, $MAE$ y $R^2$ en escala logarítmica. La Figur
 \end{figure}
 
 \subsection{Comparación de modelos}
-La comparación distingue dos usos: (i)~\textbf{pronóstico semanal} --- menor $RMSE$ en test entre Pooled OLS, FE cuadrante y Random Forest; (ii)~\textbf{explicación estructural} --- menor AIC entre SAR/SEM. SAIDI y SAIFI se reportan por separado. Las tablas numéricas completas se concentran en el Capítulo~\ref{sec:resultados} y en los anexos HTML.
+La comparación distingue dos usos: (i)~pronóstico semanal, con menor $RMSE$ en test entre Pooled OLS, FE cuadrante y Random Forest; y (ii)~explicación estructural, con menor AIC entre SAR/SEM. SAIDI y SAIFI se reportan por separado. Las tablas numéricas completas se concentran en el Capítulo~\ref{sec:resultados} y en los anexos HTML.
 
 \subsection{Interpretación de resultados}
 La interpretación combina coeficientes de las especificaciones lineales/FE, importancia de variables del Random Forest y parámetros espaciales de SAR/SEM. Las Figuras~\ref{fig:saidi_rf_imp} y~\ref{fig:saifi_rf_imp} resumen la importancia relativa de predictores en los Random Forest de $SAIDI$ y $SAIFI$.
@@ -1867,9 +1727,9 @@ La interpretación combina coeficientes de las especificaciones lineales/FE, imp
 \end{figure}
 
 \subsection{Resultados y entregables de la etapa}
-\textbf{Resultado:} modelos de SAIDI y SAIFI entrenados, validados en holdout temporal y contrastados con especificaciones espaciales formales.
+\textit{Resultado:} modelos de SAIDI y SAIFI entrenados, validados en holdout temporal y contrastados con especificaciones espaciales formales.
 
-\textbf{Entregables:} \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}).
+\textit{Entregables:} \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}).
 
 \section{Etapa 6 – Cierre metodológico, documentación y reportes}
 \label{sec:metodología-etapa6}
@@ -1894,9 +1754,9 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 
 \subsection{Resultados y entregables de la etapa}
 
-\textbf{Resultado:} documentación final del proyecto y resultados consolidados.
+\textit{Resultado:} documentación final del proyecto y resultados consolidados.
 
-\textbf{Entregables:} Compendio de documentación del proyecto (informe final, informe descriptivo, informe de evaluación de modelos y reporte técnico de variables relevantes), código reproducible y documentación detallada de procesos y transformaciones.
+\textit{Entregables:} Compendio de documentación del proyecto (informe final, informe descriptivo, informe de evaluación de modelos y reporte técnico de variables relevantes), código reproducible y documentación detallada de procesos y transformaciones.
    
 
 \section{Relación entre etapas metodológicas y objetivos específicos}

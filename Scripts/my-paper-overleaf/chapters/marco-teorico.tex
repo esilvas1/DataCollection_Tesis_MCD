@@ -6,18 +6,26 @@
 
 
 \subsection{Contexto del estudio}
-    Cuando hablamos de calidad del servicio eléctrico, nos referimos básicamente a entregar energía de forma segura y eficiente, cumpliendo con estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la Comisión de Regulación de Energía y Gas (CREG) \textcite{ref3}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI (\textit{System Average Interruption Duration Index}) y el SAIFI (\textit{System Average Interruption Frequency Index}).
+    Cuando hablamos de calidad del servicio eléctrico, nos referimos básicamente a entregar energía de forma segura y eficiente, cumpliendo con estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la CREG \textcite{ref3}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI y el SAIFI, ya definidos en la introducción de este trabajo.
 
      \begin{enumerate}
-          \item \textbf{Definición del SAIDI según la Resolución CREG 015 de 2018:}
-           La Resolución CREG 015 de 2018 define el SAIDI como se indica a continuación. En dicha normativa, el \textbf{OR} es el \textbf{Operador de Red} y el \textbf{SDL} es el \textbf{Sistema de Distribución Local}.
+          \item \textit{Definición del SAIDI según la Resolución CREG 015 de 2018:}
+           La Resolución CREG 015 de 2018 define el SAIDI como se indica a continuación. En dicha normativa, el OR es el Operador de Red y el SDL es el Sistema de Distribución Local.
             %\ref{eq:saidi_creg_015_2018}
             \begin{quote}
                 La calidad media anual del OR se mide a través de los indicadores de duración y frecuencia de los eventos sucedidos en los SDL, que se establecen como se describe a continuación. El indicador SAIDI representa la duración total en horas de los eventos que en promedio percibe cada usuario del SDL de un OR, hayan sido o no afectados por un evento, en un período anual. Se establece mediante la siguiente expresión:     
                 \begin{equation}
                     \begin{aligned}
-                    SAIDI_{j,t} 
-                    &= \dfrac{\sum_{m=1}^{12} \sum_{i=1}^{n} D_{i,u,m} \times NU_{i,u,m}}{UT_{j,m} \times 60},
+                    SAIDI_{j,t}
+                        =
+                        \sum_{m=1}^{12}
+                        \frac{
+                            \sum_{i=1}^{n}
+                            \left(D_{i,u,m}\times NU_{i,u,m}\right)
+                        }{
+                            UT_{j,m}
+                        }
+                        \frac{1}{60},
                     \end{aligned}
                 \label{eq:saidi_creg_015_2018}
                 \end{equation}
@@ -32,13 +40,21 @@
             \end{quote}
 
     
-          \item \textbf{Definición del SAIFI según la Resolución CREG 015 de 2018:}
+          \item \textit{Definición del SAIFI según la Resolución CREG 015 de 2018:}
            La misma resolución define el \textit{SAIFI} como:
             \begin{quote}
                 ``El indicador \textit{SAIFI} representa la cantidad total de los eventos que en promedio perciben todos los usuarios del SDL de un OR, hayan sido o no afectados por un evento, en un período anual. Se establece mediante la siguiente expresión:''
                 \begin{equation}
                     \begin{aligned}
-                    SAIFI_{j,t} &= \dfrac{\sum_{m=1}^{12} \sum_{i=1}^{n} NU_{i,u,m}}{UT_{j,m}},
+                    SAIFI_{j,t}
+                        =
+                        \sum_{m=1}^{12}
+                        \frac{
+                            \sum_{i=1}^{n}
+                            NU_{i,u,m}
+                        }{
+                            UT_{j,m}
+                        },
                     \end{aligned}
                 \label{eq:saifi_definicion}
                 \end{equation}
@@ -54,7 +70,7 @@
             Cada OR es responsable del cálculo de los indicadores de calidad del servicio. Para ello, debe utilizar la información reportada conforme a lo establecido en el numeral 5.2.11.3.2 de la Resolución CREG 015 de 2018, así como la información de vinculación definida en el literal a) del numeral 5.2.10 \textcite{ref1}. Esta disposición garantiza que el cálculo de los indicadores se realice con base en registros oficiales, trazables y consistentes con los lineamientos regulatorios vigentes.
 
             
-          \item \textbf{Interpretación de los indicadores:}
+          \item \textit{Interpretación de los indicadores:}
             Los indicadores SAIDI y SAIFI miden los \textit{eventos} de interrupción del servicio eléctrico, entendidos como situaciones en las cuales se presenta una pérdida total o parcial del suministro. Dependiendo de su causa y de los criterios regulatorios aplicables, ciertos eventos son incluidos en el cálculo de los indicadores, mientras que otros pueden ser excluidos conforme a la normativa vigente.
     
             El SAIDI expresa el tiempo promedio durante el cual un usuario permanece sin servicio eléctrico en un período determinado. Por su parte, el SAIFI mide la frecuencia promedio con la que un usuario experimenta interrupciones en el mismo período. En conjunto, ambos indicadores permiten evaluar la continuidad y confiabilidad del sistema de distribución.
@@ -63,7 +79,7 @@
             
             En el ámbito regulatorio, los OR deben reportar estos indicadores como métricas clave de desempeño y compararlos con las metas establecidas por la CREG. El cumplimiento de dichas metas está asociado a esquemas de remuneración por calidad del servicio, mientras que el incumplimiento puede dar lugar a ajustes tarifarios, obligaciones de reinversión o sanciones económicas \textcite{ref3,ref8}. Por tanto, SAIDI y SAIFI no solo constituyen medidas técnicas de continuidad, sino también variables con impacto financiero y regulatorio significativo.
           
-          \item \textbf{Meta de calidad media del SAIDI:}
+          \item \textit{Meta de calidad media del SAIDI:}
            La Resolución CREG 015 de 2018 establece que la meta de calidad media para el indicador de duración de los eventos en el Sistema de Distribución Local (SDL) de cada OR se determina con base en una expresión específica definida por la regulación. Formalmente, dicha meta se calcula mediante la siguiente formulación:
             \begin{quote}
                 ``La meta para el indicador de frecuencia de los eventos sucedidos en el SDL de cada OR se obtiene con base en la siguiente expresión:''
@@ -80,10 +96,10 @@
                 \end{itemize}
             \end{quote}
 
-         \item \textbf{Dimensión social y económica:}
+         \item \textit{Dimensión social y económica:}
           Desde una dimensión social y económica, un servicio deficiente ocasiona pérdidas significativas en la productividad empresarial y en los ingresos por remuneración al operador de red, y afecta la operación de instituciones comerciales e industriales. Por ello, mejorar la gestión y la capacidad de predicción de $SAIDI$ y $SAIFI$ es un objetivo estratégico para los operadores y para la regulación del sector, con impactos directos en usuarios, empresas y entes de control.
 
-          \item \textbf{Exclusiones de eventos:}
+          \item \textit{Exclusiones de eventos:}
           Para la realización del cálculo de la calidad del servicio y el seguimiento de estos indicadores se tienen algunas exclusiones que permiten exonerar o excluir eventos de este cálculo. Entre los aspectos de la calidad del servicio de energía eléctrica que no serán observados dentro de este estudio se encuentran las siguientes exclusiones de eventos, tal como lo dicta la regulación CREG 015 del 2018 \textcite{ref3}:
             \begin{itemize}
                 \item Los menores o iguales a 3 minutos.
@@ -98,14 +114,14 @@
                 \item Y otros menos relevantes para este estudio, pero que serán igualmente excluidos.
             \end{itemize}
          
-         \item \textbf{Factores que afectan los indicadores:}
+         \item \textit{Factores que afectan los indicadores:}
          Hay varios factores que deben considerarse, ya que terminan afectando negativamente los indicadores de calidad~\textcite{ref1,ref6,ref7}:
          
             \begin{itemize}
-                \item \textbf{El clima:} Las tormentas eléctricas, vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
-                \item \textbf{Aspectos técnicos e infraestructura:} Si el mantenimiento es deficiente, si los equipos están viejos u obsoletos, o si no hay redundancia en la red, se generan problemas que impactan los indicadores.
-                \item \textbf{La gestión operativa:} Cuando falta planificación en el mantenimiento, cuando existen redes y equipos sin hojas de vida documentadas, cuando la respuesta a fallas es lenta o cuando el servicio está saturado, los indicadores se ven afectados. El problema se agrava al tener la información dispersa en múltiples sistemas.
-                \item \textbf{Los datos:} Cuando la información está fragmentada en diferentes aplicativos, se dificulta el desarrollo de modelos predictivos que funcionen adecuadamente.
+                \item \textit{El clima:} Las tormentas eléctricas, vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
+                \item \textit{Aspectos técnicos e infraestructura:} Si el mantenimiento es deficiente, si los equipos están viejos u obsoletos, o si no hay redundancia en la red, se generan problemas que impactan los indicadores.
+                \item \textit{La gestión operativa:} Cuando falta planificación en el mantenimiento, cuando existen redes y equipos sin hojas de vida documentadas, cuando la respuesta a fallas es lenta o cuando el servicio está saturado, los indicadores se ven afectados. El problema se agrava al tener la información dispersa en múltiples sistemas.
+                \item \textit{Los datos:} Cuando la información está fragmentada en diferentes aplicativos, se dificulta el desarrollo de modelos predictivos que funcionen adecuadamente.
             \end{itemize}
 
         Por lo tanto, analizar en conjunto todas estas situaciones que afectan el indicador de forma negativa o positiva constituye un ejercicio relevante, ya que permitiría fortalecer la confiabilidad de los procesos internos y mejorar la gestión de los indicadores de calidad del servicio público de redes eléctricas de la empresa operadora de red de Norte de Santander.
@@ -115,15 +131,15 @@
 \subsection{Métodos y modelos}
 \label{sec:metodos-modelos}
 
-En este trabajo, la unidad de análisis del modelado es el par \textbf{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). Para evitar \textbf{fuga de información} en el pronóstico, las variables del panel se separan en tres grupos mutuamente excluyentes según su disponibilidad temporal respecto de la semana~$t$ a predecir:
+En este trabajo, la unidad de análisis del modelado es el par \textit{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). Para evitar \textit{fuga de información} en el pronóstico, las variables del panel se separan en tres grupos mutuamente excluyentes según su disponibilidad temporal respecto de la semana~$t$ a predecir:
 
 \begin{enumerate}
-    \item \textbf{Disponibles antes del periodo a pronosticar} (candidatas a predictoras): clima \emph{rezagado} ($t-1,\ldots,t-h$) o \emph{pronosticado} para~$t$ cuando exista un forecast operativo \emph{ex ante}; histórico de eventos del cuadrante (y vecinos, si aplica); características del cuadrante (altitud, tipología de zona, número de activos, usuarios totales del inventario); estacionalidad y calendario; rezagos de $Y$ o $Y'$. El clima contemporáneo de la semana~$t$ solo entra como predictora si está disponible \emph{antes} de observar los eventos de~$t$; en el EDA se usa como asociación descriptiva, no como garantía de usabilidad predictiva.
-    \item \textbf{Variables respuesta:} $Y = \mathrm{SAIFI}$ y $Y' = \mathrm{SAIDI}$, construidas en el grano cuadrante~$\times$~semana como
+    \item \textit{Disponibles antes del periodo a pronosticar} (candidatas a predictoras): clima \emph{rezagado} ($t-1,\ldots,t-h$) o \emph{pronosticado} para~$t$ cuando exista un forecast operativo \emph{ex ante}; histórico de eventos del cuadrante (y vecinos, si aplica); características del cuadrante (altitud, tipología de zona, número de activos, usuarios totales del inventario); estacionalidad y calendario; rezagos de $Y$ o $Y'$. El clima contemporáneo de la semana~$t$ solo entra como predictora si está disponible \emph{antes} de observar los eventos de~$t$; en el EDA se usa como asociación descriptiva, no como garantía de usabilidad predictiva.
+    \item \textit{Variables respuesta:} $Y = \mathrm{SAIFI}$ y $Y' = \mathrm{SAIDI}$, construidas en el grano cuadrante~$\times$~semana como
     $\mathrm{SAIFI}=\texttt{usuarios\_afectados}/UT_{m}$ y
     $\mathrm{SAIDI}=(\texttt{duracion\_total}\times\texttt{usuarios\_afectados})/UT_{m}$,
     donde $UT_{m}$ es el número de usuarios totales del sistema en el mes~$m$ de la semana (serie \texttt{data\_usuarios\_totales\_sistema.csv}). \texttt{n\_eventos} y \texttt{duracion\_total} son insumos de esa construcción y del historial \emph{ex ante}, no las respuestas a predecir.
-    \item \textbf{Impacto posterior} (descriptivo / severidad): \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} solo se conocen al ocurrir o cerrar el evento. \texttt{usuarios\_afectados} entra en el numerador de $Y$ y $Y'$, pero \textbf{no} se emplea como predictora contemporánea. \texttt{elementos\_afectados} queda restringido a la descripción de severidad. Análogamente, $\texttt{duracion\_total}_t$ y $\texttt{n\_eventos}_t$ contemporáneos no entran como covariables al pronosticar $\mathrm{SAIDI}_t$ o $\mathrm{SAIFI}_t$.
+    \item \textit{Impacto posterior} (descriptivo / severidad): \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} solo se conocen al ocurrir o cerrar el evento. \texttt{usuarios\_afectados} entra en el numerador de $Y$ y $Y'$, pero \textit{no} se emplea como predictora contemporánea. \texttt{elementos\_afectados} queda restringido a la descripción de severidad. Análogamente, $\texttt{duracion\_total}_t$ y $\texttt{n\_eventos}_t$ contemporáneos no entran como covariables al pronosticar $\mathrm{SAIDI}_t$ o $\mathrm{SAIFI}_t$.
 \end{enumerate}
 
 El vector climático de referencia, sujeto a la regla de disponibilidad del grupo~1, es
@@ -138,28 +154,28 @@ El vector climático de referencia, sujeto a la regla de disponibilidad del grup
 eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación/modelado.
 
 \begin{enumerate}
-    \item \textbf{Datos faltantes, tipos e imputación:}
+    \item \textit{Datos faltantes, tipos e imputación:}
     Sea $X_j$ la $j$-ésima variable del panel. La proporción de faltantes se define como
     \[
     p_j^{\mathrm{NA}} = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{X_{ij}=\texttt{NA}\}.
     \]
     En el panel activo~$\times$~día, los \texttt{NA} se concentran en el bloque climático y en \texttt{ALTITUD}; en la tabla agregada cuadrante~$\times$~semana ($D_{\mathrm{EDA}}$, $D_{\mathrm{mod}}$) no se observan faltantes. Las reglas de imputación o exclusión se aplican en la Etapa~4 solo donde $p_j^{\mathrm{NA}}>0$ en el grano de origen, conforme a los criterios de tratamiento de datos incompletos de \textcite{ref49}.
 
-    \item \textbf{Dispersión relativa (coeficiente de variación):}
+    \item \textit{Dispersión relativa (coeficiente de variación):}
     Para comparar la variabilidad de variables cuantitativas con distintas unidades o escalas, se emplea el coeficiente de variación
     \[
     \mathrm{CV}(X)=\frac{s_X}{\bar{x}},\qquad \bar{x}\neq 0,
     \]
     donde $s_X$ es la desviación estándar muestral y $\bar{x}$ la media. Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
 
-    \item \textbf{Análisis de atípicos y extremos:}
+    \item \textit{Análisis de atípicos y extremos:}
     Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por \textcite{ref50}. Con $Q_1$ y $Q_3$ los cuartiles e $\mathrm{IQR}=Q_3-Q_1$, se marcan como extremos candidatos los valores
     \[
     x \notin \bigl[Q_1 - k\cdot\mathrm{IQR},\; Q_3 + k\cdot\mathrm{IQR}\bigr]
     \]
     con factor $k=1{.}5$ (regla de Tukey) y, de forma complementaria, $k=3{.}0$ (extremos más severos). Estas reglas se contrastan con el criterio de percentiles P1--P99 sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
 
-    \item \textbf{Transformaciones de variables:}
+    \item \textit{Transformaciones de variables:}
     Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de \textcite{ref51},
     \[
     T(x)=\log(1+x),\qquad x\geq 0,
@@ -170,21 +186,21 @@ eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de 
     \]
     que sitúa cada variable en media~$0$ y desviación típica~$1$.
 
-    \item \textbf{Series de tiempo y sus características:}
+    \item \textit{Series de tiempo y sus características:}
     Sea $E_t$ el total semanal territorial de eventos. La función de autocorrelación (ACF) en el rezago $h$ es
     \[
     \rho(h)=\frac{\mathrm{Cov}(E_t,E_{t-h})}{\mathrm{Var}(E_t)}.
     \]
     En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{.}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo~\textcite{ref52}; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
 
-    \item \textbf{Análisis de correlación:}
+    \item \textit{Análisis de correlación:}
     Por la asimetría y la cero-inflación de las variables operativas, se emplea el coeficiente de correlación por rangos de \textcite{ref53}:
     \[
     \rho_S(X,Y)=1-\frac{6\sum_{i=1}^{n}d_i^{2}}{n(n^{2}-1)},
     \]
     donde $d_i$ es la diferencia de rangos. En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es $(\texttt{viento\_max\_semana},\,\texttt{n\_eventos})$ con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\textcite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
 
-    \item \textbf{Datos de entrenamiento y prueba:}
+    \item \textit{Datos de entrenamiento y prueba:}
     La partición es temporal (no aleatoria):
     \[
     \mathcal{D}_{\mathrm{train}}=\{(i,t):\mathrm{year}(t)=2024\},\qquad
@@ -192,27 +208,27 @@ eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de 
     \]
     sobre el grano cuadrante~$i$ y semana~$t$ de $D_{\mathrm{mod}}$, preservando el orden cronológico ante la autocorrelación de la serie~\textcite{ref55,ref57}.
 
-    \item \textbf{Validación cruzada:}
+    \item \textit{Validación cruzada:}
     Cuando se ajusten hiperparámetros en $\mathcal{D}_{\mathrm{train}}$, se prioriza validación \emph{forward-chaining} (bloques temporales sucesivos) en lugar de $k$-fold aleatorio, para no romper la dependencia temporal de \texttt{n\_eventos}~\textcite{ref56}.
 
-    \item \textbf{Análisis de componentes principales (PCA):}
+    \item \textit{Análisis de componentes principales (PCA):}
     El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\textcite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Dado el bloque climático estandarizado $\mathbf{Z}$, se resuelve
     \[
     \mathbf{Z}^{\mathsf{T}}\mathbf{Z}\,\mathbf{v}_{\ell}=\lambda_{\ell}\mathbf{v}_{\ell},
     \]
     y las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen ejes de covarianza (temperaturas/vientos frente a precipitación). La importancia de cada variable en la componente $\ell$ se lee mediante las cargas (loadings) $v_{\ell j}$; en el EDA se interpretan como relevantes aquellas con $|v_{\ell j}|\geq 0{.}40$. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
 
-    \item \textbf{Métodos de agrupación:}
+    \item \textit{Métodos de agrupación:}
     Los cuadrantes se segmentan por actividad (cuantiles de $\sum_t \texttt{n\_eventos}$) y, de forma multivariada, por clustering (p.\,ej.\ jerárquico~\textcite{ref60} o $k$-means~\textcite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.
 
-    \item \textbf{Factor de inflación de la varianza (VIF):}
+    \item \textit{Factor de inflación de la varianza (VIF):}
     Para cada predictora $X_j$ del bloque climático en un modelo auxiliar lineal $\texttt{n\_eventos}\sim \mathbf{x}$,
     \[
     \mathrm{VIF}_j=\frac{1}{1-R_j^{2}},
     \]
     donde $R_j^{2}$ proviene de regresar $X_j$ sobre el resto de covariables~\textcite{ref61}. Valores altos en \texttt{temp\_max}/\texttt{temp\_min} y \texttt{viento\_max} motivan el subconjunto reducido $\mathbf{x}$ indicado arriba (VIF aceptables tras la depuración), teniendo en cuenta las advertencias sobre el uso mecánico de umbrales fijos señaladas por \textcite{ref62}.
 
-    \item \textbf{Modelo lineal generalizado de Poisson (GLM Poisson):}
+    \item \textit{Modelo lineal generalizado de Poisson (GLM Poisson):}
     Como modelo diagnóstico de conteos~\textcite{ref63,ref64},
     \[
     Y_i\sim\mathrm{Poisson}(\mu_i),\qquad
