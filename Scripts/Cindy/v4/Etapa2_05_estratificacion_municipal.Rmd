@@ -216,6 +216,24 @@ kable(head(st_drop_geometry(estrato_municipal), 5),
 ## Asignación espacial: cuadrante → municipio
 
 ```{r estrato-join-espacial}
+# Si el .gpkg ya fue enriquecido en una corrida previa, cuadrantes_infra
+# trae columnas municipales (MPIO_*, Estrato_*, etc.). Al hacer st_join
+# otra vez, sf las renombra a .x/.y y el select(MPIO_CCNCT) falla.
+# Se eliminan antes del join para que el script sea idempotente.
+cols_estrato_previas <- c(
+  "DPTO_CCDGO", "DPTO_CNMBR",
+  "MPIO_CCDGO", "MPIO_CNMBR", "MPIO_CCNCT",
+  "TipoMetodologia", "ProcesoRevisionGral",
+  "Estratos_Mun", "Estrato_Predom",
+  "codigo_municipio", "municipio",
+  "codigo_departamento", "departamento",
+  "metodologia_estratificacion", "n_estratos_municipio",
+  "estrato_predominante_municipal"
+)
+
+cuadrantes_infra <- cuadrantes_infra %>%
+  select(-any_of(cols_estrato_previas))
+
 cuadrantes_infra_estrato <- st_join(
   cuadrantes_infra,
   estrato_municipal,

@@ -112,7 +112,7 @@ tabla_eventos <- tabla_eventos %>%
 
 ```{r eventos-semana-elemento}
 eventos_semana <- tabla_eventos %>%
-  group_by(ELEMENTO_FALLADO, semana) %>%
+  group_by(COMPONENTE_FALLADO, semana) %>%
   summarise(
     n_eventos = n(),
     duracion_total = sum(duracion_horas, na.rm = TRUE),
@@ -199,7 +199,7 @@ ggplot(eventos_tiempo, aes(x = semana, y = total_eventos)) +
 
 ```{r top-elementos}
 eventos_elemento <- eventos_semana %>%
-  group_by(ELEMENTO_FALLADO) %>%
+  group_by(COMPONENTE_FALLADO) %>%
   summarise(
     total_eventos = sum(n_eventos, na.rm = TRUE),
     duracion_total = sum(duracion_total, na.rm = TRUE),
@@ -213,7 +213,7 @@ eventos_elemento <- eventos_semana %>%
 ```{r plot-top20, fig.width=8, fig.height=6}
 eventos_elemento %>%
   slice_max(total_eventos, n = 20) %>%
-  ggplot(aes(x = reorder(ELEMENTO_FALLADO, total_eventos), y = total_eventos)) +
+  ggplot(aes(x = reorder(COMPONENTE_FALLADO, total_eventos), y = total_eventos)) +
   geom_col(fill = "#1f78b4") +
   coord_flip() +
   theme_minimal() +
@@ -254,7 +254,7 @@ elemento_cuadrante <- ELEMENTO_FALLA_CUADRANTE_800 %>%
   select(ELEMENTO, CUADRANTE_1) %>%
   distinct() %>%
   rename(
-    ELEMENTO_FALLADO = ELEMENTO,
+    COMPONENTE_FALLADO = ELEMENTO,
     id_cuadrante = CUADRANTE_1
   )
 ```
@@ -263,7 +263,7 @@ elemento_cuadrante <- ELEMENTO_FALLA_CUADRANTE_800 %>%
 
 ```{r integrar-cuadrante}
 eventos_semana_cuadrante <- eventos_semana %>%
-  left_join(elemento_cuadrante, by = "ELEMENTO_FALLADO")
+  left_join(elemento_cuadrante, by = "COMPONENTE_FALLADO")
 
 # Validación clave: si esto no es cercano a 0, hay problemas de matching
 sum(is.na(eventos_semana_cuadrante$id_cuadrante))

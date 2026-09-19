@@ -55,7 +55,8 @@ library(kableExtra)
 
 ```{r entorno}
 # ── Rutas ──────────────────────────────────────────────────────────────
-env_path <- file.path("..", "..", ".env")
+# Este Rmd vive en Scripts/Cindy/v4/ → el .env de la raiz esta 3 niveles arriba.
+env_path <- file.path("..", "..", "..", ".env")
 if (file.exists(".env")) {
   readRenviron(".env")
 } else if (file.exists(env_path)) {
