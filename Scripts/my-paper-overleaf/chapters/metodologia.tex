@@ -751,7 +751,7 @@ NASA POWER
 
 \subsection{Justificación y enriquecimiento del panel cuadrante--semana}
 \label{sec:enriquecimiento_panel_cuadrante}
-Tras materializar la tabla base semanal (Secciones~\ref{sec:agrupacion_cuadrante_semana}--\ref{tab:base_semanal_cuadrante}), se incorporan atributos territoriales, de red y de exposición que no están en el panel operativo original. El procedimiento reproducible corresponde a los informes \texttt{Etapa2\_03} a \texttt{Etapa2\_12} (Apéndice~\ref{app:html-etapas-cindy-v4}). El criterio es el mismo del EDA de Edwin: cada bloque se argumenta en el cuerpo del capítulo con hallazgos, figuras representativas y remisión al HTML para el detalle de código.
+Tras materializar la tabla base semanal (Secciones~\ref{sec:agrupacion_cuadrante_semana}--\ref{tab:base_semanal_cuadrante}), se incorporan atributos territoriales, de red y de exposición que no están en el panel operativo original. El procedimiento reproducible corresponde a los informes \texttt{Etapa2\_03} a \texttt{Etapa2\_12} (Apéndices~\ref{app:html-etapa2-03}--\ref{app:html-etapa2-12}). Cada bloque se argumenta en el cuerpo del capítulo con hallazgos, figuras representativas y remisión al HTML para el detalle de código.
 
 \subsubsection{Justificación de la agregación espacial}
 \label{sec:justificacion_agregacion_espacial}
@@ -775,7 +775,7 @@ A partir del inventario GIS se agregan conteos y tipologías de elementos (trans
     \label{fig:infra_composicion_top30}
 \end{figure}
 
-\noindent Detalle reproducible: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_04}).
+\noindent Detalle reproducible: Apéndice~\ref{app:html-etapa2-04}.
 
 \subsubsection{Estratificación municipal}
 \label{sec:estratificacion_municipal}
@@ -795,7 +795,7 @@ Mediante intersección espacial entre polígonos de cuadrante y la capa oficial 
     \label{fig:estrato_distribucion}
 \end{figure}
 
-\noindent Se reconoce que el estrato es una variable \textbf{municipal}, no predial dentro del cuadrante. Detalle: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_05}).
+\noindent Se reconoce que el estrato es una variable \textbf{municipal}, no predial dentro del cuadrante. Detalle: Apéndice~\ref{app:html-etapa2-05}.
 
 \subsubsection{Eventos catastróficos (UNGRD)}
 \label{sec:desastres_ungrd}
@@ -815,7 +815,7 @@ Los registros de emergencias de la UNGRD se agregan a municipio--semana y se tra
     \label{fig:desastres_tipo}
 \end{figure}
 
-\noindent Detalle: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_06}).
+\noindent Detalle: Apéndice~\ref{app:html-etapa2-06}.
 
 \subsubsection{Sismicidad (SGC)}
 \label{sec:sismicidad_sgc}
@@ -835,7 +835,7 @@ La sismicidad del Servicio Geológico Colombiano se integra como exposición ter
     \label{fig:sismos_magnitud}
 \end{figure}
 
-\noindent Detalle: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_07}).
+\noindent Detalle: Apéndice~\ref{app:html-etapa2-07}.
 
 \subsubsection{Topología de red eléctrica}
 \label{sec:topologia_red}
@@ -855,7 +855,7 @@ Sobre tramos y nodos de la red se construyen métricas por cuadrante (longitud d
     \label{fig:red_saidi}
 \end{figure}
 
-\noindent Detalle: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_08}).
+\noindent Detalle: Apéndice~\ref{app:html-etapa2-08}.
 
 \subsubsection{Integración del panel enriquecido y series SAIDI/SAIFI}
 \label{sec:integracion_panel_enriquecido}
@@ -875,7 +875,7 @@ Los bloques anteriores se unen al panel base por \texttt{id\_cuadrante} y \textt
     \label{fig:panel_ndvi_saidi}
 \end{figure}
 
-\noindent Detalle reproducible: Apéndice~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa2\_09} a \texttt{Etapa2\_12}).
+\noindent Detalle reproducible: Apéndices~\ref{app:html-etapa2-09}--\ref{app:html-etapa2-12}.
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 \label{sec:evidencia_calidad_fuentes}
@@ -1728,7 +1728,7 @@ A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:met
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
 \subsection{Construcción de variables predictoras}
-Se construyen únicamente variables del grupo \textbf{disponibles antes del periodo a pronosticar}: (i)~clima rezagado ($t-1,\ldots,t-h$) o, cuando exista, clima pronosticado para~$t$ con fecha de emisión anterior al inicio de la semana; (ii)~histórico de eventos del cuadrante (conteos o duraciones rezagadas) y, si procede, de vecinos espaciales; (iii)~características del cuadrante enriquecidas en la Sección~\ref{sec:enriquecimiento_panel_cuadrante} (infraestructura, estrato municipal, topología de red, edad/modificaciones de activos); (iv)~exposición externa (NDVI, UNGRD, sismicidad); (v)~estacionalidad y calendario (mes, semana del año, indicadores de régimen). Quedan \textbf{excluidas} como predictoras contemporáneas \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ al pronosticar $\mathrm{SAIFI}_t$ o $\mathrm{SAIDI}_t$. El feature engineering reproducible se documenta en \texttt{Etapa4\_01} (Apéndice~\ref{app:html-etapas-cindy-v4}).
+Se construyen únicamente variables del grupo \textbf{disponibles antes del periodo a pronosticar}: (i)~clima rezagado ($t-1,\ldots,t-h$) o, cuando exista, clima pronosticado para~$t$ con fecha de emisión anterior al inicio de la semana; (ii)~histórico de eventos del cuadrante (conteos o duraciones rezagadas) y, si procede, de vecinos espaciales; (iii)~características del cuadrante enriquecidas en la Sección~\ref{sec:enriquecimiento_panel_cuadrante} (infraestructura, estrato municipal, topología de red, edad/modificaciones de activos); (iv)~exposición externa (NDVI, UNGRD, sismicidad); (v)~estacionalidad y calendario (mes, semana del año, indicadores de régimen). Quedan \textbf{excluidas} como predictoras contemporáneas \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ al pronosticar $\mathrm{SAIFI}_t$ o $\mathrm{SAIDI}_t$. El feature engineering reproducible se documenta en el Apéndice~\ref{app:html-etapa4-01}.
 
 \subsection{Construcción de la variable respuesta}
 Las respuestas son $Y_t=\mathrm{SAIFI}_t$ y $Y'_t=\mathrm{SAIDI}_t$, calculadas en cada fila cuadrante~$\times$~semana como
@@ -1767,7 +1767,7 @@ De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{
 \end{figure}
 
 \subsection{Análisis de asociación y depuración de variables cualitativas}
-Las cualitativas candidatas (\texttt{estrato\_predominante\_municipal}, tipología de zona, indicadores de régimen lluvioso/seco y flags de exposición) se depuran por cobertura de categorías y por asociación con $SAIFI$/$SAIDI$ en el entrenamiento. Categorías raras se colapsan; las variables sin contraste útil se excluyen de la matriz de diseño sin borrarlas del panel. El procedimiento reproducible se documenta en los Apéndices~\ref{app:html-etapas-cindy-v4} (\texttt{Etapa4\_01}) y~\ref{app:html-asociacion-cuanti}.
+Las cualitativas candidatas (\texttt{estrato\_predominante\_municipal}, tipología de zona, indicadores de régimen lluvioso/seco y flags de exposición) se depuran por cobertura de categorías y por asociación con $SAIFI$/$SAIDI$ en el entrenamiento. Categorías raras se colapsan; las variables sin contraste útil se excluyen de la matriz de diseño sin borrarlas del panel. El procedimiento reproducible se documenta en los Apéndices~\ref{app:html-etapa4-01} y~\ref{app:html-asociacion-cuanti}.
 
 \subsection{Codificación de variables categóricas}
 Las categóricas retenidas se codifican como \emph{dummy} de referencia (contrastes tratamiento) o, cuando el orden es informativo (estrato), como factor ordinal. No se usan codificaciones posteriores al corte de prueba. En el panel de modelado espacial, las proporciones de estrato (\texttt{prop\_estrato\_*}, \texttt{prop\_no\_residencial}) entran ya como proporciones numéricas y no requieren \emph{dummy} adicional.
@@ -1776,13 +1776,13 @@ Las categóricas retenidas se codifican como \emph{dummy} de referencia (contras
 Las cuantitativas continuas se estandarizan (\emph{z}-score) solo cuando el algoritmo lo exige (p.~ej.~regularización o distancias); en OLS/FE de \texttt{fixest} se mantienen en escala original para interpretar coeficientes. Las respuestas $SAIDI$ y $SAIFI$ se transforman con $\log(1+y)$ ante asimetría y ceros, según \texttt{Etapa5\_01}/\texttt{Etapa5\_02}.
 
 \subsection{Generación de ventanas temporales}
-Por cuadrante se construyen rezagos $t-1,\ldots,t-h$ de clima y de la respuesta, medias móviles (p.~ej.~precipitación y viento a 4 semanas) e indicadores de calendario (mes, trimestre). El documento \texttt{Etapa4\_01} exporta \texttt{panel\_semana\_con\_rezagos.rds}; \texttt{Etapa4\_02} selecciona el orden de rezagos de $SAIDI$ por AIC, contrastando especificaciones estáticas frente a dinámicas con/sin persistencia ($SAIDI_{t-1}$, precipitación rezagada). La evidencia de dependencia temporal motiva incluir al menos el primer rezago de la respuesta como predictora \emph{ex ante}. Detalle reproducible: Apéndice~\ref{app:html-etapas-cindy-v4}.
+Por cuadrante se construyen rezagos $t-1,\ldots,t-h$ de clima y de la respuesta, medias móviles (p.~ej.~precipitación y viento a 4 semanas) e indicadores de calendario (mes, trimestre). El documento \texttt{Etapa4\_01} exporta \texttt{panel\_semana\_con\_rezagos.rds}; \texttt{Etapa4\_02} selecciona el orden de rezagos de $SAIDI$ por AIC, contrastando especificaciones estáticas frente a dinámicas con/sin persistencia ($SAIDI_{t-1}$, precipitación rezagada). La evidencia de dependencia temporal motiva incluir al menos el primer rezago de la respuesta como predictora \emph{ex ante}. Detalle reproducible: Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa4-02}.
 
 \subsection{Partición de datos en entrenamiento y prueba}
 Con fundamento en el diagnóstico de cobertura del emparejamiento evento--elemento (Sección~\ref{sec:delimitacion_temporal_modelado}), el universo de estimación se restringe a $D_{\mathrm{mod}}$: observaciones cuadrante$\times$~semana con \texttt{year(semana)} $\in \{2024,\,2025\}$, periodo en el que la coincidencia entre \texttt{COMPONENTE\_FALLADO} y el inventario GIS (\texttt{tipo\_elemento.csv}) alcanza al menos el $79{.}8$~\%, frente a $\approx 31$~\% en 2021--2023 bajo OMS-SPARD. La partición temporal propuesta asigna las observaciones de \textbf{2024} al conjunto de entrenamiento y las de \textbf{2025} al conjunto de prueba, preservando el orden cronológico y la validez de la validación en series autocorrelacionadas (ACF rezago~$1 = 0{.}92$ en $D_{\mathrm{EDA}}$). Los años 2021--2023 no se incluyen en el entrenamiento ni en la prueba del modelo predictivo, dado el sesgo por incompatibilidad entre código de activo y código de sitio. En los modelos espaciales de \texttt{Etapa5\_01}/\texttt{Etapa5\_02} se aplica además un corte temporal del 15~\% final de semanas como \emph{holdout}, nunca una partición aleatoria.
 
 \subsection{Construcción de matrices de diseño}
-La matriz de diseño retiene las predictoras \emph{ex ante} depuradas: clima (contemporáneo o rezagado según la especificación), NDVI, desastres UNGRD, sismicidad, topología de red, composición socioeconómica, edad/modificaciones de activos, rezagos de la respuesta y rezagos espaciales de vecinos. Se excluyen impacto posterior y respuestas contemporáneas cruzadas. Los insumos se materializan en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} (Apéndices~\ref{app:html-etapas-cindy-v4}).
+La matriz de diseño retiene las predictoras \emph{ex ante} depuradas: clima (contemporáneo o rezagado según la especificación), NDVI, desastres UNGRD, sismicidad, topología de red, composición socioeconómica, edad/modificaciones de activos, rezagos de la respuesta y rezagos espaciales de vecinos. Se excluyen impacto posterior y respuestas contemporáneas cruzadas. Los insumos se materializan en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} (Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa5-02}).
 
 \subsection{Reducción de dimensionalidad}
 Además del filtrado por Spearman/VIF (Sección~\ref{sec:asociacion_depuracion_cuanti}), se eliminan variables estáticas absorbidas por efectos fijos de cuadrante cuando la especificación es FE, y se retienen en Pooled OLS y en el corte transversal SAR/SEM. No se aplica PCA como paso obligatorio: la reducción se guía por redundancia y por el aporte marginal del bloque espacial.
@@ -1796,12 +1796,12 @@ Se construyen: (i)~$\log(1+\mathrm{SAIDI})$ y $\log(1+\mathrm{SAIFI})$; (ii)~rez
 \subsection{Resultados y entregables de la etapa}
 \textbf{Resultado:} panel analítico con predictoras \emph{ex ante}, rezagos temporales/espaciales y partición temporal documentada.
 
-\textbf{Entregable:} reportes \texttt{Etapa4\_01\_feature\_engineering\_general.html} y \texttt{Etapa4\_02\_rezagos\_SAIDI.html} (Apéndice~\ref{app:html-etapas-cindy-v4}), más la matriz depurada de la Sección~\ref{sec:asociacion_depuracion_cuanti}.
+\textbf{Entregable:} reportes \texttt{Etapa4\_01\_feature\_engineering\_general.html} y \texttt{Etapa4\_02\_rezagos\_SAIDI.html} (Apéndices~\ref{app:html-etapa4-01}--\ref{app:html-etapa4-02}), más la matriz depurada de la Sección~\ref{sec:asociacion_depuracion_cuanti}.
 
 \section{Etapa 5 – Modelado predictivo y evaluativo}
 \label{sec:metodología-etapa5}
 
-En esta etapa se estiman y comparan modelos para \textbf{SAIDI} y \textbf{SAIFI} por separado a grano cuadrante~$\times$~semana, siguiendo \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.Rmd} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.Rmd} (Apéndice~\ref{app:html-etapas-cindy-v4}). El diseño combina (i)~modelos de panel para pronóstico semanal y (ii)~modelos espaciales formales SAR/SEM en corte transversal ponderado. La validación es temporal; las métricas de referencia son $RMSE$, $MAE$ y $R^2$ en escala $\log(1+y)$.
+En esta etapa se estiman y comparan modelos para \textbf{SAIDI} y \textbf{SAIFI} por separado a grano cuadrante~$\times$~semana, siguiendo \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.Rmd} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.Rmd} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}). El diseño combina (i)~modelos de panel para pronóstico semanal y (ii)~modelos espaciales formales SAR/SEM en corte transversal ponderado. La validación es temporal; las métricas de referencia son $RMSE$, $MAE$ y $R^2$ en escala $\log(1+y)$.
 
 \subsection{Selección de algoritmos}
 Se seleccionan cuatro familias para el panel semanal: (1)~\textbf{Pooled OLS}; (2)~\textbf{efectos fijos de cuadrante} (\texttt{feols}, \texttt{fixest}); (3)~\textbf{efectos fijos de cuadrante y semana}; (4)~\textbf{Random Forest} ($500$ árboles). En el corte transversal se estiman \textbf{SAR} y \textbf{SEM} (\texttt{spatialreg}). La dependencia espacial se diagnostica previamente con el índice de Moran; la Figura~\ref{fig:saidi_moran} ilustra el patrón territorial de $SAIDI$ promedio por cuadrante.
@@ -1869,7 +1869,7 @@ La interpretación combina coeficientes de las especificaciones lineales/FE, imp
 \subsection{Resultados y entregables de la etapa}
 \textbf{Resultado:} modelos de SAIDI y SAIFI entrenados, validados en holdout temporal y contrastados con especificaciones espaciales formales.
 
-\textbf{Entregables:} \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html} (Apéndice~\ref{app:html-etapas-cindy-v4}).
+\textbf{Entregables:} \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html} y \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html} (Apéndices~\ref{app:html-etapa5-01}--\ref{app:html-etapa5-02}).
 
 \section{Etapa 6 – Cierre metodológico, documentación y reportes}
 \label{sec:metodología-etapa6}
@@ -1902,7 +1902,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
 \section{Relación entre etapas metodológicas y objetivos específicos}
 \label{sec:etapas_objetivos}
 
-La Tabla~\ref{tab:etapas_objetivos} sintetiza cómo cada etapa de la metodología contribuye a los objetivos específicos formulados en el Capítulo~\ref{sec:objetivos}. Los objetivos no se reformulan aquí: se indica únicamente su correspondencia con las etapas, de modo que la trazabilidad entre el diseño metodológico y el alcance del proyecto quede explícita. De forma complementaria, los informes reproducibles derivados de los archivos \texttt{EtapaX\_Y\_*.Rmd} se relacionan en el Apéndice~\ref{app:html-etapas-cindy-v4}; allí \texttt{X} identifica la etapa metodológica y \texttt{Y} el subapartado operativo que respalda el argumento desarrollado en este capítulo.
+La Tabla~\ref{tab:etapas_objetivos} sintetiza cómo cada etapa de la metodología contribuye a los objetivos específicos formulados en el Capítulo~\ref{sec:objetivos}. Los objetivos no se reformulan aquí: se indica únicamente su correspondencia con las etapas, de modo que la trazabilidad entre el diseño metodológico y el alcance del proyecto quede explícita. De forma complementaria, los informes reproducibles derivados de los archivos \texttt{EtapaX\_Y\_*.Rmd} se documentan como informes HTML en el Apéndice~\ref{app:informes-html} (subsecciones de enriquecimiento, ingeniería de variables y modelado espacial).
 
 \begin{table}[!htbp]
 \centering

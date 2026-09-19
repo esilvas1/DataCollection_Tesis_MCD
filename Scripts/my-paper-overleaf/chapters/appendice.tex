@@ -203,37 +203,72 @@ Informe \texttt{EDA.html}: síntesis ejecutiva del análisis exploratorio (Etapa
 Informe \texttt{asociacion\_depuracion\_cuantitativas.html}: depuración \emph{ex ante} de covariables cuantitativas y exportación de la matriz de diseño.
 \href{\urlasociaciondepuracioncuanti}{Abrir informe}.
 
-\section{Informes reproducibles por etapa metodológica}
-\label{app:html-etapas-cindy-v4}
+\subsection{Justificación de la agregación espacial}
+\label{app:html-etapa2-03}
+Informe \texttt{Etapa2\_03\_justificacion\_agregacion\_espacial.html}: justificación del grano cuadrante~$\times$~semana y evidencia de concentración espacial de fallas.
+\href{\urlEtapaDosTres}{Abrir informe}.
 
-Los archivos \texttt{EtapaX\_Y\_*.Rmd} se usan como soporte reproducible de los puntos desarrollados en el Capítulo~\ref{sec:metodologia}: \texttt{X} identifica la etapa metodológica y \texttt{Y} el subapartado operativo dentro de esa etapa. La Tabla~\ref{tab:anexos_etapas_rmd} relaciona cada informe con el punto que argumenta en el documento principal. Cuando el HTML no existe todavía, se conserva el \texttt{Rmd} como evidencia de trabajo y se marca como pendiente de renderizado.
+\subsection{Infraestructura eléctrica por cuadrante}
+\label{app:html-etapa2-04}
+Informe \texttt{Etapa2\_04\_infraestructura\_gis\_cuadrante.html}: agregación de tipologías y conteos de infraestructura GIS al polígono de cada cuadrante.
+\href{\urlEtapaDosCuatro}{Abrir informe}.
 
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.7cm} >{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}p{5.1cm} >{\raggedright\arraybackslash}p{2.0cm}@{}}
-\caption{Trazabilidad entre scripts \texttt{EtapaX\_Y} e informes HTML anexos}
-\label{tab:anexos_etapas_rmd}\\
-\toprule
-\textbf{Etapa--sub} & \textbf{Archivo reproducible} & \textbf{Punto que soporta en el documento} & \textbf{Anexo HTML} \\
-\midrule
-\endfirsthead
-\toprule
-\textbf{Etapa--sub} & \textbf{Archivo reproducible} & \textbf{Punto que soporta en el documento} & \textbf{Anexo HTML} \\
-\midrule
-\endhead
-2--01 & \texttt{Etapa2\_01\_agrupacion\_cuadrante\_semana.Rmd} & Agregación del panel activo--día al grano cuadrante~$\times$~semana. & Pendiente \\
-2--02 & \texttt{Etapa2\_02\_correccion\_clima.Rmd} & Corrección del bloque climático y consistencia de la agregación semanal. & Pendiente \\
-2--03 & \texttt{Etapa2\_03\_justificacion\_agregacion\_espacial.Rmd} & Justificación de la agregación espaciotemporal y del uso de cuadrantes. & \href{\urlEtapaDosTres}{Abrir} \\
-2--04 & \texttt{Etapa2\_04\_infraestructura\_gis\_cuadrante.Rmd} & Construcción de variables de infraestructura eléctrica por cuadrante. & \href{\urlEtapaDosCuatro}{Abrir} \\
-2--05 & \texttt{Etapa2\_05\_estratificacion\_municipal.Rmd} & Enriquecimiento socioeconómico mediante estrato municipal predominante. & \href{\urlEtapaDosCinco}{Abrir} \\
-2--06 & \texttt{Etapa2\_06\_desastres\_ungrd.Rmd} & Integración de eventos catastróficos UNGRD por municipio/cuadrante y semana. & \href{\urlEtapaDosSeis}{Abrir} \\
-2--07 & \texttt{Etapa2\_07\_sismicidad\_sgc.Rmd} & Incorporación de sismicidad del SGC como exposición territorial. & \href{\urlEtapaDosSiete}{Abrir} \\
-2--08 & \texttt{Etapa2\_08\_topologia\_red.Rmd} & Caracterización topológica de la red eléctrica y vecindad espacial. & \href{\urlEtapaDosOcho}{Abrir} \\
-2--09 & \texttt{Etapa2\_09\_integracion\_panel\_final.Rmd} & Unión final de fuentes para el panel base de modelado. & \href{\urlEtapaDosNueve}{Abrir} \\
-2--10 & \texttt{Etapa2\_10\_cargue\_nasa\_semana.Rmd} & Cargue de variables NASA POWER agregadas por semana. & \href{\urlEtapaDosDiez}{Abrir} \\
-2--11 & \texttt{Etapa2\_11\_cargue\_eventos\_semana.Rmd} & Cargue de eventos y métricas de continuidad por cuadrante--semana. & \href{\urlEtapaDosOnce}{Abrir} \\
-2--12 & \texttt{Etapa2\_12\_union\_panel\_semana.Rmd} & Unión semanal de clima, eventos y atributos territoriales. & \href{\urlEtapaDosDoce}{Abrir} \\
-4--01 & \texttt{Etapa4\_01\_feature\_engineering\_general.Rmd} & Ingeniería general de variables predictoras y preparación del diseño analítico. & \href{\urlEtapaCuatroUno}{Abrir} \\
-4--02 & \texttt{Etapa4\_02\_rezagos\_SAIDI.Rmd} & Construcción de rezagos para modelar dependencia temporal de SAIDI. & \href{\urlEtapaCuatroDos}{Abrir} \\
-5--01 & \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.Rmd} & Estimación, validación e interpretación del modelo espacial de SAIDI. & \href{\urlEtapaCincoUno}{Abrir} \\
-5--02 & \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.Rmd} & Estimación, validación e interpretación del modelo espacial de SAIFI. & \href{\urlEtapaCincoDos}{Abrir} \\
-\bottomrule
-\end{longtable}
+\subsection{Estratificación municipal}
+\label{app:html-etapa2-05}
+Informe \texttt{Etapa2\_05\_estratificacion\_municipal.html}: asignación espacial de municipio y estrato predominante a cuadrantes reales.
+\href{\urlEtapaDosCinco}{Abrir informe}.
+
+\subsection{Eventos catastróficos UNGRD}
+\label{app:html-etapa2-06}
+Informe \texttt{Etapa2\_06\_desastres\_ungrd.html}: integración de emergencias UNGRD a municipio/cuadrante y semana.
+\href{\urlEtapaDosSeis}{Abrir informe}.
+
+\subsection{Sismicidad SGC}
+\label{app:html-etapa2-07}
+Informe \texttt{Etapa2\_07\_sismicidad\_sgc.html}: incorporación de sismicidad del SGC como exposición territorial del panel.
+\href{\urlEtapaDosSiete}{Abrir informe}.
+
+\subsection{Topología de red eléctrica}
+\label{app:html-etapa2-08}
+Informe \texttt{Etapa2\_08\_topologia\_red.html}: métricas topológicas de red por cuadrante y vecindad espacial/eléctrica.
+\href{\urlEtapaDosOcho}{Abrir informe}.
+
+\subsection{Integración del panel final}
+\label{app:html-etapa2-09}
+Informe \texttt{Etapa2\_09\_integracion\_panel\_final.html}: unión de fuentes enriquecidas hacia el panel base de modelado.
+\href{\urlEtapaDosNueve}{Abrir informe}.
+
+\subsection{Cargue NASA POWER semanal}
+\label{app:html-etapa2-10}
+Informe \texttt{Etapa2\_10\_cargue\_nasa\_semana.html}: cargue de variables climáticas NASA POWER agregadas por semana.
+\href{\urlEtapaDosDiez}{Abrir informe}.
+
+\subsection{Cargue de eventos semanales}
+\label{app:html-etapa2-11}
+Informe \texttt{Etapa2\_11\_cargue\_eventos\_semana.html}: agregación de eventos y métricas de continuidad a cuadrante--semana.
+\href{\urlEtapaDosOnce}{Abrir informe}.
+
+\subsection{Unión del panel semanal}
+\label{app:html-etapa2-12}
+Informe \texttt{Etapa2\_12\_union\_panel\_semana.html}: unión semanal de clima, eventos y atributos territoriales.
+\href{\urlEtapaDosDoce}{Abrir informe}.
+
+\subsection{Feature engineering general}
+\label{app:html-etapa4-01}
+Informe \texttt{Etapa4\_01\_feature\_engineering\_general.html}: ingeniería de variables predictoras y preparación del diseño analítico.
+\href{\urlEtapaCuatroUno}{Abrir informe}.
+
+\subsection{Rezagos para SAIDI}
+\label{app:html-etapa4-02}
+Informe \texttt{Etapa4\_02\_rezagos\_SAIDI.html}: construcción y selección de rezagos temporales para modelar SAIDI.
+\href{\urlEtapaCuatroDos}{Abrir informe}.
+
+\subsection{Modelo espacial de SAIDI}
+\label{app:html-etapa5-01}
+Informe \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html}: estimación, validación e interpretación del modelo espacial de SAIDI.
+\href{\urlEtapaCincoUno}{Abrir informe}.
+
+\subsection{Modelo espacial de SAIFI}
+\label{app:html-etapa5-02}
+Informe \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html}: estimación, validación e interpretación del modelo espacial de SAIFI.
+\href{\urlEtapaCincoDos}{Abrir informe}.
