@@ -119,6 +119,8 @@ solo deben emplearse modificaciones conocidas antes de la semana que se
 pretende pronosticar. Finalmente, SAIDI y SAIFI se incorporan como variables
 objetivo y no como predictoras contemporáneas.
 
+Adicionalmente, el panel cuadrante--semana incorpora variables de exposición territorial provenientes de las fuentes externas descritas más adelante (sismicidad, desastres y vegetación): \texttt{sismos\_conteo} y \texttt{dist\_sismo\_prom\_km} (sismicidad, SGC); \texttt{desastres\_conteo} y tipo de emergencia predominante (UNGRD); y \texttt{ndvi\_semanal} junto con sus derivadas \texttt{log\_ndvi} y \texttt{cat\_ndvi} (vegetación, NDVI/MODIS). Se suman también las métricas de topología de red \texttt{longitud\_red\_km}, densidad de nodos terminales y número de circuitos por cuadrante.
+
 \paragraph{Número de observaciones.}
 La tabla consolidada final se estima como
 \[
@@ -135,3 +137,6 @@ La empresa origen de los datos operativos y técnicos es Centrales Eléctricas d
 Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER~\textcite{ref48}.
 
 La información se registra en la red de distribución eléctrica de Norte de Santander, con soporte de localización geográfica por activo y por cuadrante.
+
+\paragraph{Fuentes adicionales incorporadas al panel cuadrante--semana.}
+Para enriquecer la caracterización territorial del panel de modelado se incorporaron tres fuentes externas adicionales: los registros de sismicidad del Servicio Geológico Colombiano (SGC), los registros de emergencias de la Unidad Nacional para la Gestión del Riesgo de Desastres (UNGRD), y el índice de vegetación NDVI derivado del producto satelital MODIS MOD13Q1 de la NASA, procesado semanalmente por cuadrante. Adicionalmente, se construyeron métricas de topología de red eléctrica (longitud de red, densidad de nodos, circuitos) a partir del propio sistema georreferenciado GTECH descrito anteriormente.

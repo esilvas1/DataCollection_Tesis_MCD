@@ -770,14 +770,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{paso:int-6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3{.}401{.}838$ valores faltantes cada una, equivalente al $3{.}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32{.}868$ faltantes ($0{.}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel, identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA}), no presentan \texttt{NA}, dado que los pasos~\ref{paso:int-5} y~\ref{paso:int-7} asignan $0$ en días sin evento.
     
-    A nivel de fila, $83{.}576{.}020$ observaciones ($96{.}06$~\%) están completas; $3{.}431{.}054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} y la Tabla~\ref{tab:resumen_datos_faltantes} resumen el porcentaje de faltantes por variable, ordenado de mayor a menor.
-    
-    \begin{figure}[!htbp]
-\centering
-        \includegraphics[width=0.95\textwidth]{img/grafico_datos_faltantes_por_variable.png}
-        \caption{Porcentaje de valores faltantes por variable en el panel consolidado ($N = 87{.}007{.}074$).}
-        \label{fig:faltantes_por_variable}
-    \end{figure}
+    A nivel de fila, $83{.}576{.}020$ observaciones ($96{.}06$~\%) están completas; $3{.}431{.}054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} (Apéndice~\ref{app:figuras-eda-complementarias}) y la Tabla~\ref{tab:resumen_datos_faltantes} resumen el porcentaje de faltantes por variable, ordenado de mayor a menor.
     
     \begin{table}[!htbp]
     \centering
@@ -807,14 +800,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     En el análisis por columna, las $16$ variables del grano agregado, identificación y calendario (\texttt{id\_cuadrante}, \texttt{semana}), georreferenciación (\texttt{latitud}, \texttt{longitud}, \texttt{altitud}), severidad (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}), clima semanal (\texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}) y continuidad (\texttt{n\_eventos}, \texttt{duracion\_total}), registran $0$ valores faltantes ($0$~\% sobre $N_{\mathrm{agr}}$). A nivel de fila, las $90{.}128$ observaciones están completas: ninguna fila presenta al menos un \texttt{NA} y el máximo de variables incompletas por fila es $0$.
     
-    Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:agrupacion_cuadrante_semana}: las sumas y promedios semanales emplean \texttt{na.rm = TRUE}, de modo que los \texttt{NA} del panel diario no se propagan como campos vacíos en el grano agregado; las métricas operativas sin evento se consolidan en $0$, y cada fila exportada conserva llaves estructurales definidas (\texttt{id\_cuadrante}, \texttt{semana}). La Figura~\ref{fig:heatmap_faltantes_agrupada} ilustra la ausencia de faltantes en una muestra de las primeras $50$ filas: todas las celdas se clasifican como completas.
-    
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/heatmap_datos_faltantes_agrupada.png}
-        \caption{Completitud de la tabla agrupada por fila y variable ($N_{\mathrm{agr}} = 90{.}128$; muestra de $50$ filas).}
-        \label{fig:heatmap_faltantes_agrupada}
-    \end{figure}
+    Este resultado es coherente con la agregación descrita en la Sección~\ref{sec:agrupacion_cuadrante_semana}: las sumas y promedios semanales emplean \texttt{na.rm = TRUE}, de modo que los \texttt{NA} del panel diario no se propagan como campos vacíos en el grano agregado; las métricas operativas sin evento se consolidan en $0$, y cada fila exportada conserva llaves estructurales definidas (\texttt{id\_cuadrante}, \texttt{semana}). La Figura~\ref{fig:heatmap_faltantes_agrupada} (Apéndice~\ref{app:figuras-eda-complementarias}) ilustra la ausencia de faltantes en una muestra de las primeras $50$ filas: todas las celdas se clasifican como completas.
     
     \noindent En consecuencia, la tabla agrupada no requiere reglas de imputación por valores faltantes en la Etapa~4; el tratamiento de incompletitud documentado en los párrafos anteriores aplica al panel consolidado activo~$\times$~día, grano en el que se originan los \texttt{NA} climáticos y de \texttt{ALTITUD}.
     
@@ -845,12 +831,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
     \end{table}
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima.png}
-        \caption{Distribución de las variables climáticas: mediana y extremos (muestra de $200{.}000$ observaciones).}
-        \label{fig:boxplot_clima}
-    \end{figure}
 
     
     \begin{figure}[!htbp]
@@ -879,12 +859,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
     \end{table}
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento.png}
-        \caption{Distribución de la severidad y continuidad en días con evento: mediana y extremos.}
-        \label{fig:boxplot_evento}
-    \end{figure}
     
     \begin{figure}[!htbp]
         \centering
@@ -917,12 +891,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
 \end{table}
 
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_clima_agrupada.png}
-        \caption{Distribución de las variables climáticas semanales: mediana y extremos ($N_{\mathrm{agr}} = 90{.}128$).}
-        \label{fig:boxplot_clima_agrupada}
-    \end{figure}
     
     \begin{figure}[!htbp]
         \centering
@@ -950,12 +918,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
     \end{table}
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_valores_extremos_evento_agrupada.png}
-        \caption{Distribución de la severidad y continuidad en semanas con evento: mediana y extremos.}
-        \label{fig:boxplot_evento_agrupada}
-    \end{figure}
     
     \begin{figure}[!htbp]
         \centering
@@ -979,12 +941,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:histograma_descriptivo_agrupada}
     \end{figure}
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_descriptivo_agrupada.png}
-        \caption{Distribución de las variables numéricas de la tabla agrupada: mediana y extremos ($N_{\mathrm{agr}} = 90{.}128$).}
-        \label{fig:boxplot_descriptivo_agrupada}
-    \end{figure}
     
     \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{.}16$ (\texttt{humedad\_media\_semana}) y $0{.}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{.}8$~\textdegree C (media $23{.}8$~\textdegree C; $Q_1$--$Q_3$: $20{.}4$--$27{.}2$~\textdegree C) y asimetría cercana a cero ($-0{.}37$). La humedad relativa media semanal concentra la mediana en $72{.}3$~\% (CV $= 0{.}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $9{.}8$~mm, media de $16{.}0$~mm, CV $= 1{.}17$ y asimetría positiva ($1{.}98$), con un recorrido de $0$ a $198{.}1$~mm y un percentil $99$ de $85{.}1$~mm que corresponde a semanas de lluvia intensa puntuales. La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
     
@@ -1270,12 +1226,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     \noindent La Figura~\ref{fig:ubicacion_top_cuadrantes_mod} complementa el ranking anterior con la \textit{ubicación geográfica} de los cuadrantes más activos sobre la malla territorial del área de estudio. Los recuadros resaltados corresponden a los primeros cuadrantes \emph{top} del periodo 2024--2025 y muestran una concentración en cuatro zonas: (i)~el área metropolitana de Cúcuta y Villa del Rosario; (ii)~un corredor al suroccidente, en torno a Salazar, Arboledas, Durania y Chinácota; (iii)~la subregión de Tibú, al norte del departamento; y (iv)~los municipios de Ocaña y Aguachica, al occidente. Esta distribución espacial confirma que la mayor actividad de interrupciones no es aleatoria, sino que se agrupa en núcleos urbanos y corredores de servicio de la red.
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/ubicacion_top_cuadrantes_mod.png}
-        \caption{Ubicación geográfica de los cuadrantes \emph{top} con mayor acumulado de eventos en $D_{\mathrm{mod}}$ (2024--2025). Los recuadros resaltados identifican la posición espacial de los primeros cuadrantes del ranking.}
-        \label{fig:ubicacion_top_cuadrantes_mod}
-    \end{figure}
     
     \begin{figure}[!htbp]
         \centering
@@ -1409,58 +1359,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     \end{tabular}
     \end{table}
     
-    \paragraph{PCA exploratorio del bloque climático.}
-    El PCA se aplica aquí como diagnóstico de redundancia entre covariables climáticas, no como fuente de predictoras finales, conforme a lo formalizado en la Sección~\ref{sec:metodos-modelos}.
-    
-    \subparagraph{Variables de entrada.} Ingresan las siete variables climáticas semanales de $D_{\mathrm{mod}}$ ($n = 36{.}120$ filas cuadrante~$\times$~semana; $p = 7$):
-    \texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana} y \texttt{precip\_total\_semana}.
-    
-    \subparagraph{Condiciones de aplicación.} Las siete son cuantitativas continuas; $n\gg p$; no hay faltantes en $D_{\mathrm{mod}}$; y se homogenizan mediante estandarización ($z$-scores; Sección~\ref{sec:metodos-modelos}) porque tienen distintas unidades (\textdegree C, \%, m/s, mm). El PCA se ejecuta sobre la matriz de correlaciones implícita en la estandarización (\texttt{prcomp} sobre la matriz centrada y escalada). La asociación previa entre variables (Sección~\ref{sec:analisis_correlacion_asociacion}) justifica el análisis: temperaturas y vientos están fuertemente intercorrelacionados, mientras la precipitación es relativamente independiente. Se reconoce que \texttt{precip\_total\_semana} es asimétrica; el ejercicio permanece exploratorio y se interpreta junto con VIF y el dendrograma.
-    
-    \subparagraph{Varianza retenida y pesos (loadings).} Las dos primeras componentes condensan el $87{.}3$~\% de la varianza (PC1: $66{.}9$~\%; PC2: $20{.}4$~\%) y PC3 aporta un $8{.}3$~\% adicional (acumulado $95{.}6$~\%; Figura~\ref{fig:pca_scree_clima}). La Tabla~\ref{tab:pca_loadings_clima} y la Figura~\ref{fig:pca_loadings_clima} reportan las cargas; se interpretan como variables relevantes en cada componente aquellas con $|loading|\geq 0{.}40$ (Sección~\ref{sec:metodos-modelos}):
-    \begin{itemize}
-        \item \textit{PC1 (eje térmico--viento):} dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_max\_semana} $0{.}43$, \texttt{temp\_min\_semana} $0{.}43$), con cargas negativas de viento (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$). La precipitación es irrelevante en este eje ($-0{.}08$).
-        \item \textit{PC2 (eje de humedad--lluvia):} la variable más importante es \texttt{precip\_total\_semana} ($0{.}70$), seguida de \texttt{humedad\_media\_semana} ($0{.}51$).
-        \item \textit{PC3:} contrastan precipitación ($-0{.}66$) y viento máximo ($-0{.}43$) frente a humedad ($0{.}32$), con contribución adicional del viento medio ($-0{.}37$).
-    \end{itemize}
-    En síntesis, las temperaturas (y, en sentido opuesto, el viento) concentran el peso en PC1, mientras la precipitación, variable de mayor interés operativo, concentra su importancia en PC2--PC3. Ello respalda conservar precipitación como predictora no redundante y depurar temperaturas/vientos extremos del conjunto reducido.
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Cargas (loadings) del PCA climático: peso de cada variable por componente ($D_{\mathrm{mod}}$; PC1--PC3)}
-    \label{tab:pca_loadings_clima}
-    \begin{tabular}{@{}l r r r@{}}
-    \toprule
-    \textbf{Variable} & \textbf{PC1} & \textbf{PC2} & \textbf{PC3} \\
-    \midrule
-    \texttt{temp\_media\_semana}    &  0.45 & $-0.07$ & $-0.22$ \\
-    \texttt{temp\_max\_semana}      &  0.43 & $-0.12$ & $-0.28$ \\
-    \texttt{temp\_min\_semana}      &  0.43 &  0.11  & $-0.10$ \\
-    \texttt{humedad\_media\_semana} & $-0.33$ &  0.51  &  0.32  \\
-    \texttt{viento\_medio\_semana}  & $-0.40$ & $-0.33$ & $-0.37$ \\
-    \texttt{viento\_max\_semana}    & $-0.39$ & $-0.33$ & $-0.43$ \\
-    \texttt{precip\_total\_semana}  & $-0.08$ &  0.70  & $-0.66$ \\
-    \bottomrule
-    \end{tabular}
-    
-    \noindent\textit{Nota:} se destacan como relevantes en la interpretación las cargas con valor absoluto $\geq 0{.}40$.
-    \end{table}
-
-    
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.82\textwidth]{img/pca_scree_clima_multivariado_mod.png}
-        \caption{Varianza acumulada del bloque climático por componente principal.}
-        \label{fig:pca_scree_clima}
-    \end{figure}
-    
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/pca_loadings_clima_multivariado_mod.png}
-        \caption{Peso (loadings) de las variables climáticas en las tres primeras componentes principales.}
-        \label{fig:pca_loadings_clima}
-    \end{figure}
+    Se realizó adicionalmente un PCA exploratorio del bloque climático como diagnóstico de redundancia (no como fuente de predictoras finales); no se emplea como paso obligatorio del modelado. El detalle completo (variables de entrada, condiciones de aplicación, varianza retenida y cargas) se documenta en el Apéndice~\ref{app:pca-exploratorio}.
     
     \paragraph{Agrupamiento jerárquico.} El dendrograma de la Figura~\ref{fig:dendrograma_clima} confirma dos clusters principales: (i)~temperaturas y vientos, altamente intercorrelados; y (ii)~\texttt{precip\_total\_semana}, relativamente aislada. Este resultado valida la exclusión de \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana} y \texttt{viento\_max\_semana} del conjunto predictor reducido.
     
@@ -1480,38 +1379,7 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
         \label{fig:glm_coef_multivariado}
     \end{figure}
     
-    \paragraph{Dimensiones del bloque operativo.}
-    De forma análoga, se aplica un PCA exploratorio al bloque operativo de $D_{\mathrm{mod}}$ para delimitar dimensiones de impacto, no para construir predictoras.
-    
-    \subparagraph{Variables de entrada y condiciones.} Ingresan las cuatro métricas \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total} ($n = 36{.}120$; $p = 4$), tras transformación logarítmica desplazada y estandarización (Sección~\ref{sec:metodos-modelos}), dadas la cero-inflación, la asimetría y las distintas escalas. Son cuantitativas, $n\gg p$ y no presentan faltantes.
-    
-    \subparagraph{Pesos e interpretación.} PC1 concentra el $83{.}8$~\% de la varianza, con cargas elevadas y del mismo signo en las cuatro variables (Tabla~\ref{tab:pca_loadings_operativo}; Figura~\ref{fig:pca_loadings_operativo}): las más importantes son \texttt{usuarios\_afectados} ($0{.}53$) y \texttt{n\_eventos} ($0{.}52$), seguidas de \texttt{elementos\_afectados} ($0{.}50$) y \texttt{duracion\_total} ($0{.}45$). PC2 ($11{.}9$~\%; acumulado $95{.}7$~\%) contrasta duración ($0{.}81$) frente a afectación (\texttt{elementos\_afectados} $-0{.}48$; \texttt{usuarios\_afectados} $-0{.}33$). Ello respalda no emplear simultáneamente las cuatro variables operativas como respuestas ni como predictoras, y construir $SAIFI$ y $SAIDI$ en la Etapa~4 a partir de \texttt{usuarios\_afectados} y \texttt{duracion\_total}. \texttt{usuarios\_afectados} entra en el numerador de $Y$, pero queda excluido como predictora contemporánea para evitar fuga de información; \texttt{elementos\_afectados} se reserva al diagnóstico de severidad (Sección~\ref{sec:metodos-modelos}).
-    
-    \begin{table}[!htbp]
-    \centering
-    \small
-    \caption{Cargas (loadings) del PCA operativo en escala logarítmica desplazada ($D_{\mathrm{mod}}$; PC1--PC2)}
-    \label{tab:pca_loadings_operativo}
-    \begin{tabular}{@{}l r r@{}}
-    \toprule
-    \textbf{Variable} & \textbf{PC1} & \textbf{PC2} \\
-    \midrule
-    \texttt{n\_eventos}            & 0.52 &  0.09 \\
-    \texttt{usuarios\_afectados}  & 0.53 & $-0.33$ \\
-    \texttt{elementos\_afectados} & 0.50 & $-0.48$ \\
-    \texttt{duracion\_total}      & 0.45 &  0.81 \\
-    \bottomrule
-    \end{tabular}
-    
-    \noindent\textit{Nota:} se interpretan como relevantes las cargas con valor absoluto $\geq 0{.}40$.
-    \end{table}
-    
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.82\textwidth]{img/pca_loadings_operativo_multivariado_mod.png}
-        \caption{Peso (loadings) de frecuencia, afectación y duración en las dos primeras componentes del bloque operativo.}
-        \label{fig:pca_loadings_operativo}
-    \end{figure}
+    De forma análoga se aplicó un PCA exploratorio al bloque operativo (frecuencia, afectación y duración) para delimitar dimensiones de impacto, sin emplearlo como fuente de predictoras. El detalle completo se documenta en el Apéndice~\ref{app:pca-exploratorio}.
     
     \noindent En síntesis, la evaluación multivariada sobre $D_{\mathrm{mod}}$ recomienda: (i)~predictoras climáticas \texttt{precip\_total\_semana}, \texttt{temp\_media\_semana}, \texttt{humedad\_media\_semana} y \texttt{viento\_medio\_semana}, justificadas por loadings, VIF y dendrograma (el PCA no se usa como modelo predictivo, sino como diagnóstico de redundancia); (ii)~$SAIFI$ y $SAIDI$ como variables respuesta del modelado, construidas en la Etapa~4; (iii)~exclusión de temperaturas extremas y viento máximo por redundancia simultánea; (iv)~expectativas moderadas sobre la capacidad explicativa del bloque meteorológico contemporáneo, dado el tamaño reducido de las asociaciones observadas, lo que hace aconsejable complementarlo con rezagos de la propia serie de eventos y con la estratificación territorial; y (v)~uso de \texttt{usuarios\_afectados} solo en el numerador de $Y$, no como predictora contemporánea. Estos criterios se operacionalizan en la depuración cuantitativa y la construcción de matrices de diseño de la Etapa~4.
     
@@ -1521,12 +1389,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     \paragraph{Perfiles por nivel de actividad.} Sobre los $344$ cuadrantes del periodo, la clasificación Baja/Media/Alta (cuantiles P50 y P85 entre cuadrantes con eventos) arroja: $162$ cuadrantes baja ($47{.}1$~\%), $113$ media ($32{.}8$~\%) y $49$ alta ($14{.}2$~\%); $20$ cuadrantes ($5{.}8$~\%) no registraron eventos. Los perfiles acumulados (Tabla implícita en Figura~\ref{fig:heatmap_perfiles_segmentacion}) muestran escalamiento marcado en las variables operativas: media de $22$ eventos por cuadrante en nivel baja frente a $114{.}6$ en media y $344{.}7$ en alta, con usuarios afectados medios de $1{.}588$ a $88{.}534$. El clima, en cambio, no acompaña ese escalamiento: la precipitación semanal media desciende ligeramente de $19{.}6$~mm (baja) a $18{.}5$~mm (media) y $17{.}0$~mm (alta), de modo que los estratos de mayor actividad no son los más lluviosos. La Figura~\ref{fig:boxplot_nivel_segmentacion} confirma que la dispersión semanal de \texttt{n\_eventos} crece con el estrato territorial.
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.95\textwidth]{img/boxplot_eventos_por_nivel_segmentacion_mod.png}
-        \caption{Distribución semanal de \texttt{n\_eventos} por nivel de actividad del cuadrante ($D_{\mathrm{mod}}$).}
-        \label{fig:boxplot_nivel_segmentacion}
-    \end{figure}
     
     \begin{figure}[!htbp]
         \centering
@@ -1546,12 +1408,6 @@ Las actividades desarrolladas en esta etapa se describen en las subsecciones sig
     
     \paragraph{Régimen climático semanal.} Se estratificaron las filas según el percentil~$75$ de \texttt{precip\_total\_semana} ($24{.}7$~mm). Las semanas lluviosas ($25$~\% de las filas; $9{.}030$ observaciones) presentan media de \texttt{n\_eventos} de $0{.}918$, prácticamente igual a la de las semanas secas ($0{.}927$; $75$~\%; $27{.}090$ filas), con $37{.}7$~\% frente a $36{.}7$~\% de semanas con al menos un evento. La prueba de Wilcoxon no detecta diferencia significativa ($p = 0{.}175$; Figura~\ref{fig:boxplot_regimen_segmentacion}), resultado consistente con la débil asociación bivariada precipitación--eventos de la Sección~\ref{sec:analisis_correlacion_asociacion}. La dicotomización por umbral resulta así insuficiente para separar regímenes operativos: si la lluvia tiene efecto, opera a través de la intensidad de episodios puntuales y no del acumulado semanal, lo que sugiere explorar en la Etapa~4 indicadores de intensidad diaria o de número de días de lluvia dentro de la semana.
     
-    \begin{figure}[!htbp]
-        \centering
-        \includegraphics[width=0.82\textwidth]{img/boxplot_eventos_regimen_lluvia_segmentacion_mod.png}
-        \caption{\texttt{n\_eventos} según régimen de precipitación semanal (umbral P75).}
-        \label{fig:boxplot_regimen_segmentacion}
-    \end{figure}
     
     \paragraph{Clustering multivariado de cuadrantes.} Se aplicó k-means ($k = 4$) sobre cuadrantes con al menos un evento, con variables estandarizadas de frecuencia, severidad, duración, clima y altitud (Sección~\ref{sec:metodos-modelos}; excluyendo covariables de varianza nula). El mapa de la Figura~\ref{fig:mapa_cluster_segmentacion} y el heatmap de la Figura~\ref{fig:heatmap_cluster_segmentacion} distinguen: C3 ($1$ cuadrante; $2{.}224$ eventos; hub extremo), C1 ($139$ cuadrantes; media $107{.}4$ eventos; mayor severidad y duración acumulada, altitud media $496$~m), C4 ($126$ cuadrantes; media $97{.}7$ eventos; el estrato de mayor altitud, $1{.}741$~m) y C2 ($58$ cuadrantes; media $68{.}0$ eventos; el más lluvioso, $26{.}2$~mm semanales, y el de menor duración acumulada). Que el cluster más lluvioso sea también el de menor actividad refuerza que la precipitación no ordena por sí sola el territorio; la altitud y el perfil de severidad discriminan más. La existencia de un hub aislado y de estratos con perfiles distinguibles respalda evaluar modelado global frente a estratificación por cluster en la Etapa~4.
     
@@ -1739,18 +1595,25 @@ En la etapa final se consolidan los resultados del proyecto y se documentan de f
 Las actividades desarrolladas en esta etapa se describen en las subsecciones siguientes.
 
 \subsection{Presentación de resultados del modelo}
+Los resultados de los seis modelos estimados (cuatro de panel semanal y dos espaciales formales, para SAIDI y SAIFI) se organizaron en tablas homologadas de desempeño comparado, acompañadas de figuras de valores observados frente a predichos y de importancia de variables, presentadas en el Capítulo de Resultados (Sección~\ref{sec:resultados-etapa5}).
 
 \subsection{Métricas de desempeño}
+Sobre el conjunto de prueba se calcularon RMSE, MAE y $R^2$ en escala $\log(1+y)$ para los cuatro modelos de panel, y AIC para los modelos espaciales SAR/SEM, siguiendo las definiciones formalizadas en la Sección~\ref{sec:metodos-modelos}.
 
 \subsection{Hallazgos principales}
+Los hallazgos de las seis etapas se consolidaron en una síntesis única que articula el resultado principal de cada etapa con los tres objetivos específicos del proyecto (Sección~\ref{sec:resultados-etapa6}).
 
 \subsection{Interpretación técnica y operativa}
+Los resultados se tradujeron en implicaciones para la gestión operativa del operador de red, priorizando variables de infraestructura y exposición territorial sobre las cuales existe margen de acción (densidad de red, antigüedad de activos, composición de estrato). Esta interpretación se desarrolla en el Capítulo~\ref{sec:discusion}.
 
 \subsection{Generación de reportes}
+Cada etapa del proyecto se documentó en informes reproducibles (R Markdown renderizados a HTML), consolidados en el Apéndice~\ref{app:informes-html}, junto con el código fuente de extracción, integración y modelado (Apéndice~\ref{app:codigo}).
 
 \subsection{Discusión de resultados}
+El análisis crítico de fortalezas, limitaciones y comparaciones entre los modelos estimados se desarrolla en el Capítulo~\ref{sec:discusion}, para no duplicar contenido entre los capítulos de Metodología y Discusión.
 
 \subsection{Limitaciones y trabajos futuros}
+Las limitaciones identificadas a lo largo del proyecto (entre ellas, el sesgo de cobertura de emparejamiento 2021--2023 y la señal climática contemporánea débil) y las líneas de trabajo futuro se consolidan en la Sección~\ref{sec:trabajo-futuro}.
 
 \subsection{Resultados y entregables de la etapa}
 

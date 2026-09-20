@@ -14,7 +14,7 @@ Cada fuente quedó sujeta a reglas explícitas y verificables de filtrado y homo
 \section{Etapa 2 – Resultados de la integración y depuración de datos}
 \label{sec:resultados-etapa2}
 
-La integración secuencial descrita en la Sección~\ref{sec:metodología-etapa2} produjo dos tablas base. La primera, con grano activo eléctrico~$\times$~día (Tabla~\ref{tab:muestra_consolidado_preview}), alcanza $N = 87{.}007{.}074$ observaciones ($47{.}649$ activos únicos $\times$ $1{.}826$ días), preservando trazabilidad completa entre el inventario georreferenciado y el calendario de análisis 2021--2025. La segunda, agregada a grano cuadrante~$\times$~semana sobre la malla institucional de $800$ cuadrantes (Figura~\ref{fig:cuadrantes_800}), alcanza $N_{\mathrm{agr}} = 90{.}128$ observaciones (Tabla~\ref{tab:muestra_semanal_preview}) para el horizonte completo 2021--2025.
+La integración secuencial descrita en la Sección~\ref{sec:metodología-etapa2} produjo dos tablas base. La primera, con grano activo eléctrico~$\times$~día (Tabla~\ref{tab:muestra_consolidado_preview}), alcanza $N = 87{.}007{.}074$ observaciones ($47{.}649$ activos únicos $\times$ $1{.}826$ días), preservando trazabilidad completa entre el inventario georreferenciado y el calendario de análisis 2021--2025. La segunda, agregada a grano cuadrante~$\times$~semana sobre la malla institucional de $800$ cuadrantes (Figura~\ref{fig:cuadrantes_800}), alcanza $N_{\mathrm{agr}} = 90{.}128$ observaciones (Tabla~\ref{tab:muestra_semanal_preview}) para el horizonte completo 2021--2025. En esta segunda tabla se incorporaron, además del clima y los eventos, variables de caracterización territorial por cuadrante: composición socioeconómica (estrato, proporción de clientes no residenciales), topología e infraestructura de red (número de elementos, longitud de red, densidad de nodos terminales, número de circuitos) y las fuentes de exposición adicionales descritas en el Capítulo de Datos (sismicidad, desastres y vegetación/NDVI).
 
 Un hallazgo relevante de esta etapa es un sesgo sistemático detectado al contrastar el conteo anual de eventos de la base BRAE con la suma territorial de eventos de la tabla agregada durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). El diagnóstico descarta la ausencia de datos como causa —el campo \texttt{COMPONENTE\_FALLADO} está completo en el $100$~\% de los registros BRAE— y la atribuye a una incompatibilidad entre esquemas de codificación al cruzar eventos con el inventario georreferenciado. Este hallazgo, que no era anticipable antes del análisis, llevó a delimitar el subconjunto de datos con cobertura de emparejamiento confiable como el dataset de modelado $D_{\mathrm{mod}}$: $36{.}120$ filas cuadrante--semana, $105$ semanas y $33{.}410$ eventos georreferenciados en el periodo 2024--2025 ($15{.}211$ en 2024 y $18{.}199$ en 2025), que es el que efectivamente alimenta el modelado de la Etapa~5. El horizonte completo 2021--2025 ($D_{\mathrm{EDA}}$) se conserva para el análisis exploratorio de la Etapa~3.
 
@@ -84,9 +84,46 @@ Random Forest         & 0.0027 & 0.0012 & 0.2343 \\
 \end{tabular}
 \end{table}
 
-Para la explicación estructural en corte transversal ponderado, el modelo espacial SAR resultó ganador para SAIDI (AIC $=-1305{.}19$; $R^2=0{.}900$), y el modelo SEM para SAIFI (AIC $=-4267{.}92$; $R^2=0{.}837$), ambos verificados mediante cuatro pruebas de robustez que descartan que la asociación observada sea un artefacto de colinealidad estructural (Sección~\ref{sec:metodología-etapa5}).
+Para la explicación estructural en corte transversal, se agregó cada indicador como promedio ponderado por cuadrante a lo largo de todo el periodo 2024--2025 ($N=343$ cuadrantes), y se compararon por AIC los modelos OLS, SAR y SEM sobre ese corte transversal. El AIC favoreció a SAR para SAIDI (AIC $=-1305{.}19$, frente a $-1299{.}80$ de OLS) y a SEM para SAIFI (AIC $=-4267{.}92$, frente a $-4266{.}05$ de OLS), en ambos casos por una diferencia moderada que refleja una autocorrelación espacial real pero no dominante en los residuos (Sección~\ref{sec:resultados-etapa5}).
 
-La importancia de variables del Random Forest y los coeficientes de los modelos espaciales coinciden en señalar como predictores más relevantes: el número de elementos de red y la longitud de red del cuadrante, la edad del activo más antiguo, la composición de estrato y el número de clientes no residenciales (para SAIDI), y adicionalmente la distancia promedio a eventos sísmicos y el NDVI promedio (vegetación) según el indicador. En síntesis: \textbf{para pronóstico semanal, Random Forest es el modelo recomendado para SAIDI y efectos fijos de cuadrante para SAIFI}; \textbf{para explicación estructural, SAR (SAIDI) y SEM (SAIFI) son los modelos espaciales recomendados}, ambos con alta capacidad explicativa ($R^2 > 0{.}83$) una vez verificada su robustez.
+Es importante precisar que los modelos espaciales SAR/SEM no reportan un $R^2$ en el sentido clásico. La capacidad explicativa del bloque de predictoras --infraestructura de red, antigüedad de activos, composición de estrato y exposición territorial-- se cuantificó mediante la regresión lineal equivalente sobre el mismo corte transversal de $343$ cuadrantes, usada como verificación de robustez frente a colinealidad estructural: $R^2=0{.}901$ para SAIDI (Tabla~\ref{tab:cross_section_saidi}) y $R^2=0{.}837$ para SAIFI tras selección \emph{stepwise} (Tabla~\ref{tab:cross_section_saifi}), ambos con significancia empírica confirmada por prueba de permutación ($p<0{.}001$). Este $R^2$ no debe compararse directamente con el de las Tablas~\ref{tab:desempeno_saidi} y~\ref{tab:desempeno_saifi}: mientras estas últimas evalúan la predicción de observaciones semanales individuales en test ($N=2{.}215$, con toda la variabilidad semana a semana), el corte transversal explica el promedio de cada cuadrante a lo largo de $\sim 105$ semanas ($N=343$), un objetivo distinto y estadísticamente más simple porque el promediado reduce el ruido idiosincrático. En síntesis, la red tiene un patrón espacial altamente explicable por infraestructura y exposición territorial, pero la magnitud semana a semana conserva incertidumbre irreducible que ningún modelo aquí evaluado elimina por completo.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Regresión de corte transversal para SAIDI promedio por cuadrante ($N=343$; $R^2=0{.}901$)}
+\label{tab:cross_section_saidi}
+\begin{tabular}{l r r}
+\toprule
+\textbf{Predictor} & \textbf{Coeficiente} & \textbf{valor $p$} \\
+\midrule
+n\_elementos                  & $4{.}39\times10^{-4}$  & $<0{.}001$ \\
+longitud\_red\_km             & $-8{.}08\times10^{-4}$ & $<0{.}001$ \\
+edad\_activo\_mas\_viejo\_anios & $-2{.}76\times10^{-2}$ & $<0{.}001$ \\
+ndvi\_promedio                & $7{.}59\times10^{-2}$  & $0{.}007$ \\
+prop\_transformadores, densidad\_terminales, prop\_estrato\_1/2, prop\_no\_residencial, PROM\_CANT\_MODIFICACIONES, dist\_sismo\_prom\_km, precip\_promedio & no significativos & $>0{.}10$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Regresión de corte transversal para SAIFI promedio por cuadrante, modelo \emph{stepwise} ($N=343$; $R^2=0{.}837$)}
+\label{tab:cross_section_saifi}
+\begin{tabular}{l r r}
+\toprule
+\textbf{Predictor} & \textbf{Coeficiente} & \textbf{valor $p$} \\
+\midrule
+n\_elementos                  & $3{.}65\times10^{-6}$  & $<0{.}001$ \\
+longitud\_red\_km             & $-3{.}98\times10^{-6}$ & $0{.}018$ \\
+edad\_activo\_mas\_viejo\_anios & $-1{.}14\times10^{-4}$ & $0{.}057$ \\
+dist\_sismo\_prom\_km         & $7{.}51\times10^{-6}$  & $0{.}011$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La importancia de variables del Random Forest y estas regresiones de corte transversal coinciden en señalar como predictores más relevantes: el número de elementos de red y la longitud de red del cuadrante, la edad del activo más antiguo, y de forma secundaria la exposición sísmica (SAIFI) y el NDVI (SAIDI). En síntesis: \textbf{para pronóstico semanal, Random Forest es el modelo recomendado para SAIDI y efectos fijos de cuadrante para SAIFI}; \textbf{para explicación del patrón espacial promedio, SAR (SAIDI) y SEM (SAIFI) son los modelos preferidos por AIC}, con una capacidad explicativa alta y verificada como no artefactual cuando se cuantifica mediante su regresión lineal equivalente.
 
 
 \section{Etapa 6 – Síntesis general y cierre frente a los objetivos}
@@ -99,7 +136,7 @@ El proyecto recorrió las seis etapas metodológicas descritas en el Capítulo~\
 \small
 \caption{Síntesis de resultados por etapa metodológica}
 \label{tab:sintesis_etapas}
-\begin{tabular}{p{2.6cm} p{9.5cm}}
+\begin{tabular}{p{0.20\textwidth} p{0.72\textwidth}}
 \toprule
 \textbf{Etapa} & \textbf{Resultado principal} \\
 \midrule
@@ -107,7 +144,7 @@ Etapa 1 & Seis fuentes consolidadas (BRAE, OMS SPARD/SP7, GIS, NASA POWER); $95{
 Etapa 2 & Panel activo--día ($N=87{.}007{.}074$) y panel cuadrante--semana ($N_{\mathrm{agr}}=90{.}128$); detección de un sesgo sistemático de emparejamiento 2021--2023 que delimitó el dataset de modelado $D_{\mathrm{mod}}$ (2024--2025). \\
 Etapa 3 & Sin datos faltantes en la tabla agregada; redundancia identificada entre severidad y frecuencia; señal climática contemporánea débil; multicolinealidad climática corregida (VIF máximo de $43{.}92$ a $7{.}21$). \\
 Etapa 4 & Panel analítico final con predictoras disponibles \emph{ex ante}, rezagos espaciales de vecinos y transformación logarítmica de las respuestas. \\
-Etapa 5 & Random Forest (SAIDI) y FE cuadrante (SAIFI) como mejores modelos de pronóstico semanal; SAR (SAIDI) y SEM (SAIFI) como modelos estructurales robustos ($R^2>0{.}83$); autocorrelación espacial significativa en ambos indicadores (Moran's $I$). \\
+Etapa 5 & Random Forest (SAIDI) y FE cuadrante (SAIFI) como mejores modelos de pronóstico semanal; SAR (SAIDI) y SEM (SAIFI) preferidos por AIC como modelos estructurales, con capacidad explicativa verificada como robusta ($R^2>0{.}83$ en la regresión de corte transversal equivalente); autocorrelación espacial significativa en ambos indicadores (Moran's $I$). \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -119,7 +156,7 @@ La Tabla~\ref{tab:cierre_objetivos} articula estos resultados con los tres objet
 \small
 \caption{Cierre de resultados frente a los objetivos específicos}
 \label{tab:cierre_objetivos}
-\begin{tabular}{p{4.3cm} p{7.8cm}}
+\begin{tabular}{p{0.32\textwidth} p{0.60\textwidth}}
 \toprule
 \textbf{Objetivo específico} & \textbf{Resultado que lo responde} \\
 \midrule

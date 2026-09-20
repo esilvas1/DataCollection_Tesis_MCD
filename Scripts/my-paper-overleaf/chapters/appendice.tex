@@ -453,3 +453,183 @@ Esta sección presenta, con todas las columnas y divididas en los bloques temát
     \end{table}
 
 \noindent\textit{Nota:} las filas de las Tablas~\ref{tab:muestra_semanal_cuadrante_1} a~\ref{tab:muestra_semanal_cuadrante_4} corresponden al mismo conjunto de observaciones en el mismo orden. Cadena de unidades de continuidad: panel diario en minutos (\texttt{DURACION\_min}) $\rightarrow$ conversión \texttt{/60} $\rightarrow$ \texttt{duracion\_total} semanal en horas.
+
+\section{Figuras complementarias de completitud, extremos y localización territorial}
+\label{app:figuras-eda-complementarias}
+
+Esta sección reúne, en cuadrículas de cuatro figuras por página, las visualizaciones de apoyo del análisis exploratorio (Sección~\ref{sec:identificacion_datos_faltantes}, \ref{sec:identificacion_valores_extremos}, \ref{sec:estadisticos_descriptivos}, \ref{sec:identificacion_patrones_tendencias} y \ref{sec:segmentacion_exploratoria}) cuya lectura no es indispensable en el cuerpo principal del documento. El comentario e interpretación de cada una se mantiene en el capítulo de Metodología, junto a la referencia cruzada correspondiente.
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/grafico_datos_faltantes_por_variable.png}
+    \caption{Porcentaje de valores faltantes por variable en el panel consolidado ($N = 87{.}007{.}074$).}
+    \label{fig:faltantes_por_variable}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/heatmap_datos_faltantes_agrupada.png}
+    \caption{Completitud de la tabla agrupada por fila y variable ($N_{\mathrm{agr}} = 90{.}128$; muestra de $50$ filas).}
+    \label{fig:heatmap_faltantes_agrupada}
+\end{subfigure}
+
+\vspace{1em}
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_valores_extremos_clima.png}
+    \caption{Distribución de las variables climáticas: mediana y extremos (muestra de $200{.}000$ observaciones).}
+    \label{fig:boxplot_clima}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_valores_extremos_evento.png}
+    \caption{Distribución de la severidad y continuidad en días con evento: mediana y extremos.}
+    \label{fig:boxplot_evento}
+\end{subfigure}
+\caption{Completitud del panel consolidado y extremos en variables diarias.}
+\label{fig:grid_eda_1}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_valores_extremos_clima_agrupada.png}
+    \caption{Distribución de las variables climáticas semanales: mediana y extremos ($N_{\mathrm{agr}} = 90{.}128$).}
+    \label{fig:boxplot_clima_agrupada}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_valores_extremos_evento_agrupada.png}
+    \caption{Distribución de la severidad y continuidad en semanas con evento: mediana y extremos.}
+    \label{fig:boxplot_evento_agrupada}
+\end{subfigure}
+
+\vspace{1em}
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_descriptivo_agrupada.png}
+    \caption{Distribución de las variables numéricas de la tabla agrupada: mediana y extremos ($N_{\mathrm{agr}} = 90{.}128$).}
+    \label{fig:boxplot_descriptivo_agrupada}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/ubicacion_top_cuadrantes_mod.png}
+    \caption{Ubicación geográfica de los cuadrantes \emph{top} con mayor acumulado de eventos en $D_{\mathrm{mod}}$ (2024--2025). Los recuadros resaltados identifican la posición espacial de los primeros cuadrantes del ranking.}
+    \label{fig:ubicacion_top_cuadrantes_mod}
+\end{subfigure}
+\caption{Extremos en variables agregadas y localización de los cuadrantes más activos.}
+\label{fig:grid_eda_2}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_eventos_por_nivel_segmentacion_mod.png}
+    \caption{Distribución semanal de \texttt{n\_eventos} por nivel de actividad del cuadrante ($D_{\mathrm{mod}}$).}
+    \label{fig:boxplot_nivel_segmentacion}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/boxplot_eventos_regimen_lluvia_segmentacion_mod.png}
+    \caption{\texttt{n\_eventos} según régimen de precipitación semanal (umbral P75).}
+    \label{fig:boxplot_regimen_segmentacion}
+\end{subfigure}
+\caption{Segmentación exploratoria de \texttt{n\_eventos} por nivel de actividad y régimen de lluvia.}
+\label{fig:grid_eda_3}
+\end{figure}
+
+\section{Análisis de componentes principales (PCA) exploratorio}
+\label{app:pca-exploratorio}
+
+El equipo realizó un ejercicio de PCA exploratorio sobre los bloques climático y operativo de $D_{\mathrm{mod}}$, documentado en detalle a continuación. Se trató de un diagnóstico de redundancia entre covariables, no de una técnica de reducción de dimensionalidad empleada para construir predictoras: ninguna componente principal se utilizó como insumo de los modelos de la Etapa~5. Las decisiones de selección de variables se basaron, en cambio, en el VIF y en el agrupamiento jerárquico presentados en la Sección~\ref{sec:evaluacion_multivariada}.
+
+\subsection{PCA exploratorio del bloque climático}
+
+\subparagraph{Variables de entrada.} Ingresan las siete variables climáticas semanales de $D_{\mathrm{mod}}$ ($n = 36{.}120$ filas cuadrante~$\times$~semana; $p = 7$):
+\texttt{temp\_media\_semana}, \texttt{temp\_max\_semana}, \texttt{temp\_min\_semana}, \texttt{humedad\_media\_semana}, \texttt{viento\_medio\_semana}, \texttt{viento\_max\_semana} y \texttt{precip\_total\_semana}.
+
+\subparagraph{Condiciones de aplicación.} Las siete son cuantitativas continuas; $n\gg p$; no hay faltantes en $D_{\mathrm{mod}}$; y se homogenizan mediante estandarización ($z$-scores) porque tienen distintas unidades (\textdegree C, \%, m/s, mm). El PCA se ejecuta sobre la matriz de correlaciones implícita en la estandarización (\texttt{prcomp} sobre la matriz centrada y escalada).
+
+\subparagraph{Varianza retenida y pesos (loadings).} Las dos primeras componentes condensan el $87{.}3$~\% de la varianza (PC1: $66{.}9$~\%; PC2: $20{.}4$~\%) y PC3 aporta un $8{.}3$~\% adicional (acumulado $95{.}6$~\%; Figura~\ref{fig:pca_scree_clima}). La Tabla~\ref{tab:pca_loadings_clima} y la Figura~\ref{fig:pca_loadings_clima} reportan las cargas:
+\begin{itemize}
+    \item \textit{PC1 (eje térmico--viento):} dominan las temperaturas (\texttt{temp\_media\_semana} $0{.}45$, \texttt{temp\_max\_semana} $0{.}43$, \texttt{temp\_min\_semana} $0{.}43$), con cargas negativas de viento (\texttt{viento\_medio\_semana} $-0{.}40$, \texttt{viento\_max\_semana} $-0{.}39$). La precipitación es irrelevante en este eje ($-0{.}08$).
+    \item \textit{PC2 (eje de humedad--lluvia):} la variable más importante es \texttt{precip\_total\_semana} ($0{.}70$), seguida de \texttt{humedad\_media\_semana} ($0{.}51$).
+    \item \textit{PC3:} contrastan precipitación ($-0{.}66$) y viento máximo ($-0{.}43$) frente a humedad ($0{.}32$), con contribución adicional del viento medio ($-0{.}37$).
+\end{itemize}
+En síntesis, las temperaturas (y, en sentido opuesto, el viento) concentran el peso en PC1, mientras la precipitación concentra su importancia en PC2--PC3, resultado coherente con el VIF y el dendrograma presentados en el cuerpo del documento.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Cargas (loadings) del PCA climático: peso de cada variable por componente ($D_{\mathrm{mod}}$; PC1--PC3)}
+\label{tab:pca_loadings_clima}
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+\textbf{Variable} & \textbf{PC1} & \textbf{PC2} & \textbf{PC3} \\
+\midrule
+\texttt{temp\_media\_semana}    &  0.45 & $-0.07$ & $-0.22$ \\
+\texttt{temp\_max\_semana}      &  0.43 & $-0.12$ & $-0.28$ \\
+\texttt{temp\_min\_semana}      &  0.43 &  0.11  & $-0.10$ \\
+\texttt{humedad\_media\_semana} & $-0.33$ &  0.51  &  0.32  \\
+\texttt{viento\_medio\_semana}  & $-0.40$ & $-0.33$ & $-0.37$ \\
+\texttt{viento\_max\_semana}    & $-0.39$ & $-0.33$ & $-0.43$ \\
+\texttt{precip\_total\_semana}  & $-0.08$ &  0.70  & $-0.66$ \\
+\bottomrule
+\end{tabular}
+
+\noindent\textit{Nota:} se destacan como relevantes en la interpretación las cargas con valor absoluto $\geq 0{.}40$.
+\end{table}
+
+\subsection{PCA exploratorio del bloque operativo}
+
+De forma análoga, se aplicó un PCA exploratorio al bloque operativo de $D_{\mathrm{mod}}$ para delimitar dimensiones de impacto, no para construir predictoras. Ingresan las cuatro métricas \texttt{n\_eventos}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} y \texttt{duracion\_total} ($n = 36{.}120$; $p = 4$), tras transformación logarítmica desplazada y estandarización, dadas la cero-inflación, la asimetría y las distintas escalas.
+
+PC1 concentra el $83{.}8$~\% de la varianza, con cargas elevadas y del mismo signo en las cuatro variables (Tabla~\ref{tab:pca_loadings_operativo}; Figura~\ref{fig:pca_loadings_operativo}): las más importantes son \texttt{usuarios\_afectados} ($0{.}53$) y \texttt{n\_eventos} ($0{.}52$), seguidas de \texttt{elementos\_afectados} ($0{.}50$) y \texttt{duracion\_total} ($0{.}45$). PC2 ($11{.}9$~\%; acumulado $95{.}7$~\%) contrasta duración ($0{.}81$) frente a afectación (\texttt{elementos\_afectados} $-0{.}48$; \texttt{usuarios\_afectados} $-0{.}33$). Este resultado, junto con la evaluación multivariada del cuerpo del documento, respalda no emplear simultáneamente las cuatro variables operativas como respuestas ni como predictoras, y construir $SAIFI$ y $SAIDI$ en la Etapa~4 a partir de \texttt{usuarios\_afectados} y \texttt{duracion\_total}.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Cargas (loadings) del PCA operativo en escala logarítmica desplazada ($D_{\mathrm{mod}}$; PC1--PC2)}
+\label{tab:pca_loadings_operativo}
+\begin{tabular}{@{}l r r@{}}
+\toprule
+\textbf{Variable} & \textbf{PC1} & \textbf{PC2} \\
+\midrule
+\texttt{n\_eventos}            & 0.52 &  0.09 \\
+\texttt{usuarios\_afectados}  & 0.53 & $-0.33$ \\
+\texttt{elementos\_afectados} & 0.50 & $-0.48$ \\
+\texttt{duracion\_total}      & 0.45 &  0.81 \\
+\bottomrule
+\end{tabular}
+
+\noindent\textit{Nota:} se interpretan como relevantes las cargas con valor absoluto $\geq 0{.}40$.
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/pca_scree_clima_multivariado_mod.png}
+    \caption{Varianza acumulada del bloque climático por componente principal.}
+    \label{fig:pca_scree_clima}
+\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/pca_loadings_clima_multivariado_mod.png}
+    \caption{Peso (loadings) de las variables climáticas en las tres primeras componentes principales.}
+    \label{fig:pca_loadings_clima}
+\end{subfigure}
+
+\vspace{1em}
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{img/pca_loadings_operativo_multivariado_mod.png}
+    \caption{Peso (loadings) de frecuencia, afectación y duración en las dos primeras componentes del bloque operativo.}
+    \label{fig:pca_loadings_operativo}
+\end{subfigure}
+\caption{Figuras del PCA exploratorio climático y operativo.}
+\label{fig:grid_pca}
+\end{figure}
