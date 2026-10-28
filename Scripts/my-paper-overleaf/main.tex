@@ -6,8 +6,6 @@
 
 
 % additional packages
-\usepackage{lipsum} % for DEMO only
-\usepackage{threeparttable}
 \usepackage{threeparttable}
 \usepackage{siunitx}
 \usepackage[titles]{tocloft} % to modify spacing in toc chapters
@@ -22,10 +20,8 @@
 \usepackage{float} % para usar [H] si quieres fijar la figura
 \usepackage{geometry}
 \usepackage{pdflscape}
-\usepackage{tabularx}
-\usepackage{booktabs}
-\usepackage{threeparttable}
 \usepackage{listings}
+\usepackage{multirow}
 \renewcommand{\tabularxcolumn}[1]{m{#1}}
 \usepackage{longtable}
 
@@ -65,8 +61,9 @@
     belowcaptionskip=0.2em
 }
 
-\usepackage{listings}
 \usepackage{xcolor}
+% Marca visible para datos que el equipo debe completar antes de la entrega
+\newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[#1]}}}
 
 \lstdefinestyle{code}{
     basicstyle=\ttfamily\small,
@@ -83,20 +80,20 @@
 
 \renewcommand{\lstlistingname}{Listado}
 \setlength{\cftbeforechapskip}{7pt}
-\setcounter{tocdepth}{4} % ToC depth
+\setcounter{tocdepth}{2} % ToC depth
 
 
 % titles
 \title{Metodología Basada en Métodos de Ciencia de Datos para Pronosticar SAIDI y SAIFI en Redes de Distribución de una Empresa de Energía Eléctrica en el Norte de Santander}
-\thesisHeader{Pontificia Universidad Javeriana Cali \\Facultad de Ingeniería y Ciencias.\\MAESTRÍA EN CIENCIA DE DATOS}
-\academicYear{07-2024/11-2024}
+\thesisHeader{Pontificia Universidad Javeriana Cali \\Facultad de Ingeniería y Ciencias\\Maestría en Ciencia de Datos}
+\academicYear{2026}
 
 % student
-\author{Edwin Henao Ochoa\\
-Cindy Lugo Rozo\\
-Edwin Silva Salas}
+\author{Edwin Henao Ochoa {\normalfont\small (Código \pendiente{código})}\\
+Cindy Lugo Rozo {\normalfont\small (Código \pendiente{código})}\\
+Edwin Silva Salas {\normalfont\small (Código \pendiente{código})}}
 
-% supervisor(s)Zürich
+% supervisor(s)
 \advisor{Sandra Milena Ramírez Buelvas}{Pontificia Universidad Javeriana} % (mandatory)
 %\coadvisor{xxxxx }{xxxxx} 
 % (optional, comment to remove)
@@ -117,7 +114,7 @@ Edwin Silva Salas}}
 
 \sisetup{
   output-decimal-marker = {.},
-  group-separator = {.},
+  group-separator = {\,},
   detect-all = true
 }
 
@@ -161,6 +158,11 @@ Edwin Silva Salas}}
 \setlength{\intextsep}{6pt}      % Espacio entre texto y figuras
 \setlength{\textfloatsep}{6pt}   % Espacio entre texto y flotantes
 
+
+% Permite cortar línea después de los guiones bajos de nombres de variables (\texttt{...})
+\let\oldunderscore\_
+\renewcommand{\_}{\oldunderscore\allowbreak}
+\setlength{\emergencystretch}{3em}
 
 \begin{document}
 \renewcommand{\tablename}{Tabla}

@@ -1,10 +1,10 @@
-Para el desarrollo del modelo de pronóstico de $SAIFI$ y $SAIDI$, se utilizará una base de datos histórica de eventos de falla reportados en el sistema de distribución. La tabla principal consolidada tiene $N = 87{.}007{.}074$ observaciones ($A = 47{.}649$ activos eléctricos únicos $\times$ $T = 1{.}826$ días), correspondientes al panel \textit{activo $\times$ día} entre el $1$ de enero de $2021$ y el $31$ de diciembre de $2025$.
+Para el desarrollo del modelo de pronóstico de $SAIFI$ y $SAIDI$ se utilizó una base de datos histórica de eventos de falla reportados en el sistema de distribución, organizada en dos niveles. El \textit{nivel de integración} es el panel \textit{activo $\times$ día}, con $N = 87\,007\,074$ observaciones ($A = 47\,649$ activos eléctricos únicos $\times$ $T = 1\,826$ días) entre el $1$ de enero de $2021$ y el $31$ de diciembre de $2025$. El \textit{nivel de modelado} es el panel \textit{cuadrante $\times$ semana}: $90\,128$ observaciones ($344$ cuadrantes con red $\times$ $262$ semanas) para el análisis exploratorio y $36\,120$ observaciones ($344$ cuadrantes $\times$ $105$ semanas de 2024--2025) para el modelado. Las variables de ambos niveles se documentan en el catálogo de datos del Apéndice~\ref{app:catalogo}.
 
 \paragraph{Tiempo o periodo de estudio.}
 El periodo de estudio abarca desde el $1$ de enero de $2021$ hasta el $31$ de diciembre de $2025$.
 
 \paragraph{Unidad muestral.}
-La unidad muestral adoptada corresponde a un activo eléctrico por día, lo que define un nivel de granularidad tipo \textit{elemento-día}. Esta elección permite capturar la variabilidad temporal de los eventos e integrar variables de red y climáticas a nivel diario.
+La unidad de integración corresponde a un activo eléctrico por día, lo que define un nivel de granularidad tipo \textit{elemento-día} y permite integrar variables de red, climáticas y de eventos a nivel diario. La unidad de análisis y de modelado es el par \textit{cuadrante $\times$ semana}, en el que el cuadrante de la malla institucional representa la \textit{zona} a la que se refieren los objetivos del proyecto (Sección~\ref{sec:agrupacion_cuadrante_semana}).
 
 \section{Construcción del dataset}
 
@@ -122,21 +122,28 @@ objetivo y no como predictoras contemporáneas.
 Adicionalmente, el panel cuadrante--semana incorpora variables de exposición territorial provenientes de las fuentes externas descritas más adelante (sismicidad, desastres y vegetación): \texttt{sismos\_conteo} y \texttt{dist\_sismo\_prom\_km} (sismicidad, SGC); \texttt{desastres\_conteo} y tipo de emergencia predominante (UNGRD); y \texttt{ndvi\_semanal} junto con sus derivadas \texttt{log\_ndvi} y \texttt{cat\_ndvi} (vegetación, NDVI/MODIS). Se suman también las métricas de topología de red \texttt{longitud\_red\_km}, densidad de nodos terminales y número de circuitos por cuadrante.
 
 \paragraph{Número de observaciones.}
-La tabla consolidada final se estima como
+La tabla consolidada del nivel de integración se obtiene como
 \[
-\text{Total de observaciones} = 47{.}649 \times 1{.}826 = 87{.}007{.}074,
+\text{Total de observaciones} = 47\,649 \times 1\,826 = 87\,007\,074,
 \]
 correspondiente a cinco años de información a nivel elemento-día.
 
-\section*{Procedencia de la información}
+\section{Procedencia de la información}
 
 \paragraph{Origen de la información.}
 La empresa origen de los datos operativos y técnicos es Centrales Eléctricas de Norte de Santander S.A E.S.P (Cens S.A E.S.P).
 
 \paragraph{Lugar donde se registra la información.}
-Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER~\textcite{ref48}.
+Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER~\cite{ref48}.
 
 La información se registra en la red de distribución eléctrica de Norte de Santander, con soporte de localización geográfica por activo y por cuadrante.
 
 \paragraph{Fuentes adicionales incorporadas al panel cuadrante--semana.}
-Para enriquecer la caracterización territorial del panel de modelado se incorporaron tres fuentes externas adicionales: los registros de sismicidad del Servicio Geológico Colombiano (SGC), los registros de emergencias de la Unidad Nacional para la Gestión del Riesgo de Desastres (UNGRD), y el índice de vegetación NDVI derivado del producto satelital MODIS MOD13Q1 de la NASA, procesado semanalmente por cuadrante. Adicionalmente, se construyeron métricas de topología de red eléctrica (longitud de red, densidad de nodos, circuitos) a partir del propio sistema georreferenciado GTECH descrito anteriormente.
+Para enriquecer la caracterización territorial del panel de modelado se incorporaron tres fuentes externas adicionales: los registros de sismicidad del Servicio Geológico Colombiano (SGC), los registros de emergencias de la Unidad Nacional para la Gestión del Riesgo de Desastres (UNGRD), y el índice de vegetación NDVI derivado del producto satelital MODIS MOD13Q1 de la NASA, procesado semanalmente por cuadrante. Adicionalmente, se construyeron métricas de topología de red eléctrica (longitud de red, densidad de nodos, circuitos) a partir del propio sistema georreferenciado GTECH (Sección~\ref{sec:extraccion_gis}).
+
+\section{Consideraciones éticas y disponibilidad de datos y código}
+\label{sec:etica_datos}
+
+Los datos operativos provienen de los sistemas institucionales de CENS S.A. E.S.P. y se emplearon con autorización expresa de la empresa \pendiente{anexar la carta de autorización de uso de datos y citarla aquí}. El estudio no utiliza datos personales: la unidad mínima de registro es el activo eléctrico y los usuarios intervienen solo como conteos agregados por transformador, por lo que no es posible identificar a ninguna persona. Tampoco se emplean datos sensibles ni se recolecta información mediante encuestas o entrevistas. Las variables socioeconómicas (estrato) se usan como proporciones agregadas por cuadrante y con fines exclusivamente descriptivos de la demanda, no para diferenciar la atención a los usuarios, de modo que los resultados no inducen tratos diferenciados entre grupos de población. Las fuentes externas (NASA POWER, MODIS, SGC, UNGRD y DANE) son públicas.
+
+El código de extracción, integración, análisis y modelado se encuentra en el repositorio \url{https://github.com/esilvas1/DataCollection_Tesis_MCD}, organizado por etapas, y los informes reproducibles de cada etapa se publican en GitHub Pages (Apéndice~\ref{app:informes-html}); los artefactos de reproducibilidad se describen en el Apéndice~\ref{app:reportes_tecnicos}. Por tratarse de información institucional, los datos crudos no se publican; el repositorio incluye \pendiente{el panel cuadrante~$\times$~semana agregado o una muestra sintética con la misma estructura}, suficiente para ejecutar la Etapa~5 y verificar los resultados reportados.

@@ -6,7 +6,7 @@
 
 
 \subsection{Contexto del estudio}
-    Cuando hablamos de calidad del servicio eléctrico, nos referimos básicamente a entregar energía de forma segura y eficiente, cumpliendo con estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la CREG \textcite{ref3}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI y el SAIFI, ya definidos en la introducción de este trabajo.
+    La calidad del servicio eléctrico se refiere a la entrega de energía de forma segura y eficiente, en cumplimiento de estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la CREG~\cite{ref1}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI y el SAIFI, ya definidos en la introducción de este trabajo.
 
      \begin{enumerate}
           \item \textit{Definición del SAIDI según la Resolución CREG 015 de 2018:}
@@ -67,7 +67,7 @@
                 \end{itemize}
             \end{quote}
     
-            Cada OR es responsable del cálculo de los indicadores de calidad del servicio. Para ello, debe utilizar la información reportada conforme a lo establecido en el numeral 5.2.11.3.2 de la Resolución CREG 015 de 2018, así como la información de vinculación definida en el literal a) del numeral 5.2.10 \textcite{ref1}. Esta disposición garantiza que el cálculo de los indicadores se realice con base en registros oficiales, trazables y consistentes con los lineamientos regulatorios vigentes.
+            Cada OR es responsable del cálculo de los indicadores de calidad del servicio. Para ello, debe utilizar la información reportada conforme a lo establecido en el numeral 5.2.11.3.2 de la Resolución CREG 015 de 2018, así como la información de vinculación definida en el literal a) del numeral 5.2.10~\cite{ref1}. Esta disposición garantiza que el cálculo de los indicadores se realice con base en registros oficiales, trazables y consistentes con los lineamientos regulatorios vigentes.
 
             
           \item \textit{Interpretación de los indicadores:}
@@ -75,14 +75,14 @@
     
             El SAIDI expresa el tiempo promedio durante el cual un usuario permanece sin servicio eléctrico en un período determinado. Por su parte, el SAIFI mide la frecuencia promedio con la que un usuario experimenta interrupciones en el mismo período. En conjunto, ambos indicadores permiten evaluar la continuidad y confiabilidad del sistema de distribución.
             
-            Desde una perspectiva operativa, valores elevados de SAIDI o SAIFI pueden reflejar deficiencias en el mantenimiento de la red, limitaciones en la infraestructura, obsolescencia tecnológica, fallas en los procedimientos operativos o una alta exposición a factores externos como condiciones climáticas adversas \textcite{ref1,ref6}. En consecuencia, estos indicadores no solo describen el desempeño del sistema, sino que también permiten identificar áreas críticas que requieren intervención técnica o inversión en activos.
+            Desde una perspectiva operativa, valores elevados de SAIDI o SAIFI pueden reflejar deficiencias en el mantenimiento de la red, limitaciones en la infraestructura, obsolescencia tecnológica, fallas en los procedimientos operativos o una alta exposición a factores externos como condiciones climáticas adversas~\cite{ref41,ref43}. En consecuencia, estos indicadores no solo describen el desempeño del sistema, sino que también permiten identificar áreas críticas que requieren intervención técnica o inversión en activos.
             
-            En el ámbito regulatorio, los OR deben reportar estos indicadores como métricas clave de desempeño y compararlos con las metas establecidas por la CREG. El cumplimiento de dichas metas está asociado a esquemas de remuneración por calidad del servicio, mientras que el incumplimiento puede dar lugar a ajustes tarifarios, obligaciones de reinversión o sanciones económicas \textcite{ref3,ref8}. Por tanto, SAIDI y SAIFI no solo constituyen medidas técnicas de continuidad, sino también variables con impacto financiero y regulatorio significativo.
+            En el ámbito regulatorio, los OR deben reportar estos indicadores como métricas clave de desempeño y compararlos con las metas establecidas por la CREG. El cumplimiento de dichas metas está asociado a esquemas de remuneración por calidad del servicio, mientras que el incumplimiento puede dar lugar a ajustes tarifarios, obligaciones de reinversión o sanciones económicas~\cite{ref1,ref44}. Por tanto, SAIDI y SAIFI no solo constituyen medidas técnicas de continuidad, sino también variables con impacto financiero y regulatorio significativo.
           
           \item \textit{Meta de calidad media del SAIDI:}
            La Resolución CREG 015 de 2018 establece que la meta de calidad media para el indicador de duración de los eventos en el Sistema de Distribución Local (SDL) de cada OR se determina con base en una expresión específica definida por la regulación. Formalmente, dicha meta se calcula mediante la siguiente formulación:
             \begin{quote}
-                ``La meta para el indicador de frecuencia de los eventos sucedidos en el SDL de cada OR se obtiene con base en la siguiente expresión:''
+                ``La meta para el indicador de duración de los eventos sucedidos en el SDL de cada OR se obtiene con base en la siguiente expresión:''
                 \begin{equation}
                     \begin{aligned}
                     \mathrm{SAIDI\_M}_{j,t} = (1 - 0.08)\times \mathrm{SAIDI\_M}_{j,t-1},
@@ -100,7 +100,7 @@
           Desde una dimensión social y económica, un servicio deficiente ocasiona pérdidas significativas en la productividad empresarial y en los ingresos por remuneración al operador de red, y afecta la operación de instituciones comerciales e industriales. Por ello, mejorar la gestión y la capacidad de predicción de $SAIDI$ y $SAIFI$ es un objetivo estratégico para los operadores y para la regulación del sector, con impactos directos en usuarios, empresas y entes de control.
 
           \item \textit{Exclusiones de eventos:}
-          Para la realización del cálculo de la calidad del servicio y el seguimiento de estos indicadores se tienen algunas exclusiones que permiten exonerar o excluir eventos de este cálculo. Entre los aspectos de la calidad del servicio de energía eléctrica que no serán observados dentro de este estudio se encuentran las siguientes exclusiones de eventos, tal como lo dicta la regulación CREG 015 del 2018 \textcite{ref3}:
+          Para la realización del cálculo de la calidad del servicio y el seguimiento de estos indicadores se tienen algunas exclusiones que permiten exonerar o excluir eventos de este cálculo. Entre los aspectos de la calidad del servicio de energía eléctrica que no serán observados dentro de este estudio se encuentran las siguientes exclusiones de eventos, tal como lo dicta la Resolución CREG 015 de 2018~\cite{ref1}:
             \begin{itemize}
                 \item Los menores o iguales a 3 minutos.
                 \item Los debidos a racionamientos programados.
@@ -115,7 +115,7 @@
             \end{itemize}
          
          \item \textit{Factores que afectan los indicadores:}
-         Hay varios factores que deben considerarse, ya que terminan afectando negativamente los indicadores de calidad~\textcite{ref1,ref6,ref7}:
+         Hay varios factores que deben considerarse, ya que terminan afectando negativamente los indicadores de calidad~\cite{ref6,ref7,ref43}:
          
             \begin{itemize}
                 \item \textit{El clima:} Las tormentas eléctricas, vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
@@ -159,7 +159,7 @@ eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de 
     \[
     p_j^{\mathrm{NA}} = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{X_{ij}=\texttt{NA}\}.
     \]
-    En el panel activo~$\times$~día, los \texttt{NA} se concentran en el bloque climático y en \texttt{ALTITUD}; en la tabla agregada cuadrante~$\times$~semana ($D_{\mathrm{EDA}}$, $D_{\mathrm{mod}}$) no se observan faltantes. Las reglas de imputación o exclusión se aplican en la Etapa~4 solo donde $p_j^{\mathrm{NA}}>0$ en el grano de origen, conforme a los criterios de tratamiento de datos incompletos de \textcite{ref49}.
+    En el panel activo~$\times$~día, los \texttt{NA} se concentran en el bloque climático y en \texttt{ALTITUD}; en la tabla agregada cuadrante~$\times$~semana ($D_{\mathrm{EDA}}$, $D_{\mathrm{mod}}$) no se observan faltantes. Las reglas de imputación o exclusión se aplican en la Etapa~4 solo donde $p_j^{\mathrm{NA}}>0$ en el grano de origen, conforme a los criterios de tratamiento de datos incompletos de~\cite{ref49}.
 
     \item \textit{Dispersión relativa (coeficiente de variación):}
     Para comparar la variabilidad de variables cuantitativas con distintas unidades o escalas, se emplea el coeficiente de variación
@@ -169,14 +169,14 @@ eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de 
     donde $s_X$ es la desviación estándar muestral y $\bar{x}$ la media. Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
 
     \item \textit{Análisis de atípicos y extremos:}
-    Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por \textcite{ref50}. Con $Q_1$ y $Q_3$ los cuartiles e $\mathrm{IQR}=Q_3-Q_1$, se marcan como extremos candidatos los valores
+    Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por~\cite{ref50}. Con $Q_1$ y $Q_3$ los cuartiles e $\mathrm{IQR}=Q_3-Q_1$, se marcan como extremos candidatos los valores
     \[
     x \notin \bigl[Q_1 - k\cdot\mathrm{IQR},\; Q_3 + k\cdot\mathrm{IQR}\bigr]
     \]
     con factor $k=1{.}5$ (regla de Tukey) y, de forma complementaria, $k=3{.}0$ (extremos más severos). Estas reglas se contrastan con el criterio de percentiles P1--P99 sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
 
     \item \textit{Transformaciones de variables:}
-    Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de \textcite{ref51},
+    Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de~\cite{ref51},
     \[
     T(x)=\log(1+x),\qquad x\geq 0,
     \]
@@ -191,50 +191,100 @@ eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de 
     \[
     \rho(h)=\frac{\mathrm{Cov}(E_t,E_{t-h})}{\mathrm{Var}(E_t)}.
     \]
-    En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{.}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo~\textcite{ref52}; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
+    En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{.}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo~\cite{ref52}; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
 
     \item \textit{Análisis de correlación:}
-    Por la asimetría y la cero-inflación de las variables operativas, se emplea el coeficiente de correlación por rangos de \textcite{ref53}:
+    Por la asimetría y la cero-inflación de las variables operativas, se emplea el coeficiente de correlación por rangos de~\cite{ref53}:
     \[
     \rho_S(X,Y)=1-\frac{6\sum_{i=1}^{n}d_i^{2}}{n(n^{2}-1)},
     \]
-    donde $d_i$ es la diferencia de rangos. En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es $(\texttt{viento\_max\_semana},\,\texttt{n\_eventos})$ con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\textcite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
+    donde $d_i$ es la diferencia de rangos. En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es $(\texttt{viento\_max\_semana},\,\texttt{n\_eventos})$ con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\cite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
 
     \item \textit{Datos de entrenamiento y prueba:}
-    La partición es temporal (no aleatoria):
+    La partición es temporal (no aleatoria). Con $t^{\ast}$ la semana de corte, ubicada en el percentil~$85$ de las semanas ordenadas de $D_{\mathrm{mod}}$ (8 de septiembre de 2025),
     \[
-    \mathcal{D}_{\mathrm{train}}=\{(i,t):\mathrm{year}(t)=2024\},\qquad
-    \mathcal{D}_{\mathrm{test}}=\{(i,t):\mathrm{year}(t)=2025\},
+    \mathcal{D}_{\mathrm{train}}=\{(i,t):t\leq t^{\ast}\},\qquad
+    \mathcal{D}_{\mathrm{test}}=\{(i,t):t> t^{\ast}\},
     \]
-    sobre el grano cuadrante~$i$ y semana~$t$ de $D_{\mathrm{mod}}$, preservando el orden cronológico ante la autocorrelación de la serie~\textcite{ref55,ref57}.
+    sobre el grano cuadrante~$i$ y semana~$t$, de modo que la prueba comprende las últimas $16$ semanas de 2025 y ninguna semana de prueba precede a una de entrenamiento, lo que preserva el orden cronológico ante la autocorrelación de la serie~\cite{ref55,ref57}.
 
     \item \textit{Validación cruzada:}
-    Cuando se ajusten hiperparámetros en $\mathcal{D}_{\mathrm{train}}$, se prioriza validación \emph{forward-chaining} (bloques temporales sucesivos) en lugar de $k$-fold aleatorio, para no romper la dependencia temporal de \texttt{n\_eventos}~\textcite{ref56}.
+    Cuando se ajusten hiperparámetros en $\mathcal{D}_{\mathrm{train}}$, se prioriza validación \emph{forward-chaining} (bloques temporales sucesivos) en lugar de $k$-fold aleatorio, para no romper la dependencia temporal de \texttt{n\_eventos}~\cite{ref56}.
 
     \item \textit{Análisis de componentes principales (PCA):}
-    El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\textcite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Dado el bloque climático estandarizado $\mathbf{Z}$, se resuelve
+    El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\cite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Dado el bloque climático estandarizado $\mathbf{Z}$, se resuelve
     \[
     \mathbf{Z}^{\mathsf{T}}\mathbf{Z}\,\mathbf{v}_{\ell}=\lambda_{\ell}\mathbf{v}_{\ell},
     \]
     y las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen ejes de covarianza (temperaturas/vientos frente a precipitación). La importancia de cada variable en la componente $\ell$ se lee mediante las cargas (loadings) $v_{\ell j}$; en el EDA se interpretan como relevantes aquellas con $|v_{\ell j}|\geq 0{.}40$. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
 
     \item \textit{Métodos de agrupación:}
-    Los cuadrantes se segmentan por actividad (cuantiles de $\sum_t \texttt{n\_eventos}$) y, de forma multivariada, por clustering (p.\,ej.\ jerárquico~\textcite{ref60} o $k$-means~\textcite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.
+    Los cuadrantes se segmentan por actividad (cuantiles de $\sum_t \texttt{n\_eventos}$) y, de forma multivariada, por clustering (p.\,ej.\ jerárquico~\cite{ref60} o $k$-means~\cite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.
 
     \item \textit{Factor de inflación de la varianza (VIF):}
     Para cada predictora $X_j$ del bloque climático en un modelo auxiliar lineal $\texttt{n\_eventos}\sim \mathbf{x}$,
     \[
     \mathrm{VIF}_j=\frac{1}{1-R_j^{2}},
     \]
-    donde $R_j^{2}$ proviene de regresar $X_j$ sobre el resto de covariables~\textcite{ref61}. Valores altos en \texttt{temp\_max}/\texttt{temp\_min} y \texttt{viento\_max} motivan el subconjunto reducido $\mathbf{x}$ indicado arriba (VIF aceptables tras la depuración), teniendo en cuenta las advertencias sobre el uso mecánico de umbrales fijos señaladas por \textcite{ref62}.
+    donde $R_j^{2}$ proviene de regresar $X_j$ sobre el resto de covariables~\cite{ref61}. Valores altos en \texttt{temp\_max}/\texttt{temp\_min} y \texttt{viento\_max} motivan el subconjunto reducido $\mathbf{x}$ indicado arriba (VIF aceptables tras la depuración), teniendo en cuenta las advertencias sobre el uso mecánico de umbrales fijos señaladas por~\cite{ref62}.
 
     \item \textit{Modelo lineal generalizado de Poisson (GLM Poisson):}
-    Como modelo diagnóstico de conteos~\textcite{ref63,ref64},
+    Como modelo diagnóstico de conteos~\cite{ref63,ref64},
     \[
     Y_i\sim\mathrm{Poisson}(\mu_i),\qquad
     \log\mu_i=\beta_0+\boldsymbol{\beta}^{\mathsf{T}}\mathbf{x}_i^{\ast},
     \]
     donde $Y_i=\texttt{n\_eventos}$ en la observación cuadrante--semana $i$ y $\mathbf{x}_i^{\ast}$ incluye, entre otros, $\log(1+\texttt{precip\_total\_semana})$ y el viento medio estandarizado. Los coeficientes $\hat{\beta}$ cuantifican el efecto multiplicativo $e^{\hat{\beta}_j}$ sobre la tasa esperada de interrupciones; este esquema orienta el modelado predictivo de la Etapa~5.
+\end{enumerate}
+
+\subsection{Modelos predictivos y espaciales}
+\label{sec:modelos_formulacion}
+
+Sea $y_{q,s}=\log\bigl(1+Y_{q,s}\bigr)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIFI}\}$, la respuesta transformada del cuadrante~$q=1,\ldots,Q$ en la semana~$s=1,\ldots,S$, y $\mathbf{x}_{q,s}\in\mathbb{R}^{p}$ el vector de predictoras disponibles \emph{ex ante}.
+
+\begin{enumerate}
+    \item \textit{Mínimos cuadrados agrupados (Pooled OLS).} Supone un intercepto común a todos los cuadrantes:
+    \begin{equation}
+    y_{q,s}=\alpha+\mathbf{x}_{q,s}^{\top}\boldsymbol{\beta}+\varepsilon_{q,s}.
+    \end{equation}
+
+    \item \textit{Efectos fijos de cuadrante (FE).} Permite un intercepto propio por cuadrante, $\mu_q$, que absorbe la heterogeneidad no observada invariante en el tiempo~\cite{wooldridge2010}:
+    \begin{equation}
+    y_{q,s}=\mu_q+\mathbf{x}_{q,s}^{\top}\boldsymbol{\beta}+\varepsilon_{q,s},
+    \end{equation}
+    estimado mediante la transformación \textit{within}, $\ddot{y}_{q,s}=y_{q,s}-\bar{y}_{q}$, que elimina $\mu_q$; por ello los atributos constantes del cuadrante no son identificables en esta especificación. La versión con efectos fijos de cuadrante y semana añade un término $\tau_s$ común a todos los cuadrantes en la semana~$s$. Dado que los residuos de un mismo cuadrante están autocorrelacionados, la inferencia se basa en errores estándar agrupados por cuadrante.
+
+    \item \textit{Random Forest (RF).} Promedia $B$ árboles de regresión $T_b$ entrenados sobre muestras \emph{bootstrap}, eligiendo en cada partición entre \texttt{mtry} predictoras tomadas al azar~\cite{ref19}:
+    \begin{equation}
+    \hat{f}(\mathbf{x})=\frac{1}{B}\sum_{b=1}^{B}T_b(\mathbf{x}).
+    \end{equation}
+    Las observaciones no incluidas en cada muestra (\emph{out-of-bag}, OOB) permiten estimar el error sin un conjunto de validación adicional. La importancia de la variable~$j$ (\%IncMSE) es el aumento porcentual del error cuadrático medio OOB cuando se permutan aleatoriamente sus valores. Los hiperparámetros \texttt{mtry} y tamaño mínimo de nodo terminal se ajustan siguiendo~\cite{probst2019}.
+
+    \item \textit{Índice de Moran.} Mide la autocorrelación espacial de una variable centrada $z$ dada una matriz de pesos $\mathbf{W}=[w_{ij}]$ normalizada por filas~\cite{moran1950}:
+    \begin{equation}
+    I=\frac{n}{S_0}\,\frac{\sum_{i}\sum_{j}w_{ij}\,z_i z_j}{\sum_i z_i^{2}},\qquad S_0=\sum_i\sum_j w_{ij}.
+    \end{equation}
+    Valores positivos y significativos indican que cuadrantes vecinos presentan valores similares.
+
+    \item \textit{Modelo de rezago espacial (SAR).} La respuesta de un cuadrante depende directamente de la de sus vecinos~\cite{anselin1988,lesage2009}:
+    \begin{equation}
+    \mathbf{y}=\rho\,\mathbf{W}\mathbf{y}+\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\varepsilon},\qquad \boldsymbol{\varepsilon}\sim N(\mathbf{0},\sigma^{2}\mathbf{I}).
+    \end{equation}
+    Como $\mathbf{y}=(\mathbf{I}-\rho\mathbf{W})^{-1}(\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\varepsilon})$, el efecto de una covariable no es $\beta_j$, sino que se descompone en un impacto directo y uno indirecto o de derrame hacia los vecinos~\cite{lesage2009}.
+
+    \item \textit{Modelo de error espacial (SEM).} La dependencia reside en factores no observados espacialmente correlacionados:
+    \begin{equation}
+    \mathbf{y}=\mathbf{X}\boldsymbol{\beta}+\mathbf{u},\qquad \mathbf{u}=\lambda\,\mathbf{W}\mathbf{u}+\boldsymbol{\varepsilon}.
+    \end{equation}
+    La elección entre SAR y SEM se apoya en las pruebas de multiplicadores de Lagrange robustas sobre los residuos de OLS y en el criterio de información de Akaike, $\mathrm{AIC}=2k-2\ln\hat{L}$~\cite{anselin1988}.
+
+    \item \textit{Métricas de evaluación.} Sobre el conjunto de prueba, con $n$ observaciones, valores observados $y_i$ y pronosticados $\hat{y}_i$:
+    \begin{equation}
+    \mathrm{RMSE}=\sqrt{\tfrac{1}{n}\textstyle\sum_i (y_i-\hat{y}_i)^2},\qquad
+    \mathrm{MAE}=\tfrac{1}{n}\textstyle\sum_i |y_i-\hat{y}_i|,\qquad
+    R^2=\mathrm{cor}(y,\hat{y})^{2}.
+    \end{equation}
+    Como el error porcentual (MAPE) no está definido cuando $y_i=0$, la comparación relativa se hace con el error absoluto escalado~\cite{hyndman2006}, $\mathrm{MASE}=\mathrm{MAE}/\mathrm{MAE}_{\mathrm{ingenuo}}$, donde el pronóstico ingenuo es la persistencia $\hat{y}_{q,s}=y_{q,s-1}$; un $\mathrm{MASE}<1$ indica que el modelo supera a la persistencia. La diferencia de exactitud entre dos modelos se contrasta con la prueba de~\cite{diebold1995}.
 \end{enumerate}
 
 
