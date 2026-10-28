@@ -39,6 +39,47 @@ En una línea afín mediante representaciones de grafo, \textcite{ref14} muestra
 
 En conjunto, esta línea de literatura evidencia una tendencia consistente: el tránsito desde modelos centrados en el componente individual o en agregados puramente administrativos (municipios, circuitos, empresas) hacia esquemas de discretización espacial regular —celdas, cuadrículas o cuadrantes— que permiten capturar de manera más flexible la heterogeneidad espacial de la vulnerabilidad de la red. Esta transición, sin embargo, no está exenta de nuevos retos metodológicos: el tamaño óptimo de la unidad espacial no es neutral frente al desempeño predictivo \parencite{ref68liu}; la dependencia espacial entre celdas vecinas puede aportar información adicional si se modela explícitamente \parencite{ref14}; y el desbalance de clases derivado de la escasez relativa de eventos de falla en paneles de alta granularidad temporal exige arquitecturas de modelación específicas, como los esquemas multietapa \parencite{ref42}. Estos tres retos —selección del tamaño de la unidad espacial, modelación de la dependencia espacial y tratamiento del desbalance de clases en un panel de alta frecuencia— constituyen precisamente los ejes metodológicos centrales que este trabajo aborda al construir un panel espacial de cuadrante $\times$ semana para la predicción de SAIDI/SAIFI en el contexto colombiano.
 
+\subsection{Antecedentes en Colombia y América Latina}
+\label{sec:antecedentes_nacionales}
+
+La literatura revisada hasta aquí proviene mayoritariamente de Estados Unidos y Asia oriental y se concentra en eventos extremos (huracanes y tifones). Los antecedentes nacionales y regionales son menos numerosos, pero fijan tres referentes directamente pertinentes para este trabajo.
+
+El primero es el contexto regulatorio. En la comparación de las regulaciones de continuidad de Suramérica realizada por~\textcite{delavechia2023}, Colombia aparece como el país con los peores resultados de duración y frecuencia de interrupciones de la región, y es de los pocos que, con la Resolución CREG 015 de 2018~\cite{ref1}, vincula el desempeño de SAIDI y SAIFI a incentivos y penalidades sobre el ingreso del operador, en lugar de limitarse a compensar al usuario. Esa combinación ---indicadores rezagados frente a la región y un esquema que traslada el desempeño al ingreso--- es la que convierte la anticipación territorial de la afectación en un problema de gestión con valor económico para el operador.
+
+El segundo referente son los estudios colombianos sobre causas de falla. \textcite{aranguren2015} cruzaron datos de descargas atmosféricas con la ubicación de $251\,024$ transformadores del centro del país y encontraron que, en condiciones meteorológicas adversas, una fracción significativa de los transformadores presenta tasas de falla del orden de $45$ veces las de condiciones normales, y las redes aéreas extensas más de $75$ veces. \textcite{alvarez2022} desarrollaron una metodología de mantenimiento predictivo para $15\,869$ transformadores de distribución del Cauca, mediante una máquina de vectores de soporte entrenada con un año y validada con el siguiente; incorporan la densidad de descargas, la ubicación urbana o rural y el tipo de instalación, y reportan que la clase de interés (transformador quemado) se identifica con una precisión cercana al $52$--$56$~\%, muy inferior a la exactitud global, lo que ilustra la dificultad de pronosticar eventos poco frecuentes. Ambos trabajos operan al nivel del activo individual y no estiman indicadores de continuidad.
+
+El tercer referente es la gestión de los indicadores por parte de los operadores. \textcite{gomez2017} documentan la estrategia de Enel-Codensa en Bogotá para la transición hacia SAIDI y SAIFI, basada en segmentar la red por grupos de calidad, automatizar y telecontrolar cerca de $3\,700$ equipos y priorizar circuitos mediante análisis de riesgo; reportan reducciones de SAIDI y SAIFI del $31$~\% y $26$~\% en tres años. En la academia nacional, \textcite{velasquez2024} combinan series de tiempo y Random Forest para pronosticar la demanda y la vida útil de equipos de seccionamiento en un circuito de Pereira, con SAIDI y SAIFI solo como contexto. En la región, \textcite{dacosta2023} usan Random Forest para seleccionar, entre $146$ atributos eléctricos, de infraestructura, climáticos, de vegetación y socioeconómicos, los que mejor explican los indicadores DEC y FEC de los conjuntos de usuarios definidos por el regulador brasileño, y encuentran que pocos atributos ---principalmente de tamaño y densidad de la red--- concentran la capacidad explicativa.
+
+Frente a estos antecedentes, en la revisión realizada no se identificaron estudios colombianos que modelen los indicadores SAIDI y SAIFI de un operador con un panel espacio-temporal que integre sus sistemas de interrupciones, red y usuarios con fuentes externas de clima, vegetación y sismicidad, ni que evalúen los modelos frente a pronósticos de referencia con validación temporal estricta. Ese es el vacío que este trabajo aborda. La Tabla~\ref{tab:antecedentes} resume los antecedentes más próximos y su relación con este trabajo.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Síntesis de los antecedentes más relacionados con este trabajo}
+\label{tab:antecedentes}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{4.4cm}@{}}
+\toprule
+\textbf{Estudio} & \textbf{Ámbito} & \textbf{Unidad y respuesta} & \textbf{Método} & \textbf{Relación con este trabajo} \\
+\midrule
+\textcite{ref68liu} & Huracanes, EE.\,UU. & Celda de 1~km y código postal; n.º de interrupciones & Regresión binomial negativa & Origen de la discretización en celdas; disyuntiva entre resolución y dispersión \\
+\textcite{ref41} & Huracanes, EE.\,UU. & Celda de $2{.}5\times3{.}7$~km; interrupciones & GAM & Relaciones no lineales clima--falla; tamaño de celda comparable al de este trabajo \\
+\textcite{ref42} & Huracanes, EE.\,UU. & Celda; interrupciones con exceso de ceros & Modelo multietapa & Motiva el esquema en dos partes (ocurrencia y magnitud) \\
+\textcite{ref43} & Huracanes, EE.\,UU. & Celda; interrupciones & Random Forest y métodos probabilísticos & Importancia de viento y vegetación; límites de extrapolación de los árboles \\
+\textcite{ref8} & EE.\,UU. & Datos de alta resolución; SAIDI/SAIFI & Análisis exploratorio & Heterogeneidad espacial que los agregados ocultan \\
+\textcite{aranguren2015} & Centro de Colombia & Transformador; tasa de falla & Estadística con modelo climático de dos estados & Efecto de las descargas atmosféricas en redes aéreas colombianas \\
+\textcite{alvarez2022} & Cauca, Colombia & Transformador; falla (sí/no) & SVM con validación temporal & Pronóstico de eventos poco frecuentes; mantenimiento predictivo \\
+\textcite{gomez2017} & Bogotá, Colombia & Red del operador; SAIDI y SAIFI & Planeación y priorización por riesgo & Uso operativo de los indicadores en un operador colombiano \\
+\textcite{dacosta2023} & Brasil & Conjunto de usuarios; DEC y FEC & Random Forest y \emph{k}-medias & Atributos de tamaño de red como principales determinantes de los indicadores \\
+\textcite{delavechia2023} & Suramérica & País; indicadores regulatorios & Revisión regulatoria & Desempeño relativo de Colombia y esquema de incentivos de la CREG \\
+\textbf{Este trabajo} & Norte de Santander, Colombia & Cuadrante de $\sim5\times2{.}5$~km y semana; SAIDI y SAIFI operativos & Panel FE, Random Forest, clasificador de ocurrencia, SAR y SEM & Integración de sistemas del operador y fuentes externas; evaluación frente a pronósticos de referencia \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{Variables explicativas recurrentes en la literatura}
+\label{sec:variables_literatura}
 
 La revisión anterior permite identificar un conjunto relativamente estable de variables explicativas que reaparecen de manera sistemática en los modelos de predicción de fallas e interrupciones, independientemente de si la variable de respuesta es un conteo de interrupciones, la fracción de clientes afectados o, como en el presente trabajo, indicadores agregados de confiabilidad (SAIDI/SAIFI) a nivel de cuadrante-semana. A continuación se sintetizan estas variables, agrupadas por categoría, junto con la dirección y el mecanismo de la relación que la literatura documenta con la variable pronosticada.
 

@@ -24,10 +24,12 @@ nivel cuadrante-semana — documento gemelo e independiente de
 
 ## Supuestos y limitaciones
 
-1. **SAIFI usa el denominador real por cuadrante**
-   (`cantidad_usuarios_cuadrante`). Puede superar 1 si un cuadrante
-   tuvo más de una interrupción por usuario en la semana — correcto,
-   no un error.
+1. **SAIFI usa como denominador los usuarios totales del sistema en el
+   mes** (`usuarios_totales`, UT mensual), igual que la definición del
+   Capítulo 1: `SAIFI = usuarios_afectados / UT`. Es la contribución
+   del cuadrante a la frecuencia del sistema (verificado en C0 de
+   `codigo_cierre.R`; la columna `cantidad_usuarios_cuadrante` no
+   interviene en su cálculo).
 2. **Variables estáticas vs. efectos fijos**: igual tratamiento que en
    SAIDI (infraestructura, estrato, topología quedan absorbidas por
    el efecto fijo en modelos FE).

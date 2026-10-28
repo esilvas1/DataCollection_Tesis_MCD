@@ -488,7 +488,11 @@ centroides_sf <- centroides_real %>%
 # Con miles de sismos y cientos de cuadrantes esto puede ser una matriz
 # grande; se calcula una sola vez y se reutiliza para todos los radios.
 matriz_distancias_m <- st_distance(centroides_sf, sismos_geo)
-matriz_distancias_km <- matriz_distancias_m / 1000
+# CORRECCIÓN (27-oct-2026): dividir entre 1000 conserva la unidad "m"; al
+# comparar con set_units(radio, "km") el radio se pasaba a metros y todos
+# los sismos quedaban dentro de todos los radios. Se trabaja en km numéricos.
+matriz_distancias_km <- matrix(as.numeric(matriz_distancias_m) / 1000,
+                               nrow = nrow(matriz_distancias_m))
 
 cat(sprintf("Matriz de distancias: %d cuadrantes x %d sismos\n",
             nrow(matriz_distancias_km), ncol(matriz_distancias_km)))
@@ -532,8 +536,12 @@ semanas_panel <- data_final %>% distinct(semana) %>% arrange(semana)
 
 # Semana del panel a la que pertenece cada sismo (misma lógica de
 # "ancla hacia atrás" usada con eventos UNGRD)
+# CORRECCIÓN (27-oct-2026): se acota por arriba (última semana + 6 días);
+# sin esa cota, los sismos de 2026 se acumulaban en la semana 2025-12-29.
 asignar_semana <- function(fecha_evento, semanas) {
-  candidatas <- semanas[semanas <= as.Date(fecha_evento)]
+  f <- as.Date(fecha_evento)
+  if (is.na(f) || f > max(semanas) + 6) return(as.Date(NA))
+  candidatas <- semanas[semanas <= f]
   if (length(candidatas) == 0) return(as.Date(NA))
   max(candidatas)
 }
@@ -549,7 +557,7 @@ cat(sprintf("Sismos sin semana asignable (fuera del rango del panel): %d\n",
 construir_variables_sismo <- function(radio_km) {
 
   # Matriz lógica: TRUE si el sismo j está dentro del radio del cuadrante i
-  dentro_radio <- matriz_distancias_km < units::set_units(radio_km, "km")
+  dentro_radio <- matriz_distancias_km < radio_km
 
   purrr::map_dfr(seq_len(nrow(centroides_real)), function(i) {
 
@@ -558,7 +566,7 @@ construir_variables_sismo <- function(radio_km) {
 
     sismos_cuadrante <- sismos_geo[idx_sismos, ] %>%
       st_drop_geometry() %>%
-      mutate(dist_km = as.numeric(matriz_distancias_km[i, idx_sismos])) %>%
+      mutate(dist_km = matriz_distancias_km[i, idx_sismos]) %>%
       filter(!is.na(semana))
 
     if (nrow(sismos_cuadrante) == 0) return(NULL)
@@ -581,6 +589,23 @@ construir_variables_sismo <- function(radio_km) {
 sismos_r25  <- construir_variables_sismo(25)  %>% rename_with(~paste0(., "_r25"),  -c(id_cuadrante, semana))
 sismos_r50  <- construir_variables_sismo(50)  %>% rename_with(~paste0(., "_r50"),  -c(id_cuadrante, semana))
 sismos_r100 <- construir_variables_sismo(100) %>% rename_with(~paste0(., "_r100"), -c(id_cuadrante, semana))
+
+# CORRECCIÓN (27-oct-2026): dist_sismo_min_km es la distancia al epicentro más
+# cercano de la semana, independiente del radio (como se documenta arriba), para
+# que no quede NA en las semanas sin sismos dentro del radio.
+dist_semana <- purrr::map_dfr(seq_len(nrow(centroides_real)), function(i) {
+  tibble(semana = sismos_geo$semana, dist_km = matriz_distancias_km[i, ]) %>%
+    filter(!is.na(semana)) %>% group_by(semana) %>%
+    summarise(dist_sismo_min_km = min(dist_km), .groups = "drop") %>%
+    mutate(id_cuadrante = centroides_real$id_cuadrante[i])
+})
+for (r in c("_r25", "_r50", "_r100")) {
+  obj <- get(paste0("sismos", sub("_", "_", r)))
+  obj <- obj %>% select(-any_of(paste0("dist_sismo_min_km", r))) %>%
+    full_join(dist_semana %>% rename(!!paste0("dist_sismo_min_km", r) := dist_sismo_min_km),
+              by = c("id_cuadrante", "semana"))
+  assign(paste0("sismos", r), obj)
+}
 
 cat(sprintf("Cuadrante-semanas con actividad — R25: %d | R50: %d | R100: %d\n",
             nrow(sismos_r25), nrow(sismos_r50), nrow(sismos_r100)))

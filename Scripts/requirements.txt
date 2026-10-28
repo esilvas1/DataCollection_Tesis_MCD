@@ -1,0 +1,6 @@
+# Dependencias de los scripts de Python (extracción NASA POWER, consultas y modelos de Johan)
+pandas>=2.0
+numpy>=1.24
+requests>=2.31
+scikit-learn>=1.3
+scipy>=1.11

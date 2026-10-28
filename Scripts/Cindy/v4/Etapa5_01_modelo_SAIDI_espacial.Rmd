@@ -26,9 +26,12 @@ frecuencia de interrupciones).
 
 ## Supuestos y limitaciones que condicionan la modelación
 
-1. **SAIDI usa el denominador real por cuadrante**
-   (`cantidad_usuarios_cuadrante`, gestionado con CENS) — no está
-   dominado por el tamaño del cuadrante ni es un proxy temporal.
+1. **SAIDI usa como denominador los usuarios totales del sistema en el
+   mes** (`usuarios_totales`, UT mensual), igual que la definición del
+   Capítulo 1: `SAIDI = duracion_total × usuarios_afectados / UT`.
+   Es un indicador operativo de afectación referido a la base de
+   usuarios de la empresa (verificado en C0 de `codigo_cierre.R`; la
+   columna `cantidad_usuarios_cuadrante` no interviene en su cálculo).
 2. **Variables estáticas vs. efectos fijos**: `n_elementos`, `prop_*`,
    composición de estrato, topología de red, etc. no varían en el
    tiempo. Quedan absorbidas por el efecto fijo en modelos FE; se

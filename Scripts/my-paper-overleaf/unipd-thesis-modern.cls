@@ -307,9 +307,6 @@
     % insert dedication page
     \dedicationpage
     
-    % ficha resumen (guía MCD)
-    \input{docs/ficha-resumen}
-    \clearpage
     % insert table of contents
     {\hypersetup{linkcolor=black}\titlespacing*{\chapter}{0pt}{10pt}{10pt}\tableofcontents\listoffigures\listoftables}
     \clearpage

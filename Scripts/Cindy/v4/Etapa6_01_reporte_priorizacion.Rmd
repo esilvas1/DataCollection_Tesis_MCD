@@ -1,0 +1,223 @@
+---
+title: "Reporte técnico de priorización territorial: SAIDI y SAIFI por cuadrante"
+author: "Grupo 4 — Maestría en Ciencia de Datos, PUJ Cali"
+date: "`r m <- c('enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'); paste(as.integer(format(Sys.Date(), '%d')), 'de', m[as.integer(format(Sys.Date(), '%m'))], 'de', format(Sys.Date(), '%Y'))`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center")
+suppressPackageStartupMessages({
+  library(dplyr); library(tidyr); library(ggplot2); library(sf); library(spdep)
+  library(ranger); library(pROC); library(knitr); library(kableExtra); library(scales)
+})
+select <- dplyr::select; filter <- dplyr::filter
+UB <- Sys.getenv("UBICACION_DATA")
+PANEL <- file.path(UB, "data_final_modelo_cuadrantes_reales_sismos_corr.rds")
+```
+
+# Propósito y alcance
+
+Este reporte traduce los resultados de la tesis en un **ordenamiento de cuadrantes** que el
+operador puede usar para orientar la inversión, el mantenimiento preventivo, la poda y la
+programación de cuadrillas. Responde a dos preguntas:
+
+1. **¿Dónde se concentra estructuralmente la afectación?** Nivel de SAIDI y SAIFI de cada
+   cuadrante en 2024--2025 y su participación en la afectación total.
+2. **¿Dónde es más probable una falla la semana próxima?** Probabilidad semanal de falla
+   estimada con el clasificador validado en la Etapa 5 (AUC = 0,84).
+
+**Alcance.** SAIDI y SAIFI por cuadrante son *indicadores operativos de afectación* referidos a
+los usuarios totales de la empresa (UT mensual). Sirven para **ordenar** zonas; no son el
+indicador regulatorio desagregado ni se suman al valor oficial (Apéndice de robustez de la
+tesis: correlación de rangos de 0,87 con la versión evento a evento). La magnitud semanal no es
+pronosticable con la información disponible, por lo que este reporte no pronostica horas de
+interrupción por semana.
+
+```{r datos}
+d <- readRDS(PANEL) %>% mutate(id_cuadrante = as.character(id_cuadrante)) %>%
+  arrange(id_cuadrante, semana) %>% mutate(hubo_falla = as.integer(n_eventos > 0))
+geo <- st_read(file.path(UB, "infraestructura_cuadrantes_reales.gpkg"),
+               layer = "cuadrantes_infra_reales", quiet = TRUE) %>%
+  mutate(id_cuadrante = as.character(if ("id_cuadrante" %in% names(.)) id_cuadrante else CUADRANTE))
+if (sum(!st_is_valid(geo)) > 0) geo <- st_make_valid(geo)
+# El nombre del municipio se toma de la asignación cuadrante -> municipio (Etapa 2.05)
+mun <- read.csv(file.path(UB, "estratificacion_municipal_por_cuadrante.csv"), encoding = "UTF-8") %>%
+  transmute(id_cuadrante = as.character(id_cuadrante), municipio_nombre = tools::toTitleCase(tolower(municipio))) %>%
+  distinct(id_cuadrante, .keep_all = TRUE)
+d <- d %>% select(-any_of("municipio")) %>% left_join(mun, by = "id_cuadrante") %>% rename(municipio = municipio_nombre)
+semanas <- sort(unique(d$semana)); corte <- semanas[floor(length(semanas) * 0.85)]
+```
+
+# 1. Concentración estructural de la afectación
+
+```{r nivel}
+pt <- tibble(semana = semanas, w = seq_along(semanas) / (length(semanas) * (length(semanas) + 1) / 2))
+nivel <- d %>% left_join(pt, by = "semana") %>% group_by(id_cuadrante) %>%
+  summarise(municipio = first(municipio),
+            SAIDI_pond = sum(SAIDI * w), SAIFI_pond = sum(SAIFI * w),
+            SAIDI_acum = sum(SAIDI), SAIFI_acum = sum(SAIFI),
+            semanas_con_falla = sum(hubo_falla), pct_semanas_falla = 100 * mean(hubo_falla),
+            n_elementos = first(n_elementos), longitud_red_km = first(longitud_red_km),
+            ndvi = mean(ndvi_semanal, na.rm = TRUE),
+            prop_no_residencial = first(prop_no_residencial),
+            usuarios = first(cantidad_usuarios_cuadrante), .groups = "drop") %>%
+  mutate(part_SAIDI = 100 * SAIDI_acum / sum(SAIDI_acum),
+         part_SAIFI = 100 * SAIFI_acum / sum(SAIFI_acum))
+pareto <- function(x) { s <- sort(x, decreasing = TRUE); c(n50 = which(cumsum(s) >= 50)[1], n80 = which(cumsum(s) >= 80)[1]) }
+pS <- pareto(nivel$part_SAIDI); pF <- pareto(nivel$part_SAIFI)
+```
+
+La afectación está muy concentrada: **`r pS["n50"]` de los `r nrow(nivel)` cuadrantes
+(`r round(100*pS["n50"]/nrow(nivel),1)` %) acumulan la mitad del SAIDI operativo de
+2024--2025** y `r pS["n80"]` cuadrantes acumulan el 80 %. Para SAIFI, la mitad se concentra en
+`r pF["n50"]` cuadrantes y el 80 % en `r pF["n80"]`.
+
+```{r fig-pareto, fig.width=8, fig.height=4.2}
+bind_rows(
+  tibble(ind = "SAIDI", p = sort(nivel$part_SAIDI, decreasing = TRUE)),
+  tibble(ind = "SAIFI", p = sort(nivel$part_SAIFI, decreasing = TRUE))) %>%
+  group_by(ind) %>% mutate(rank = row_number(), acum = cumsum(p)) %>%
+  ggplot(aes(rank, acum, color = ind)) + geom_line(linewidth = 1) +
+  geom_hline(yintercept = c(50, 80), linetype = "dashed", color = "grey50") +
+  scale_color_manual(values = c(SAIDI = "#2b5f8a", SAIFI = "#c0603a")) +
+  labs(x = "Cuadrantes ordenados de mayor a menor participación", y = "Participación acumulada (%)",
+       color = NULL, title = "Curva de concentración de la afectación (2024–2025)") +
+  theme_minimal(base_size = 12)
+```
+
+# 2. Probabilidad semanal de falla
+
+Se reproduce el componente de ocurrencia de la Etapa 5: un bosque aleatorio de clasificación
+entrenado con las semanas hasta el `r format(corte, "%d/%m/%Y")` y predictoras disponibles antes
+de la semana pronosticada (clima, NDVI y sismicidad de la semana anterior, falla de la semana
+anterior, infraestructura y composición de usuarios). Se reporta la probabilidad media
+pronosticada en las 16 semanas de prueba.
+
+```{r ocurrencia}
+W <- listw2mat(nb2listw(poly2nb(geo, queen = TRUE), style = "W", zero.policy = TRUE))
+dimnames(W) <- list(geo$id_cuadrante, geo$id_cuadrante)
+ndvi_w <- d %>% select(id_cuadrante, semana, ndvi_semanal) %>%
+  pivot_wider(names_from = id_cuadrante, values_from = ndvi_semanal)
+m <- as.matrix(ndvi_w[, colnames(W)]); m[is.na(m)] <- 0
+ndvi_v <- as.data.frame(m %*% t(W)) %>% mutate(semana = ndvi_w$semana) %>%
+  pivot_longer(-semana, names_to = "id_cuadrante", values_to = "ndvi_vecinos")
+d <- d %>% left_join(ndvi_v, by = c("id_cuadrante", "semana")) %>%
+  group_by(id_cuadrante) %>% arrange(semana) %>%
+  mutate(precip_ma4 = zoo::rollmeanr(precip_total_semana, 4, fill = NA),
+         across(c(temp_media_semana, viento_max_semana, precip_total_semana, ndvi_semanal,
+                  n_sismos_r50, dist_sismo_min_km_r50, ndvi_vecinos, precip_ma4, hubo_falla),
+                ~ dplyr::lag(.x, 1), .names = "{.col}_l1")) %>% ungroup()
+v_occ <- c("temp_media_semana_l1", "viento_max_semana_l1", "precip_total_semana_l1", "ndvi_semanal_l1",
+           "n_sismos_r50_l1", "dist_sismo_min_km_r50_l1", "ndvi_vecinos_l1", "precip_ma4_l1",
+           "hubo_falla_l1", "longitud_red_km", "densidad_terminales", "n_elementos",
+           "prop_estrato_1", "prop_estrato_2", "prop_no_residencial",
+           "edad_activo_mas_viejo_anios", "PROM_CANT_MODIFICACIONES")
+tr <- d %>% filter(semana <= corte) %>% select(hubo_falla, all_of(v_occ)) %>% na.omit() %>%
+  mutate(hubo_falla = factor(hubo_falla))
+te <- d %>% filter(semana > corte) %>% select(id_cuadrante, semana, hubo_falla, all_of(v_occ)) %>% na.omit()
+rf <- ranger(hubo_falla ~ ., data = tr, probability = TRUE, num.trees = 500, seed = 123)
+te$p <- predict(rf, te)$predictions[, "1"]
+auc_v <- as.numeric(auc(roc(te$hubo_falla, te$p, quiet = TRUE)))
+prob <- te %>% group_by(id_cuadrante) %>%
+  summarise(p_falla = mean(p), falla_obs = mean(hubo_falla), .groups = "drop")
+dec <- te %>% mutate(decil = ntile(p, 10)) %>% group_by(decil) %>%
+  summarise(prob_media = mean(p), tasa_observada = mean(hubo_falla), .groups = "drop")
+```
+
+En el conjunto de prueba el clasificador alcanza un **AUC de `r sprintf("%.3f", auc_v)`**.
+La calibración por deciles muestra que la probabilidad pronosticada ordena bien el riesgo: en el
+decil más alto la tasa observada de falla es de `r percent(dec$tasa_observada[10], 0.1)`, frente a
+`r percent(dec$tasa_observada[1], 0.1)` en el más bajo.
+
+```{r fig-calibracion, fig.width=6, fig.height=4}
+ggplot(dec, aes(prob_media, tasa_observada)) + geom_abline(linetype = "dashed", color = "grey50") +
+  geom_point(size = 3, color = "#2b5f8a") + geom_line(color = "#2b5f8a") +
+  scale_x_continuous(labels = percent) + scale_y_continuous(labels = percent) +
+  labs(x = "Probabilidad pronosticada (media del decil)", y = "Tasa observada de falla",
+       title = "Calibración del pronóstico de ocurrencia (prueba)") + theme_minimal(base_size = 12)
+```
+
+# 3. Ranking de priorización
+
+Cada cuadrante recibe una **clase de prioridad** según su participación en la afectación:
+
+- **A — crítica:** cuadrantes que, ordenados de mayor a menor, acumulan el primer 50 % del SAIDI
+  o del SAIFI operativo.
+- **B — alta:** los que completan hasta el 80 %.
+- **C — seguimiento:** el resto.
+
+La probabilidad semanal de falla se añade como segunda dimensión para la operación. Las
+**orientaciones de gestión** son reglas indicativas derivadas de las variables que la tesis
+identificó como relevantes; no son efectos causales estimados y deben validarse con el
+conocimiento técnico del operador.
+
+```{r ranking}
+clase <- function(p) { o <- order(p, decreasing = TRUE); a <- cumsum(p[o])
+  r <- character(length(p)); r[o] <- ifelse(a - p[o] < 50, "A", ifelse(a - p[o] < 80, "B", "C")); r }
+q75 <- function(x) quantile(x, 0.75, na.rm = TRUE)
+rk <- nivel %>% left_join(prob, by = "id_cuadrante") %>%
+  mutate(cl_SAIDI = clase(part_SAIDI), cl_SAIFI = clase(part_SAIFI),
+         prioridad = pmin(cl_SAIDI, cl_SAIFI),
+         rango_SAIDI = rank(-part_SAIDI, ties.method = "min"),
+         rango_SAIFI = rank(-part_SAIFI, ties.method = "min"),
+         p_alta = p_falla >= q75(p_falla),
+         orientacion = paste0(
+           ifelse(ndvi >= q75(ndvi) & cl_SAIDI != "C", "Poda y control de vegetación; ", ""),
+           ifelse(n_elementos >= q75(n_elementos) & prioridad == "A", "Seccionamiento y protecciones (reconectadores) para reducir usuarios por falla; ", ""),
+           ifelse(longitud_red_km >= q75(longitud_red_km) & cl_SAIDI == "A", "Reducir tiempos de acceso y restablecimiento (red extensa); ", ""),
+           ifelse(p_alta %in% TRUE, "Programación preventiva de cuadrillas (probabilidad semanal alta); ", "")),
+         orientacion = ifelse(orientacion == "", "Seguimiento rutinario", sub("; $", "", orientacion))) %>%
+  arrange(prioridad, rango_SAIDI)
+dir.create("salidas", showWarnings = FALSE)
+write.csv(rk %>% select(id_cuadrante, municipio, prioridad, rango_SAIDI, part_SAIDI, rango_SAIFI, part_SAIFI,
+                        semanas_con_falla, p_falla, n_elementos, longitud_red_km, ndvi, usuarios, orientacion),
+          file.path(UB, "priorizacion_cuadrantes.csv"), row.names = FALSE, fileEncoding = "UTF-8")
+cnt <- count(rk, prioridad)
+```
+
+Resultado: **`r cnt$n[cnt$prioridad=="A"]` cuadrantes en prioridad A**,
+`r cnt$n[cnt$prioridad=="B"]` en B y `r cnt$n[cnt$prioridad=="C"]` en C. El listado completo
+se exporta en `priorizacion_cuadrantes.csv`.
+
+```{r tabla-top}
+rk %>% filter(prioridad == "A") %>% arrange(rango_SAIDI) %>% head(30) %>%
+  transmute(Cuadrante = id_cuadrante, Municipio = municipio, `Rango SAIDI` = rango_SAIDI,
+            `% SAIDI` = round(part_SAIDI, 2), `Rango SAIFI` = rango_SAIFI, `% SAIFI` = round(part_SAIFI, 2),
+            `P(falla) semanal` = percent(p_falla, 1), `Orientación` = orientacion) %>%
+  kable(caption = "Cuadrantes de prioridad A (hasta 30, ordenados por participación en SAIDI)") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), font_size = 11, full_width = TRUE)
+```
+
+# 4. Mapas
+
+```{r mapas, fig.width=10, fig.height=5}
+g <- geo %>% select(id_cuadrante) %>% inner_join(rk, by = "id_cuadrante")
+p1 <- ggplot(g) + geom_sf(aes(fill = prioridad), color = "grey40", linewidth = 0.1) +
+  scale_fill_manual(values = c(A = "#b2182b", B = "#ef8a62", C = "#e0e0e0"), name = "Prioridad") +
+  labs(title = "Clase de prioridad") + theme_void(base_size = 11)
+p2 <- ggplot(g) + geom_sf(aes(fill = p_falla), color = "grey40", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "magma", direction = -1, labels = percent, name = "P(falla)") +
+  labs(title = "Probabilidad semanal de falla (prueba)") + theme_void(base_size = 11)
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+# 5. Uso recomendado y actualización
+
+- **Planeación anual (inversión, reposición y poda):** priorizar los cuadrantes de clase A; dentro
+  de ellos, la orientación indica la palanca principal sugerida por sus características.
+- **Programación semanal:** recalcular la probabilidad de falla cada semana con los datos de la
+  semana anterior y asignar cuadrillas preventivas a los cuadrantes del cuartil superior.
+- **Seguimiento:** reestimar el ranking cada trimestre con el panel actualizado y comparar la
+  participación de los cuadrantes A antes y después de las intervenciones.
+- **Limitaciones:** la clase de prioridad se basa en la afectación observada en 2024--2025; los
+  cuadrantes 68, 140, 333 y 344 no tienen usuarios en la fuente comercial, y la “edad” de los
+  activos mide la distancia a la última intervención, no la antigüedad.
+
+*Reproducibilidad:* este informe se genera con `Etapa6_01_reporte_priorizacion.Rmd` a partir de
+`data_final_modelo_cuadrantes_reales_sismos_corr.rds` e `infraestructura_cuadrantes_reales.gpkg`.
