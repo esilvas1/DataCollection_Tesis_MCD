@@ -144,12 +144,14 @@ En este trabajo, la unidad de análisis del modelado es el par \textit{cuadrante
 
 El vector climático de referencia, sujeto a la regla de disponibilidad del grupo~1, es
 \begin{equation}
+\begin{aligned}
 \mathbf{x} = \bigl(
-\texttt{precip\_total\_semana},\;
-\texttt{temp\_media\_semana},\;
-\texttt{humedad\_media\_semana},\;
+&\texttt{precip\_total\_semana},\;
+\texttt{temp\_media\_semana},\\
+&\texttt{humedad\_media\_semana},\;
 \texttt{viento\_medio\_semana}
 \bigr),
+\end{aligned}
 \end{equation}
 eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación/modelado.
 
