@@ -218,11 +218,6 @@ Informe \texttt{Etapa2\_04\_infraestructura\_gis\_cuadrante.html}: agregación d
 Informe \texttt{Etapa2\_05\_estratificacion\_municipal.html}: asignación espacial de municipio y estrato predominante a cuadrantes reales.
 \href{\urlEtapaDosCinco}{Abrir informe}.
 
-\subsection{Eventos catastróficos UNGRD}
-\label{app:html-etapa2-06}
-Informe \texttt{Etapa2\_06\_desastres\_ungrd.html}: integración de emergencias UNGRD a municipio/cuadrante y semana.
-\href{\urlEtapaDosSeis}{Abrir informe}.
-
 \subsection{Sismicidad SGC}
 \label{app:html-etapa2-07}
 Informe \texttt{Etapa2\_07\_sismicidad\_sgc.html}: incorporación de sismicidad del SGC como exposición territorial del panel.
@@ -308,7 +303,7 @@ Inventarios/SAC (usuarios) & \texttt{QA\_TTC1}; \texttt{cant\_usuarios\_x\_trans
 \addlinespace[1pt]
 Clima & NASA POWER (reanálisis MERRA-2) & Diario 2021--2025; $100$~\% del área de estudio & $3{.}91$~\% de faltantes en el panel activo~$\times$~día; $0$~\% en el panel cuadrante~$\times$~semana & Resolución espacial gruesa; no captura tormentas convectivas de pocas horas & Clima rezagado y acumulado \\
 \addlinespace[1pt]
-Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de sismos); UNGRD (\texttt{datos.gov.co}, \texttt{wwkg-r6te}); DANE & 2024--2025; UNGRD solo 2019--2022 & $0$~\% de faltantes en NDVI, sismicidad y estrato; UNGRD constante en $D_{\mathrm{mod}}$ & UNGRD y DANE en escala municipal; dos errores de la sismicidad corregidos (Sección~\ref{sec:sismicidad_sgc}) & NDVI y sismicidad rezagados; UNGRD retirada \\
+Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de sismos); DANE & 2024--2025 & $0$~\% de faltantes en NDVI, sismicidad y estrato & DANE en escala municipal; dos errores de la sismicidad corregidos (Sección~\ref{sec:sismicidad_sgc}) & NDVI y sismicidad rezagados \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -329,7 +324,6 @@ Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de s
 \texttt{temp\_media\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}, \texttt{precip\_ma4} & Clima semanal NASA POWER & °C; m/s; mm & Predictora ($t-1$) \\
 \texttt{ndvi\_semanal}, \texttt{ndvi\_vecinos} & Índice de vegetación MODIS del cuadrante y de sus vecinos & adimensional & Predictora ($t-1$) \\
 \texttt{n\_sismos\_r50}, \texttt{dist\_sismo\_min\_km\_r50} & Sismos a menos de $50$~km del centroide; distancia al epicentro más cercano de la semana (SGC) & conteo; km & Predictora ($t-1$) \\
-\texttt{n\_eventos\_catastroficos}, \texttt{n\_eventos\_vecinos} & Emergencias UNGRD en el municipio del cuadrante y en los vecinos & conteo & Retirada (constante en $D_{\mathrm{mod}}$) \\
 \texttt{longitud\_red\_km}, \texttt{densidad\_terminales}, \texttt{n\_elementos} & Topología e infraestructura de red & km; nodos/km; elementos & Predictora \\
 \texttt{prop\_estrato\_1}, \texttt{prop\_estrato\_2}, \texttt{prop\_no\_residencial} & Composición de usuarios del cuadrante & proporción & Predictora \\
 \texttt{edad\_activo\_mas\_viejo\_anios}, \texttt{PROM\_CANT\_MODIFICACIONES} & Años desde la última modificación registrada del transformador más antiguo (negativa en el $93{.}2$~\% de las filas) y número medio de modificaciones & años; modificaciones & Predictora \\

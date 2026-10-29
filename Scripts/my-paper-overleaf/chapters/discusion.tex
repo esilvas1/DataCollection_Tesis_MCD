@@ -19,7 +19,7 @@ En segundo lugar, la señal climática contemporánea resultó débil en el gran
 
 En tercer lugar, el modelo de magnitud se estimó sobre las semanas con falla (\texttt{hubo\_falla}$=1$), decisión justificada por la cero-inflación del $74{.}9$~\% del panel (Sección~\ref{sec:segmentacion_analitica}). El componente de ocurrencia estimado en la re-estimación completa el esquema en dos partes, pero de forma básica: ambos componentes se estimaron por separado y su combinación no se calibró. Un modelo conjunto (por ejemplo, de tipo \emph{hurdle} o de conteo con inflación de ceros) permitiría evaluar el valor esperado incondicional con métricas propias de distribuciones con exceso de ceros.
 
-En cuarto lugar, dos fuentes externas resultaron menos informativas de lo previsto. El registro de emergencias de la UNGRD disponible en datos abiertos termina en 2022 y no aporta información al periodo de modelado, y la sismicidad, una vez corregida, solo muestra una asociación débil en el corte transversal. Ambos hechos se documentan en el catálogo de datos como limitaciones de la fuente y no como evidencia de ausencia de efecto.
+En cuarto lugar, la sismicidad resultó menos informativa de lo previsto: una vez corregida, solo muestra una asociación débil en el corte transversal. Este hecho se documenta en el catálogo de datos como una limitación de la fuente y no como evidencia de ausencia de efecto.
 
 Finalmente, el modelo de efectos fijos de cuadrante y semana no resultó evaluable en el conjunto de prueba por falta de traslape entre semanas de entrenamiento y de prueba, una limitación conocida de los modelos con efectos fijos dobles en validaciones temporales estrictas (\emph{holdout}) y no un defecto del modelo en sí. Se reporta de forma explícita en las tablas de desempeño, antes que omitirse, porque documenta una incompatibilidad estructural entre efectos fijos temporales y validación prospectiva que cualquier replicación del trabajo volverá a encontrar.
 
@@ -39,7 +39,7 @@ A partir de los hallazgos y las limitaciones identificadas, se proponen las sigu
 
     \item Consolidar el esquema en dos componentes en un modelo conjunto (\emph{hurdle} o de conteo con inflación de ceros), calibrar la probabilidad de falla y evaluar el valor esperado incondicional con métricas apropiadas para distribuciones con exceso de ceros, de modo que el resultado sea directamente utilizable para la programación operativa.
 
-    \item Actualizar la fuente de emergencias UNGRD cuando se publiquen registros posteriores a 2022 e incorporar al flujo controles automáticos de cada variable integrada (rango, variación entre unidades y continuidad temporal), como los que permitieron detectar los errores de la variable sísmica.
+    \item Incorporar al flujo controles automáticos de cada variable integrada (rango, variación entre unidades y continuidad temporal), como los que permitieron detectar los errores de la variable sísmica.
 
     \item Contrastar la robustez de la partición de variables mediante un ejercicio de \emph{ablación} controlada: estimar deliberadamente una especificación que incluya el bloque de impacto posterior y cuantificar la magnitud exacta de la fuga de información. El resultado no sería un modelo utilizable, pero proporcionaría una cota superior del ajuste alcanzable y permitiría dimensionar con precisión el costo predictivo de la restricción \emph{ex ante} adoptada en este trabajo.
 
