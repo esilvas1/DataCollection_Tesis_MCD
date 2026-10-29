@@ -133,7 +133,7 @@ La extracción se realizó mediante un proceso de lectura y depuración de datos
 
 A continuación, se seleccionaron únicamente las variables relevantes para el análisis: \texttt{Maniobra Apertura}, \texttt{Tipo Elemento} y \texttt{Elemento\_Falla}. Esta selección permitió homogenizar la estructura de la base con la información histórica previamente construida. Finalmente, se eliminaron los registros duplicados mediante la función \texttt{drop\_duplicates}, garantizando la unicidad de las observaciones a nivel de combinación de variables relevantes.
 
-    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del dataset final. La Tabla~\ref{tab:muestra_elemento_causante_actual} presenta una muestra de los registros resultantes. El fragmento Python correspondiente se presenta en el Listado~\ref{lst:py_oms_sp7} (Apéndice~\ref{app:codigo}).
+    Como resultado, se obtuvo una base depurada y estandarizada del sistema OMS actual, la cual es consistente con la estructura de la base histórica y permite su integración en el proceso de consolidación del conjunto de datos final. La Tabla~\ref{tab:muestra_elemento_causante_actual} presenta una muestra de los registros resultantes. El fragmento Python correspondiente se presenta en el Listado~\ref{lst:py_oms_sp7} (Apéndice~\ref{app:codigo}).
 
     \begin{table}[!htbp]
 \centering
@@ -161,7 +161,7 @@ La extracción se efectuó desde la base de datos \texttt{ccomun@gtech}, la cual
 
 Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformador}, con el fin de estandarizar la clasificación dentro del conjunto de datos integrado. Esta homogenización resulta clave para la posterior vinculación con los eventos de interrupción y la construcción del panel activo–día.
 
-    Como resultado, se obtuvo una base georreferenciada de los activos de la red, la cual constituye un insumo fundamental para el enriquecimiento espacial del dataset consolidado. La Tabla~\ref{tab:muestra_inventario_gis} ilustra la estructura de este inventario. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_gis} (Apéndice~\ref{app:codigo}); la consulta se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
+    Como resultado, se obtuvo una base georreferenciada de los activos de la red, que constituye el insumo principal para el enriquecimiento espacial del conjunto de datos consolidado. La Tabla~\ref{tab:muestra_inventario_gis} ilustra la estructura de este inventario. El código SQL correspondiente se presenta en el Listado~\ref{lst:sql_gis} (Apéndice~\ref{app:codigo}); la consulta se replica de forma análoga para Interruptor, Cuchilla, Aisladero, Reconectador y Transformador.
     
     \begin{table}[!htbp]
     \centering
@@ -215,7 +215,7 @@ Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformad
 
 Estas variables fueron extraídas a nivel diario para el periodo comprendido entre el 1 de enero de 2021 y el 31 de diciembre de 2025, lo que dio lugar a una base de aproximadamente 83.5 millones de registros. Este volumen de información refleja la estructura panelizada de la base climática, construida mediante la combinación de múltiples variables atmosféricas observadas diariamente a lo largo del horizonte temporal de análisis.
 
-La incorporación de estas variables permite enriquecer el dataset consolidado con condiciones exógenas del entorno, facilitando el análisis de su relación con la frecuencia y severidad de las interrupciones en el sistema eléctrico.
+La incorporación de estas variables permite enriquecer el conjunto de datos consolidado con condiciones exógenas del entorno, facilitando el análisis de su relación con la frecuencia y severidad de las interrupciones en el sistema eléctrico.
 
 \subsection{Resumen metodológico de extracción e integración de bases de datos}
     \begin{table}[!htbp]
@@ -261,7 +261,7 @@ NASA POWER
 
     La Tabla~\ref{tab:data_lineage} sintetiza el proceso de extracción e integración desarrollado en la Etapa~1. En conjunto, se consolidaron seis fuentes complementarias: BRAE como base transaccional de eventos de interrupción; BRAE + QA\_TTC1 para cuantificar la severidad operativa (usuarios afectados); OMS SPARD y OMS SP7 para identificar el elemento causante y fallado en los periodos pre y post migración del sistema; GIS (GTECH) para incorporar la georreferenciación de activos de red; y NASA POWER para enriquecer el análisis con variables climáticas diarias. Cada fuente fue sometida a reglas explícitas de filtrado, homologación y depuración, lo que permitió obtener bases consistentes y trazables que constituyen el insumo inicial para la integración del panel descrita en la Etapa~2.
 
-\section{Etapa 2 - Integración y depuración de datos}
+\section{Etapa 2 – Integración y depuración de datos}
 \label{sec:metodología-etapa2}
 
 \subsection{Lógica de integración entre sistemas}
@@ -296,7 +296,7 @@ NASA POWER
             \item \texttt{COMPONENTE\_FALLADO} $=$ \texttt{ELEMENTO} (activo de red, no el identificador del evento);
             \item \texttt{as.Date(FECHA\_DESCONEXION)} $=$ \texttt{FECHA\_DIA}.
         \end{itemize}
-        El cruce es izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}) y conserva $N = 87\,007\,074$ filas. Si un activo registra varios eventos el mismo día, se conserva un único valor de afectación (el primer \texttt{ID\_EVENTO} ordenado); \textit{no} se suman las severidades de esos eventos en el panel diario. La frecuencia de todas las desconexiones del día se construye por separado en el paso~\ref{paso:int-7}. En días sin falla, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+        El cruce es izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}) y conserva $N = 87\,007\,074$ filas. Si un activo registra varios eventos el mismo día, se conserva un único valor de afectación (el primer \texttt{ID\_EVENTO} ordenado); \textit{no} se suman las severidades de esos eventos en el panel diario. En 2024--2025 esta regla afecta a $2\,444$ eventos ($6{.}2$~\%) y deja fuera del panel el $36{.}6$~\% de los usuarios afectados de la tabla de eventos; su efecto sobre los indicadores se cuantifica en el Apéndice~\ref{app:robustez_indicador}. La frecuencia de todas las desconexiones del día se construye por separado en el paso~\ref{paso:int-7}. En días sin falla, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
         
         \noindent\textit{Nota metodológica:} bajo esta regla, \texttt{CANTIDAD\_*} no representa ``usuarios del activo'', sino la severidad del evento anclada al breaker en el día de inicio. En la taxonomía de modelado (Sección~\ref{sec:metodos-modelos}), estas cantidades pertenecen al \textit{impacto posterior}: describen severidad una vez ocurrido el evento y \textit{no} son predictoras contemporáneas de frecuencia o duración. Definiciones alternativas de agregación, suma o máximo de todos los eventos del mismo activo--día, o conteo de usuarios únicos por cuadrante--semana, pueden reelaborarse en la Etapa~4 sin alterar ese rol.
     
@@ -312,7 +312,7 @@ NASA POWER
         \noindent Cuando el activo no presenta interrupciones en un día, se asigna \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. El cruce exige que \texttt{COMPONENTE\_FALLADO} coincida con \texttt{ELEMENTO} del inventario \texttt{tipo\_elemento.csv} (Tabla~\ref{tab:muestra_inventario_gis}), el cual emplea el \textit{código de sitio} georreferenciado. Cuando OMS registra el \textit{código del activo} reemplazado en lugar del código de sitio, el emparejamiento falla y el evento no se propaga al panel espacial (Sección~\ref{sec:delimitacion_temporal_modelado}).
     
         \item\label{paso:int-8} \textit{Consolidación del panel final (activo--día).}\mbox{}\par\vspace{0.2em}\noindent
-        Sobre la tabla base consolidada definida en el paso~\ref{paso:int-4}, y una vez anexados los valores de los pasos~\ref{paso:int-5} a~\ref{paso:int-7}, se obtiene el dataset final con grano \textit{activo eléctrico $\times$ día} y $87\,007\,074$ observaciones ($47\,649$ activos $\times$ $1\,826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
+        Sobre la tabla base consolidada definida en el paso~\ref{paso:int-4}, y una vez anexados los valores de los pasos~\ref{paso:int-5} a~\ref{paso:int-7}, se obtiene el conjunto de datos final con grano \textit{activo eléctrico $\times$ día} y $87\,007\,074$ observaciones ($47\,649$ activos $\times$ $1\,826$ días). En días sin falla se registra \texttt{DURACION\_min = 0}, \texttt{FRECUENCIA = 0}, \texttt{CANTIDAD\_ELEMENTOS = 0} y \texttt{CANTIDAD\_USUARIOS = 0}.
     
         La base de datos consolidada se estructura como un panel de datos de tipo activo–tiempo, donde la unidad muestral corresponde a un \textit{activo eléctrico observado diariamente}. Cada observación se identifica mediante el par activo--día dentro del periodo de análisis, lo que permite capturar la evolución temporal de cada activo a lo largo del horizonte de estudio. Con $47\,649$ activos eléctricos únicos en la Tabla~\ref{tab:muestra_inventario_gis} (inventario GIS, un registro por \texttt{ELEMENTO}) y $1\,826$ días observados (cinco años de información diaria), el panel balanceado comprende $87\,007\,074$ observaciones.
     
@@ -387,7 +387,7 @@ NASA POWER
     
     
     
-    Una vez construido el panel consolidado (pasos de integración~\ref{paso:int-4}--\ref{paso:int-8}), se deriva la tabla agregada por cuadrante y semana (Sección~\ref{sec:agrupacion_cuadrante_semana}). La Etapa~2 cierra con la evidencia institucional de calidad de las fuentes (Sección~\ref{sec:evidencia_calidad_fuentes}). El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del dataset para modelado, en la Etapa~4.
+    Una vez construido el panel consolidado (pasos de integración~\ref{paso:int-4}--\ref{paso:int-8}), se deriva la tabla agregada por cuadrante y semana (Sección~\ref{sec:agrupacion_cuadrante_semana}). La Etapa~2 cierra con la evidencia institucional de calidad de las fuentes (Sección~\ref{sec:evidencia_calidad_fuentes}). El diagnóstico de completitud del panel, la identificación de valores extremos y el resto del análisis exploratorio se desarrollan en la Etapa~3; la imputación, el tratamiento definitivo de atípicos y la preparación del conjunto de datos para modelado, en la Etapa~4.
     
     \subsection{Agrupación de data consolidada por semana y cuadrante}
     \label{sec:agrupacion_cuadrante_semana}
@@ -396,7 +396,7 @@ NASA POWER
     
     El panel consolidado con grano \textit{activo eléctrico $\times$ día} ($N = 87\,007\,074$ observaciones) constituye la base de integración y trazabilidad del proyecto: preserva la relación uno a uno entre cada activo de red y cada día del horizonte 2021--2025, y permite reconstruir con rigor la secuencia de pasos descrita en la Sección~\ref{sec:logica_integracion}. No obstante, el objetivo del estudio, pronosticar el comportamiento de $SAIDI$ y $SAIFI$ en distintas áreas del territorio de concesión, exige una unidad de análisis de mayor agregación espacial y temporal, coherente con la lectura regulatoria y operativa de los indicadores de continuidad del servicio.
     
-    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textit{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{.}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio. De las $800$ celdas, $344$ contienen activos de la red eléctrica y constituyen el universo del panel agregado ($344$ cuadrantes $\times$ $262$ semanas $= 90\,128$ filas); en esta tesis la \textit{zona} a la que se refieren los objetivos se operacionaliza como el cuadrante de esta malla. En el periodo de modelado (2024--2025), $324$ de esos cuadrantes registran al menos un evento, el corte transversal espacial emplea $343$ y las especificaciones de efectos fijos estiman $310$ efectos de cuadrante, diferencias que obedecen a la exclusión de filas con predictoras incompletas.
+    Desde el punto de vista espacial, los indicadores de calidad se interpretan y gestionan a escala territorial (zonas de concentración, circuitos y áreas de servicio), no a nivel de un activo aislado. Para sintetizar el comportamiento de la red en unidades homogéneas del territorio, se adopta la malla institucional de \textit{800 cuadrantes} que cubre el área de concesión de la red eléctrica. En esta malla, el sufijo \texttt{\_800} identifica la versión del esquema con 800 divisiones espaciales; cada celda tiene dimensiones aproximadas de $5 \times 2{.}5$\,km. Cada activo eléctrico se asigna a un \texttt{id\_cuadrante} mediante el catálogo \texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}, de modo que las observaciones diarias de múltiples activos ubicados en la misma celda puedan consolidarse en una métrica zonal. La Figura~\ref{fig:cuadrantes_800} ilustra la estructura de esta partición espacial sobre el área de estudio. De las $800$ celdas, $344$ contienen activos de la red eléctrica y constituyen el universo del panel agregado ($344$ cuadrantes $\times$ $262$ semanas $= 90\,128$ filas); en esta tesis la \textit{zona} a la que se refieren los objetivos se operacionaliza como el cuadrante de esta malla. En el periodo de modelado (2024--2025), $324$ de esos cuadrantes registran al menos un evento, el corte transversal espacial emplea los $344$ y las especificaciones de efectos fijos estiman $323$ efectos de cuadrante, los de los cuadrantes con al menos una semana con falla en el entrenamiento.
     
     \begin{figure}[!htbp]
 \centering
@@ -407,7 +407,7 @@ NASA POWER
     
     Desde el punto de vista temporal, la granularidad diaria del panel es necesaria para la integración de eventos, clima y severidad, pero resulta excesivamente ruidosa para el análisis exploratorio espacial y para la modelación orientada a dinámicas semanales de continuidad y clima. Por ello, se define la \textit{semana calendario} (con inicio en lunes) como periodo de agregación temporal, lo que permite suavizar fluctuaciones diarias, estabilizar las series de interrupción y alinear las covariables meteorológicas en un horizonte compatible con la gestión operativa y con visualizaciones espacio-temporales (mapas por cuadrante y series semanales).
     
-    Bajo esta definición, la unidad muestral del dataset agregado es el par \textit{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
+    Bajo esta definición, la unidad muestral del conjunto de datos agregado es el par \textit{(cuadrante, semana)}. El panel \texttt{data\_consolidada.csv} se conserva como insumo base y referencia del proyecto; la tabla derivada \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} constituye la representación analítica para los análisis territoriales posteriores, sin sustituir ni alterar el panel diario original.
     
     \subsubsection{Procedimiento de agregación}
     
@@ -434,7 +434,7 @@ NASA POWER
     El resultado se exporta como \texttt{data\_agrupada\_por\_cuadrante\_semana.csv} en la ruta definida por la variable de entorno \texttt{UBICACION\_DATA}.
     
 \subsection{Descripción de la tabla base semanal cuadrante}
-    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del dataset agregado \texttt{data\_agrupada.csv}, con grano \textit{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Se incluyen además los bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y denominadores, composición de estrato/sector, fechas y reposiciones de transformadores, y las respuestas SAIDI/SAIFI. La Tabla~\ref{tab:muestra_semanal_preview} presenta una vista previa; la muestra completa por bloques temáticos se documenta en el Apéndice~\ref{app:muestra-semanal-completa}.
+    La Tabla~\ref{tab:base_semanal_cuadrante} resume la estructura del conjunto de datos agregado \texttt{data\_agrupada.csv}, con grano \textit{cuadrante $\times$ semana}. Cada fila corresponde a un par (\texttt{id\_cuadrante}, \texttt{semana}) y concentra, para esa celda de la malla y ese periodo semanal, las coordenadas de referencia, el impacto operativo acumulado, las variables climáticas resumidas y las métricas de continuidad del servicio. Se incluyen además los bloques incorporados en la materialización de $D_{\mathrm{mod}}$ (\texttt{data\_agrupada\_mod.csv}): usuarios y denominadores, composición de estrato/sector, fechas y reposiciones de transformadores, y las respuestas SAIDI/SAIFI. La Tabla~\ref{tab:muestra_semanal_preview} presenta una vista previa; la muestra completa por bloques temáticos se documenta en el Apéndice~\ref{app:muestra-semanal-completa}.
     
     \begin{table}[!htbp]
     \centering
@@ -559,7 +559,7 @@ La elección del grano cuadrante~$\times$~semana se fundamenta en la evidencia d
 
 \subsubsection{Infraestructura eléctrica por cuadrante}
 \label{sec:infraestructura_cuadrante}
-A partir del inventario GIS se agregan conteos y tipologías de elementos (transformadores, seccionadores, etc.) al polígono de cada cuadrante (\texttt{Etapa2\_04}). El resultado se exporta en \texttt{infraestructura\_cuadrantes\_reales.gpkg} y alimenta variables de exposición estática (\texttt{n\_elementos}, proporciones por tipo). La Figura~\ref{fig:infra_hist_elementos} resume la heterogeneidad de escala entre cuadrantes; la Figura~\ref{fig:infra_composicion_top30} ilustra la composición de infraestructura en los cuadrantes con mayor densidad de activos.
+A partir del inventario GIS se agregan conteos y tipologías de elementos (transformadores y seccionadores, entre otros) al polígono de cada cuadrante (\texttt{Etapa2\_04}). El resultado se exporta en \texttt{infraestructura\_cuadrantes\_reales.gpkg} y alimenta variables de exposición estática (\texttt{n\_elementos}, proporciones por tipo). La Figura~\ref{fig:infra_hist_elementos} resume la heterogeneidad de escala entre cuadrantes; la Figura~\ref{fig:infra_composicion_top30} ilustra la composición de infraestructura en los cuadrantes con mayor densidad de activos.
 
 \begin{figure}[!htbp]
     \centering
@@ -575,7 +575,7 @@ A partir del inventario GIS se agregan conteos y tipologías de elementos (trans
     \label{fig:infra_composicion_top30}
 \end{figure}
 
-\noindent Detalle reproducible: Apéndice~\ref{app:html-etapa2-04}.
+\noindent El procedimiento se documenta en el Apéndice~\ref{app:html-etapa2-04}.
 
 \subsubsection{Estratificación municipal}
 \label{sec:estratificacion_municipal}
@@ -595,7 +595,7 @@ Mediante intersección espacial entre polígonos de cuadrante y la capa oficial 
     \label{fig:estrato_distribucion}
 \end{figure}
 
-\noindent Se reconoce que el estrato es una variable \textit{municipal}, no predial dentro del cuadrante. Detalle: Apéndice~\ref{app:html-etapa2-05}.
+\noindent El estrato es una variable \textit{municipal} y no predial, por lo que describe el contexto socioeconómico del cuadrante y no la composición exacta de sus usuarios. El procedimiento se documenta en el Apéndice~\ref{app:html-etapa2-05}.
 
 \subsubsection{Sismicidad (SGC)}
 \label{sec:sismicidad_sgc}
@@ -617,7 +617,7 @@ La sismicidad del Servicio Geológico Colombiano se integra como exposición ter
 
 Durante la re-estimación final se detectaron y corrigieron dos errores en la construcción de estas variables. El primero era de unidades: la matriz de distancias se dividía entre $1\,000$ sin perder su unidad de metros, de modo que al compararla con un radio expresado en kilómetros el radio se convertía a metros y la condición resultaba siempre verdadera. En consecuencia, \texttt{n\_sismos\_r25}, \texttt{n\_sismos\_r50} y \texttt{n\_sismos\_r100} contenían el total regional de la semana, idéntico para los $344$ cuadrantes (media de $1\,366$ sismos). El segundo era de asignación temporal: la función que asigna cada sismo a su semana no tenía cota superior, por lo que todos los sismos de 2026 incluidos en la extracción se acumulaban en la última semana del panel ($35\,042$ sismos frente a un máximo de $1\,486$ en las semanas anteriores). Tras la corrección, el número de sismos a menos de $50$~km del centroide tiene una media de $10$ por cuadrante--semana, un percentil $99$ de $46$ y varía entre cuadrantes, como corresponde a una medida de exposición local; \texttt{dist\_sismo\_min\_km} se define como la distancia al epicentro más cercano de la semana, con independencia del radio. El panel corregido se materializa en \texttt{data\_final\_modelo\_cuadrantes\_reales\_sismos\_corr.rds} y es el que se usa en todos los resultados de la Etapa~5.
 
-\noindent Detalle: Apéndice~\ref{app:html-etapa2-07}.
+\noindent El procedimiento se documenta en el Apéndice~\ref{app:html-etapa2-07}.
 
 \subsubsection{Topología de red eléctrica}
 \label{sec:topologia_red}
@@ -637,7 +637,7 @@ Sobre tramos y nodos de la red se construyen métricas por cuadrante (longitud d
     \label{fig:red_saidi}
 \end{figure}
 
-\noindent Detalle: Apéndice~\ref{app:html-etapa2-08}.
+\noindent El procedimiento se documenta en el Apéndice~\ref{app:html-etapa2-08}.
 
 \subsubsection{Integración del panel enriquecido y series SAIDI/SAIFI}
 \label{sec:integracion_panel_enriquecido}
@@ -657,7 +657,7 @@ Los bloques anteriores se unen al panel base por \texttt{id\_cuadrante} y \textt
     \label{fig:panel_ndvi_saidi}
 \end{figure}
 
-\noindent Detalle reproducible: Apéndices~\ref{app:html-etapa2-09}--\ref{app:html-etapa2-12}.
+\noindent El procedimiento se documenta en los Apéndices~\ref{app:html-etapa2-09}--\ref{app:html-etapa2-12}.
 
 \subsection{Evidencia de calidad y confiabilidad de las fuentes}
 \label{sec:evidencia_calidad_fuentes}
@@ -684,7 +684,7 @@ Los procedimientos de esta etapa son, en su orden: diagnóstico de datos faltant
 \section{Etapa 4 – Ingeniería de variables y preparación del modelo}
 \label{sec:metodología-etapa4}
 
-A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:metodos-modelos}, en esta etapa se transforma el dataset consolidado en una representación analítica adecuada para el entrenamiento de modelos. El criterio rector es evitar \textit{fuga de información}: solo entran como predictoras variables disponibles \emph{antes} de la semana~$t$ a pronosticar. Las actividades incluyen la definición formal de la variable respuesta, la construcción de predictoras informadas por el EDA (clima rezagado o pronosticado, histórico de eventos, rasgos del cuadrante, estacionalidad), la depuración y codificación de covariables, la estandarización de variables continuas y la partición temporal entrenamiento/prueba. \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} se tratan como \textit{impacto posterior}: el primero entra en el numerador de $SAIFI$ y $SAIDI$, pero ninguno se habilita como predictora contemporánea. El preprocesamiento, incluida la selección de variables con base en el EDA, se concentra aquí, en coherencia con estabilidad numérica, identificabilidad y validez operativa del pronóstico.
+A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:metodos-modelos}, en esta etapa se transforma el conjunto de datos consolidado en una representación analítica adecuada para el entrenamiento de modelos. El criterio rector es evitar \textit{fuga de información}: solo entran como predictoras variables disponibles \emph{antes} de la semana~$t$ a pronosticar. Las actividades incluyen la definición formal de la variable respuesta, la construcción de predictoras informadas por el EDA (clima rezagado o pronosticado, histórico de eventos, rasgos del cuadrante, estacionalidad), la depuración y codificación de covariables, la estandarización de variables continuas y la partición temporal entrenamiento/prueba. \texttt{usuarios\_afectados} y \texttt{elementos\_afectados} se tratan como \textit{impacto posterior}: el primero entra en el numerador de $SAIFI$ y $SAIDI$, pero ninguno se habilita como predictora contemporánea. El preprocesamiento, incluida la selección de variables con base en el EDA, se concentra aquí, en coherencia con estabilidad numérica, identificabilidad y validez operativa del pronóstico.
 
 \paragraph{Partición formal del conjunto de columnas.} Conviene precisar qué significa, en este trabajo, ``preparar los datos para modelar''. El panel enriquecido \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} contiene decenas de columnas que no son intercambiables entre sí: unas identifican la observación, otras son el objeto del pronóstico, otras son legítimamente utilizables como información previa y otras solo se conocen \emph{después} de que el fenómeno ocurrió. Preparar el panel equivale, entonces, a inducir sobre el conjunto de columnas $\mathcal{C}$ una partición en cuatro clases disjuntas:
 \begin{equation}
@@ -721,6 +721,22 @@ Se construyen únicamente variables del grupo \textit{disponibles antes del peri
 
 Adicionalmente se construyen dos rasgos de interacción, \texttt{ndvi\_x\_elementos} y \texttt{sismo\_x\_elementos}, bajo la hipótesis de que la exposición ambiental no actúa de forma uniforme sino proporcional a la cantidad de infraestructura expuesta: un cuadrante con vegetación densa pero pocos activos no tiene el mismo riesgo que uno igualmente vegetado con alta densidad de red.
 
+\paragraph{Indicadores de clima extremo.} Los promedios y totales semanales pueden diluir los episodios que efectivamente provocan fallas, pues un día de lluvia intensa o de viento fuerte queda promediado con días normales. Para evaluar esta posibilidad se construyeron, a partir de la serie diaria de NASA POWER por cuadrante, seis indicadores semanales de clima extremo: la precipitación diaria máxima, la máxima precipitación acumulada en tres días consecutivos, la anomalía estandarizada de la precipitación semanal frente a la climatología del cuadrante para la misma semana del año y el número de días con lluvia, viento o temperatura máxima extremos. Un día se considera extremo cuando supera el percentil~95 de la serie diaria del propio cuadrante, de modo que el umbral refleja lo inusual para cada lugar y no un valor absoluto común:
+\begin{equation}
+    \begin{aligned}
+    E_{q,s}^{v} = \sum_{d \in s} \mathbf{1}\left\{ x_{q,d}^{v} > P_{95,q}^{v} \right\},
+    \end{aligned}
+    \label{eq:dias_extremos}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $E_{q,s}^{v}$: Número de días de la semana $s$ en los que la variable climática $v$ (precipitación, viento o temperatura máxima) fue extrema en el cuadrante $q$.
+    \item $x_{q,d}^{v}$: Valor diario de la variable $v$ en el cuadrante $q$ el día $d$.
+    \item $P_{95,q}^{v}$: Percentil~95 de la serie diaria de $v$ en el cuadrante $q$, calculado con 2021--2023.
+    \item $\mathbf{1}\{\cdot\}$: Función indicadora.
+\end{itemize}
+Los umbrales y la climatología de referencia se estimaron con 2021--2023, fuera del periodo de modelado, y todos los indicadores entran rezagados una semana, en coherencia con la regla de disponibilidad \emph{ex ante}. Como referencia descriptiva, y no como predictora, se examinó también su asociación con la ocurrencia de falla en la misma semana.
+
 Quedan \textit{excluidas} como predictoras contemporáneas \texttt{usuarios\_afectados}$_t$, \texttt{elementos\_afectados}$_t$, \texttt{n\_eventos}$_t$ y \texttt{duracion\_total}$_t$ al pronosticar $\mathrm{SAIFI}_t$ o $\mathrm{SAIDI}_t$. También se excluye la respuesta cruzada contemporánea: al modelar $\mathrm{SAIDI}_t$ no se emplea $\mathrm{SAIFI}_t$ y viceversa, puesto que ambas comparten el factor \texttt{usuarios\_afectados}$_t$ en su numerador y su inclusión recíproca reintroduciría por la puerta trasera la fuga que la partición busca cerrar.
 
 \subsection{Construcción de la variable respuesta}
@@ -745,7 +761,7 @@ Tres decisiones merecen justificación explícita. La primera concierne al alcan
 
 La elección del denominador $UT_{m(s)}$, común a todos los cuadrantes, es deliberada y coherente con ese propósito. Con un denominador único, el valor de cada cuadrante--semana queda referido a la base de usuarios de la empresa y ordena las zonas según su peso en la afectación total percibida por los usuarios del operador. En consecuencia, un cuadrante con muchos usuarios y frecuentes interrupciones pesa más que uno pequeño con el mismo número de eventos, que es exactamente el ordenamiento que interesa para priorizar intervenciones cuyo objetivo es reducir el índice global. Un denominador local, basado en los usuarios del cuadrante, respondería a una pregunta distinta —qué tan deficiente es la calidad percibida por el usuario típico de cada zona— y no permitiría ordenar las zonas según su impacto sobre la meta regulatoria.
 
-Dos diferencias respecto del cálculo regulatorio deben quedar explícitas para evitar una lectura equivocada. Primera, el numerador de $\mathrm{SAIDI}_{q,s}$ combina la duración acumulada y los usuarios afectados de la semana, mientras que la regulación pondera cada evento por sus propios usuarios ($\sum_i D_i\,NU_i$); ambas expresiones coinciden exactamente en las semanas con un único evento ($46{.}3$~\% de las semanas con falla) y, en las demás, la forma agregada sobrestima el nivel. El Apéndice~\ref{app:robustez_indicador} muestra que el ordenamiento de cuadrantes se conserva (correlación de Spearman de $0{.}87$ y coincidencia del $65$~\% en los veinte cuadrantes más críticos), por lo que $\mathrm{SAIDI}_{q,s}$ se interpreta como un índice de severidad relativa y no como una fracción sumable del SAIDI de la empresa. Segunda, la cobertura del emparejamiento evento--elemento en 2024 y 2025 ($77{.}7$~\% y $92{.}4$~\%; Tabla~\ref{tab:cobertura_emparejamiento_oms}) implica que la suma de los indicadores por cuadrante no reproduce el valor oficial del operador; por ello los resultados se emplean para \textit{ordenar y anticipar} la afectación territorial y no para estimar el indicador regulatorio.
+Dos diferencias respecto del cálculo regulatorio deben quedar explícitas para evitar una lectura equivocada. Primera, el numerador de $\mathrm{SAIDI}_{q,s}$ combina la duración acumulada y los usuarios afectados de la semana, mientras que la regulación pondera cada evento por sus propios usuarios ($\sum_i D_i\,NU_i$); ambas expresiones coinciden en las semanas con un único evento y, en las demás, la forma agregada sobrestima el nivel; además, el panel diario conserva los usuarios de un solo evento cuando un elemento falla varias veces el mismo día, lo que reduce el numerador de ambos indicadores. El Apéndice~\ref{app:robustez_indicador} reconstruye los indicadores evento a evento y muestra que el orden de los cuadrantes se conserva en buena medida (correlación de Spearman de $0{.}97$ en SAIDI y de $0{.}999$ en SAIFI entre los totales por cuadrante), pero que la concentración de la afectación y parte del grupo de cuadrantes prioritarios cambian. Por ello $\mathrm{SAIDI}_{q,s}$ y $\mathrm{SAIFI}_{q,s}$ se interpretan como índices de severidad relativa y no como fracciones sumables de los indicadores de la empresa. Segunda, la cobertura del emparejamiento evento--elemento en 2024 y 2025 ($77{.}7$~\% y $92{.}4$~\%; Tabla~\ref{tab:cobertura_emparejamiento_oms}) implica que la suma de los indicadores por cuadrante no reproduce el valor oficial del operador; por ello los resultados se emplean para \textit{ordenar y anticipar} la afectación territorial y no para estimar el indicador regulatorio.
 
 En cambio, los indicadores operativos sí comparten con el cálculo regulatorio el universo de eventos. El numerador se construye solo con los eventos que la propia empresa registra como computables para la calidad del servicio: la extracción de BRAE conserva los registros con \texttt{FDD\_EXCLUSION} $=$ \texttt{NO EXCLUIDA}, descarta la causa \texttt{FDD\_CAUSA\_SSPD} $=1$ y exige fecha de reconexión (Sección~\ref{sec:extraccion_brae}). De este modo quedan fuera, con el mismo criterio con que el operador reporta sus indicadores, los eventos que la Resolución CREG 015 de 2018~\cite{ref1} exime del cálculo, como las interrupciones de hasta tres minutos, las originadas en activos del STN o del STR, los racionamientos programados, las catástrofes naturales y los actos de terrorismo (Sección~\ref{sec:Marco-teorico}). La verificación sobre los $39\,272$ eventos de 2024--2025 confirma que ninguno dura menos de tres minutos; $161$ eventos ($0{.}41$~\%) duran exactamente tres minutos, valor que no puede discriminarse mejor porque los registros tienen resolución de minuto, y cuyo peso es demasiado pequeño para alterar los resultados. Esta coherencia con las exclusiones regulatorias es la que permite interpretar la afectación modelada como la que efectivamente cuenta para las metas y compensaciones del operador.
 
@@ -759,7 +775,7 @@ Finalmente, \texttt{n\_eventos} y \texttt{duracion\_total} no se modelan como $Y
 \label{sec:asociacion_depuracion_cuanti}
 Se define el conjunto candidato \emph{ex ante} sobre $D_{\mathrm{mod}}$ (clima rezagado, histórico de eventos, rasgos del cuadrante, exposición y estacionalidad) y se excluyen, por diseño, el clima contemporáneo, la respuesta alterna contemporánea y el impacto posterior (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}). La depuración se estima solo con el entrenamiento (2024) y combina filtros de cobertura, varianza casi nula, asociación de Spearman con corrección FDR, agrupamiento por redundancia ($|\rho|\geq 0{.}70$) y eliminación iterativa por VIF (umbral~5). No se borran variables del panel: se depuran de la matriz de diseño.
 
-De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{fig:vif_cuanti_depurado}): precipitación rezagada y acumulada, humedad rezagada, viento máximo rezagado, rezagos de \texttt{n\_eventos}, estacionalidad armónica, altitud, longitud y $\log(\texttt{n\_activos}+1)$ como \emph{offset}. Las temperaturas y los promedios móviles del histórico se descartan por redundancia o multicolinealidad. Detalle reproducible en el Apéndice~\ref{app:html-asociacion-cuanti} (\href{\urlasociaciondepuracioncuanti}{informe HTML}).
+De~$27$ candidatas se retienen~$13$ (Figuras~\ref{fig:asoc_exante_cuanti}--\ref{fig:vif_cuanti_depurado}): precipitación rezagada y acumulada, humedad rezagada, viento máximo rezagado, rezagos de \texttt{n\_eventos}, estacionalidad armónica, altitud, longitud y $\log(\texttt{n\_activos}+1)$ como \emph{offset}. Las temperaturas y los promedios móviles del histórico se descartan por redundancia o multicolinealidad. El procedimiento se documenta en el Apéndice~\ref{app:html-asociacion-cuanti} (\href{\urlasociaciondepuracioncuanti}{informe HTML}).
 
 El orden de los filtros no es arbitrario y conviene explicitarlo, porque condiciona el resultado. Primero operan los criterios que no dependen de la respuesta —cobertura y varianza casi nula—, de modo que ninguna variable se descarta por su relación con $Y$ antes de haber superado el umbral mínimo de informatividad propia. Después se evalúa la asociación con la respuesta mediante Spearman, deliberadamente en su versión por rangos y no de Pearson, dada la asimetría y la cero-inflación documentadas en la Sección~\ref{sec:distribucion_variables}, y con corrección FDR porque el número de contrastes simultáneos hace esperable una proporción no despreciable de significancias espurias. Por último se aplica el tratamiento de redundancia: el agrupamiento por $|\rho|\geq 0{.}70$ identifica bloques de variables que miden esencialmente lo mismo y de cada bloque se conserva un representante, y la eliminación iterativa por VIF (umbral~5) remueve la colinealidad que solo aparece en combinaciones de tres o más variables y que el análisis bivariado no detecta.
 
@@ -768,7 +784,7 @@ Dos salvaguardas acompañan el procedimiento. La primera es que \textit{todos} l
 \begin{figure}[!htbp]
     \centering
     \includegraphics[width=0.92\textwidth]{img/asociacion_candidatas_exante_mod.png}
-    \caption{Asociación de Spearman entre candidatas \emph{ex ante} y $SAIFI$ (entrenamiento 2024).}
+    \caption{Asociación de Spearman entre candidatas \emph{ex ante} y $SAIFI$ (año 2024 de $D_{\mathrm{mod}}$, corte exploratorio previo a la partición final).}
     \label{fig:asoc_exante_cuanti}
 \end{figure}
 
@@ -810,7 +826,7 @@ Las cuantitativas continuas se estandarizan (\emph{z}-score) solo cuando el algo
 
 Cuando sí se estandariza, los parámetros de centrado y escala ($\bar{x}$ y $s_x$) se estiman únicamente sobre el entrenamiento y se aplican al conjunto de prueba sin recalcular, por la misma razón que rige la depuración: recalcularlos sobre el panel completo filtraría información del periodo de prueba hacia el preprocesamiento.
 
-Las respuestas reciben un tratamiento distinto al de los predictores. $SAIDI$ y $SAIFI$ se transforman con $\log(1+y)$ ante asimetría y presencia de ceros, según \texttt{Etapa5\_01}/\texttt{Etapa5\_02} (Apéndices~\ref{app:html-etapa5-01} y~\ref{app:html-etapa5-02}). La elección de $\log(1+y)$ y no de $\log(y)$ es forzada por la masa de ceros estructurales del panel: en el $74{.}9$~\% de las semanas-cuadrante no se registra ningún evento (Sección~\ref{sec:distribucion_variables}) y el logaritmo simple no está definido en ese punto. El desplazamiento unitario preserva el cero como cero y aproxima el comportamiento logarítmico en la cola derecha, que es precisamente donde la asimetría compromete la estabilidad de la estimación.
+Las respuestas reciben un tratamiento distinto al de los predictores. $SAIDI$ y $SAIFI$ se transforman con $\log(1+y)$ ante asimetría y presencia de ceros, según \texttt{Etapa5\_01}/\texttt{Etapa5\_02} (Apéndices~\ref{app:html-etapa5-01} y~\ref{app:html-etapa5-02}). La elección de $\log(1+y)$ y no de $\log(y)$ es forzada por la masa de ceros estructurales del panel: no se registra ningún evento en el $74{.}9$~\% de las semanas-cuadrante de $D_{\mathrm{EDA}}$ (2021--2025) ni en el $63{.}0$~\% de las de $D_{\mathrm{mod}}$ (2024--2025) (Sección~\ref{sec:distribucion_variables}) y el logaritmo simple no está definido en ese punto. El desplazamiento unitario preserva el cero como cero y aproxima el comportamiento logarítmico en la cola derecha, que es precisamente donde la asimetría compromete la estabilidad de la estimación.
 
 \subsection{Generación de ventanas temporales}
 \label{sec:ventanas_temporales}
@@ -835,7 +851,7 @@ Una consecuencia conocida de la partición temporal estricta afecta a la especif
 Esta subsección cierra la partición formulada en la ecuación~\eqref{eq:particion_columnas}: fija de manera explícita y verificable qué columnas constituyen el vector de respuesta $\mathbf{y}$ y cuáles la matriz de predictoras $\mathbf{X}$ con la que se estiman los modelos de la Etapa~5. La especificación semanal que se somete a estimación adopta la forma
 \begin{equation}
     \begin{aligned}
-    \log\left(1 + Y_{q,s}\right) ={}& \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} + \gamma \log\left(1 + Y_{q,s-1}\right) + \phi\,\overline{Y}_{\mathcal{N}(q),\,s-1} \\
+    \log\left(1 + Y_{q,s}\right) ={}& \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} + \gamma \log\left(1 + Y_{q,s-1}\right) + \phi \log\left(1 + \overline{Y}_{\mathcal{N}(q),\,s-1}\right) \\
     &+ \mu_q + \tau_s + \varepsilon_{q,s},
     \end{aligned}
     \label{eq:especificacion_panel}
@@ -845,13 +861,13 @@ donde:
     \item $Y_{q,s}$: Respuesta del cuadrante $q$ en la semana $s$, con $Y \in \{\mathrm{SAIDI}, \mathrm{SAIFI}\}$.
     \item $\mathbf{x}_{q,s}$: Vector de covariables \emph{ex ante}; $\boldsymbol{\beta}$, su vector de coeficientes.
     \item $\gamma$: Coeficiente del rezago propio de la respuesta.
-    \item $\overline{Y}_{\mathcal{N}(q),\,s-1}$: Promedio de la respuesta en los cuadrantes vecinos de $q$ en la semana anterior.
+    \item $\overline{Y}_{\mathcal{N}(q),\,s-1}$: Promedio de la respuesta en los cuadrantes vecinos de $q$ en la semana anterior; como el rezago propio, entra en la escala $\log(1+y)$ de la respuesta.
     \item $\phi$: Coeficiente del rezago espacial; se usa $\phi$ y no $\rho$ para no confundirlo con el parámetro autorregresivo espacial del modelo SAR.
     \item $\mu_q$, $\tau_s$: Efectos fijos de cuadrante y de semana, presentes solo en las especificaciones que los declaran.
     \item $\varepsilon_{q,s}$: Término de error.
 \end{itemize}
 
-La Tabla~\ref{tab:particion_variables_modelado} detalla la asignación final de columnas a cada clase. La estructura de $\mathbf{X}$ es prácticamente idéntica para ambos indicadores; la única diferencia es que los términos autorregresivos y el rezago espacial se construyen sobre la respuesta que se está modelando, de modo que al estimar $\mathrm{SAIDI}$ entran \texttt{SAIDI\_lag1} y \texttt{SAIDI\_vecinos\_lag1}, y al estimar $\mathrm{SAIFI}$ sus equivalentes. Esta simetría es deliberada: permite atribuir las diferencias de desempeño entre indicadores a la naturaleza del fenómeno y no a una asimetría introducida por el diseño de la matriz.
+La Tabla~\ref{tab:particion_variables_modelado} detalla la asignación final de columnas a cada clase. La estructura de $\mathbf{X}$ es prácticamente idéntica para ambos indicadores; la única diferencia es que los términos autorregresivos y el rezago espacial se construyen sobre la respuesta que se está modelando, de modo que al estimar $\mathrm{SAIDI}$ entran $\log(1+\mathrm{SAIDI}_{q,s-1})$ y $\log(1+\overline{\mathrm{SAIDI}}_{\mathcal{N}(q),s-1})$ (\texttt{ly\_lag1} y \texttt{ly\_vec\_lag1} en el código), y al estimar $\mathrm{SAIFI}$ sus equivalentes. Ambos rezagos se transforman con la misma función que la respuesta, de modo que la ecuación~\eqref{eq:especificacion_panel} es exactamente la que se estima. Esta simetría es deliberada: permite atribuir las diferencias de desempeño entre indicadores a la naturaleza del fenómeno y no a una asimetría introducida por el diseño de la matriz.
 
 \begin{table}[!htbp]
 \centering
@@ -866,7 +882,7 @@ La Tabla~\ref{tab:particion_variables_modelado} detalla la asignación final de 
 $\mathbf{y}$ (respuesta) & Continuidad &
 \texttt{SAIDI}, \texttt{SAIFI}; estimadas como \texttt{log\_SAIDI1} $=\log(1+\mathrm{SAIDI})$ y \texttt{log\_SAIFI1} $=\log(1+\mathrm{SAIFI})$, en modelos separados \\
 \addlinespace
-\multirow{7}{2.3cm}{$\mathbf{X}$ (predictoras)} & Clima ($t-1$) &
+\multirow{6}{2.3cm}{$\mathbf{X}$ (predictoras)} & Clima ($t-1$) &
 \texttt{temp\_media\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}, \texttt{precip\_ma4} \\
 & Vegetación ($t-1$) &
 \texttt{ndvi\_semanal} \\
@@ -876,10 +892,8 @@ $\mathbf{y}$ (respuesta) & Continuidad &
 \texttt{n\_elementos}, \texttt{longitud\_red\_km}, \texttt{densidad\_terminales} \\
 & Composición socio\-económica &
 \texttt{prop\_estrato\_1}, \texttt{prop\_estrato\_2}, \texttt{prop\_no\_residencial} \\
-& Activos y mantenimiento &
-\texttt{edad\_activo\_mas\_viejo\_anios}, \texttt{PROM\_CANT\_MODIFICACIONES} \\
 & Dinámica temporal y espacial &
-\texttt{SAIDI\_lag1} o \texttt{SAIFI\_lag1}; \texttt{SAIDI\_vecinos\_lag1} o \texttt{SAIFI\_vecinos\_lag1}; \texttt{ndvi\_vecinos} ($t-1$) \\
+$\log(1+Y_{q,s-1})$; $\log(1+\overline{Y}_{\mathcal{N}(q),s-1})$; \texttt{ndvi\_vecinos} ($t-1$) \\
 \addlinespace
 $\mathcal{K}$ (llaves) & Identificación &
 \texttt{id\_cuadrante}, \texttt{semana} (índices de efectos fijos y de ordenamiento); \texttt{latitud}, \texttt{longitud}, \texttt{altitud} (geolocalización y matriz de vecindad) \\
@@ -890,15 +904,17 @@ $\mathcal{P}$ (excluidas) & Impacto posterior &
 \texttt{n\_eventos}$_t$, \texttt{duracion\_total}$_t$ (admitidas solo rezagadas) \\
 & Respuesta cruzada &
 $\mathrm{SAIFI}_t$ al modelar $\mathrm{SAIDI}_t$, y viceversa \\
+& Información posterior al periodo &
+\texttt{edad\_activo\_mas\_viejo\_anios}, \texttt{PROM\_CANT\_MODIFICACIONES} (construidas con fechas de modificación de 2026) \\
 \bottomrule
 \end{tabular}
 
-\noindent\textit{Nota:} el conjunto de $18$ predictoras de $\mathbf{X}$ corresponde a la especificación final de la Etapa~5 (\texttt{Etapa5\_03\_reestimacion\_cierre.R}), obtenida tras depurar las $44$ candidatas iniciales por los criterios de las Secciones~\ref{sec:asociacion_depuracion_cuanti} y~\ref{sec:asociacion_depuracion_cuali}. Respecto de la especificación de los informes preliminares (\texttt{Etapa5\_01} y \texttt{Etapa5\_02}), las variables observadas en la semana~$s$ ---clima, vegetación y sismicidad--- entran rezagadas una semana ($t-1$), para que todo el bloque $\mathbf{X}$ esté disponible antes de la semana pronosticada; y se añade \texttt{n\_elementos}, que es constante en el tiempo y, por tanto, disponible \emph{ex ante}. Con el panel corregido, la especificación contemporánea y la rezagada alcanzan el mismo error de prueba (RMSE de $0{.}1011$ y $0{.}1013$ para FE de cuadrante en SAIDI), de modo que el rezago no cuesta precisión y elimina toda duda sobre el uso de información posterior.
+\noindent\textit{Nota:} el conjunto de $16$ predictoras de $\mathbf{X}$ corresponde a la especificación final de la Etapa~5 (\texttt{Etapa5\_09\_reestimacion\_v3.Rmd}), obtenida tras depurar las $44$ candidatas iniciales por los criterios de las Secciones~\ref{sec:asociacion_depuracion_cuanti} y~\ref{sec:asociacion_depuracion_cuali}. Respecto de los informes preliminares (\texttt{Etapa5\_01} y \texttt{Etapa5\_02}), las variables observadas en la semana~$s$ ---clima, vegetación y sismicidad--- entran rezagadas una semana ($t-1$); se añade \texttt{n\_elementos}, constante en el tiempo; y se excluyen la edad del activo más antiguo y el número promedio de modificaciones, porque se calculan con fechas de modificación registradas mayoritariamente en 2026 ($67$~\% de las fechas; edad negativa en el $93{.}2$~\% de las filas) y no estaban disponibles en las semanas que se pronostican. La trazabilidad de cada variable se presenta en la Tabla~\ref{tab:trazabilidad_variables} del Apéndice~\ref{app:catalogo}.
 \end{table}
 
 Tres observaciones precisan la lectura de la tabla. La primera es que \texttt{id\_cuadrante} y \texttt{semana} ocupan una posición intermedia entre llave y predictora: no son covariables sustantivas, pero en las especificaciones FE se consumen como índices de absorción y, en esa función, capturan toda la heterogeneidad no observada invariante en cada dimensión. La segunda es que las coordenadas no entran como regresores sino como insumo de la matriz de contigüidad \emph{queen} que define la vecindad $\mathcal{N}(q)$; su rol es estructural, no explicativo. La tercera es que el bloque $\mathcal{P}$ no se elimina del panel: permanece disponible para el análisis descriptivo de severidad y para la construcción de las respuestas, pero no se expone al estimador como covariable.
 
-El número de predictoras, $18$, es deliberadamente moderado frente a las $44$ candidatas inicialmente disponibles en el panel enriquecido. Con $343$ cuadrantes y $105$ semanas, el panel semanal admitiría técnicamente especificaciones más amplias, pero el corte transversal empleado para SAR/SEM opera sobre $N=343$ observaciones, donde la parsimonia deja de ser una preferencia estética y pasa a ser una condición de identificabilidad. Mantener una matriz común entre ambas escalas de análisis permite comparar coeficientes entre la especificación de panel y la estructural sin reabrir la discusión de selección de variables en cada una.
+El número de predictoras, $16$, es deliberadamente moderado frente a las $44$ candidatas inicialmente disponibles en el panel enriquecido. Con $344$ cuadrantes y $105$ semanas, el panel semanal admitiría técnicamente especificaciones más amplias, pero el corte transversal empleado para SAR/SEM opera sobre $N=344$ observaciones, donde la parsimonia deja de ser una preferencia estética y pasa a ser una condición de identificabilidad. Las dos escalas no comparten exactamente la misma matriz: el corte transversal usa los atributos estructurales del panel más la proporción de transformadores, que en el panel queda absorbida por el efecto fijo, y sustituye las variables semanales por sus promedios del periodo (NDVI, precipitación y distancia al sismo más cercano), sin rezagos de la respuesta. La Tabla~\ref{tab:trazabilidad_variables} indica qué variables usa cada modelo. Varias variables estructurales retenidas presentan factores de inflación de varianza altos (las proporciones de estrato~1 y~2, de $24$ a $25$, y el número de elementos y la longitud de la red, de $15$ a $17$); se conservan porque su papel es controlar la composición y la escala del cuadrante, y no se interpretan sus coeficientes individuales.
 
 Los insumos se materializan en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds}, cuya construcción y verificación se documentan en los Apéndices~\ref{app:html-etapa2-09} (\href{\urlEtapaDosNueve}{informe HTML}) y~\ref{app:html-etapa2-12} (\href{\urlEtapaDosDoce}{informe HTML}), y cuyo uso en la estimación se detalla en los Apéndices~\ref{app:html-etapa5-01} (\href{\urlEtapaCincoUno}{informe HTML}) y~\ref{app:html-etapa5-02} (\href{\urlEtapaCincoDos}{informe HTML}).
 
@@ -912,11 +928,11 @@ El criterio operativo resultante es que la reducción se guía por dos señales:
 
 \subsection{Segmentación analítica}
 \label{sec:segmentacion_analitica}
-El modelado principal opera sobre las semanas con falla (\texttt{hubo\_falla}$=1$), decisión que condiciona la interpretación de todos los resultados posteriores y debe explicitarse. El panel completo está dominado por ceros estructurales: el $74{.}9$~\% de los pares cuadrante--semana no registra ningún evento (Sección~\ref{sec:distribucion_variables}). Estimar sobre el panel completo convertiría el problema en uno de detección de ausencia de falla, donde un modelo trivial que prediga siempre cero alcanzaría un error aparentemente bajo sin contenido informativo alguno. Al restringir la estimación a las semanas con evento, la pregunta se reformula con precisión: condicional a que el cuadrante experimentó al menos una interrupción, ¿qué magnitud alcanza su contribución a SAIDI o SAIFI? Esta es la pregunta operativamente relevante, porque es la que determina el impacto sobre el indicador agregado del operador.
+El modelado principal opera sobre las semanas con falla (\texttt{hubo\_falla}$=1$), decisión que condiciona la interpretación de todos los resultados posteriores y debe explicitarse. El panel está dominado por ceros estructurales: en el universo exploratorio $D_{\mathrm{EDA}}$ (2021--2025) el $74{.}9$~\% de los pares cuadrante--semana no registra ningún evento (Sección~\ref{sec:distribucion_variables}), y en el panel de modelado $D_{\mathrm{mod}}$ (2024--2025) la proporción es del $63{.}0$~\% ($22\,769$ de $36\,120$ filas). Estimar sobre el panel completo convertiría el problema en uno de detección de ausencia de falla, donde un modelo trivial que prediga siempre cero alcanzaría un error aparentemente bajo sin contenido informativo alguno. Al restringir la estimación a las semanas con evento, la pregunta se reformula con precisión: condicional a que el cuadrante experimentó al menos una interrupción, ¿qué magnitud alcanza su contribución a SAIDI o SAIFI? Esta es la pregunta operativamente relevante, porque es la que determina el impacto sobre el indicador agregado del operador.
 
 La contrapartida es que el modelo de magnitud no pronostica la \textit{ocurrencia} de falla. Para cubrir esa parte se estima un segundo componente: un clasificador Random Forest de \texttt{hubo\_falla} sobre el panel completo, con las mismas predictoras \emph{ex ante} más el indicador de falla de la semana anterior, evaluado por el área bajo la curva ROC. Ambos componentes se combinan en el valor esperado incondicional $\mathbb{E}[Y_{q,s}] = P(\text{falla}_{q,s})\times\mathbb{E}[Y_{q,s}\mid\text{falla}_{q,s}]$, lo que constituye una estructura en dos partes. Un modelo de conteo con inflación de ceros queda como alternativa para trabajo futuro (Capítulo~\ref{sec:discusion}).
 
-En paralelo opera una segunda segmentación, de naturaleza distinta: el corte transversal ponderado agrega el panel a un único vector por cuadrante para estimar SAR y SEM sobre $N=343$ observaciones. La ponderación sigue un esquema de \textit{suma de dígitos}, que asigna a la semana en posición~$t$ de un total de~$n$ un peso $w_t = t\,/\,[n(n+1)/2]$, creciente de forma lineal hacia lo reciente y con suma unitaria. La elección responde a que el objetivo de esta agregación es caracterizar el estado \textit{actual} del patrón territorial: una media simple trataría como equivalentes a una semana de inicio de 2024 y a una de cierre de 2025, pese a que la segunda es más representativa de la configuración vigente de la red.
+En paralelo opera una segunda segmentación, de naturaleza distinta: el corte transversal ponderado agrega el panel a un único vector por cuadrante para estimar SAR y SEM sobre $N=344$ observaciones. La ponderación sigue un esquema de \textit{suma de dígitos}, que asigna a la semana en posición~$t$ de un total de~$n$ un peso $w_t = t\,/\,[n(n+1)/2]$, creciente de forma lineal hacia lo reciente y con suma unitaria. La elección responde a que el objetivo de esta agregación es caracterizar el estado \textit{actual} del patrón territorial: una media simple trataría como equivalentes a una semana de inicio de 2024 y a una de cierre de 2025, pese a que la segunda es más representativa de la configuración vigente de la red.
 
 Finalmente, la segmentación territorial derivada del EDA (los cuatro \emph{clusters} de cuadrantes de la Sección~\ref{sec:segmentacion_exploratoria}) informa la interpretación de resultados y la priorización operativa, pero no sustituye la partición temporal ni se emplea para estimar modelos separados por grupo: con $343$ cuadrantes repartidos en cuatro estratos muy desiguales, la estimación por grupo comprometería la precisión sin ganancia clara en capacidad explicativa.
 
@@ -934,7 +950,7 @@ Sobre la matriz de diseño se aplican tres familias de transformaciones, cada un
 \label{sec:resultados_etapa4}
 La Etapa~4 convierte el panel enriquecido de la Etapa~2, depurado y diagnosticado en la Etapa~3, en un artefacto listo para estimación. Su resultado sustantivo no es un conjunto de datos adicional sino una \textit{decisión documentada}: la partición de la ecuación~\eqref{eq:particion_columnas}, materializada en la Tabla~\ref{tab:particion_variables_modelado}, que fija qué se predice, con qué se predice y qué se excluye deliberadamente pese a estar disponible. Esta última categoría es la que distingue un ejercicio predictivo válido de uno que solo parece serlo.
 
-\textit{Resultado:} panel analítico con respuestas $\mathrm{SAIDI}$ y $\mathrm{SAIFI}$ formalmente definidas, $18$ predictoras \emph{ex ante} depuradas de $44$ candidatas, rezagos temporales y espaciales construidos sin fuga de información, y partición temporal documentada (\emph{holdout} del $15$~\% final de semanas, con corte el 8 de septiembre de 2025).
+\textit{Resultado:} panel analítico con respuestas $\mathrm{SAIDI}$ y $\mathrm{SAIFI}$ formalmente definidas, $16$ predictoras \emph{ex ante} depuradas de $44$ candidatas, rezagos temporales y espaciales construidos sin fuga de información, y partición temporal documentada (\emph{holdout} del $15$~\% final de semanas, con corte el 8 de septiembre de 2025).
 
 \textit{Entregable:} matriz depurada de predictoras (Secciones~\ref{sec:asociacion_depuracion_cuanti} y~\ref{sec:matrices_diseno}) y panel analítico final \texttt{data\_final\_modelo\_cuadrantes\_reales.rds}, documentados en los Apéndices~\ref{app:html-etapa4-01} (\href{\urlEtapaCuatroUno}{informe HTML}), \ref{app:html-etapa4-02} (\href{\urlEtapaCuatroDos}{informe HTML}), \ref{app:html-asociacion-cuanti} (\href{\urlasociaciondepuracioncuanti}{informe HTML}), \ref{app:html-etapa5-01} (\href{\urlEtapaCincoUno}{informe HTML}) y~\ref{app:html-etapa5-02} (\href{\urlEtapaCincoDos}{informe HTML}).
 
@@ -962,7 +978,7 @@ La dependencia espacial se diagnostica previamente con el índice de Moran, paso
 
 \subsection{Entrenamiento del modelo}
 \label{sec:entrenamiento_modelo}
-El entrenamiento usa solo semanas anteriores al corte temporal y la matriz de diseño fijada en la Sección~\ref{sec:matrices_diseno}: clima, precipitación móvil, NDVI y sismicidad de la semana anterior, rezago propio (\texttt{SAIDI\_lag1}/\texttt{SAIFI\_lag1}), topología de red, proporciones de estrato, edad y modificaciones de activos, y rezagos espaciales de vecinos. SAIDI y SAIFI se modelan en escala $\log(1+y)$ y en modelos independientes, conforme a la justificación de la Sección~\ref{sec:construccion_respuesta}.
+El entrenamiento usa solo semanas anteriores al corte temporal y la matriz de diseño fijada en la Sección~\ref{sec:matrices_diseno}: clima, precipitación móvil, NDVI y sismicidad de la semana anterior, rezago propio (\texttt{SAIDI\_lag1}/\texttt{SAIFI\_lag1}), topología de red, proporciones de estrato y rezagos espaciales de vecinos. SAIDI y SAIFI se modelan en escala $\log(1+y)$ y en modelos independientes, conforme a la justificación de la Sección~\ref{sec:construccion_respuesta}.
 
 Las cuatro especificaciones de panel comparten exactamente el mismo conjunto de predictoras y difieren únicamente en la estructura de efectos fijos declarada, de modo que cualquier diferencia de desempeño entre ellas es atribuible a esa estructura y no a una selección distinta de variables. Esta homologación es la que permite leer la comparación de la Sección~\ref{sec:comparacion_modelos} como evidencia sobre la naturaleza del fenómeno y no como el resultado de un ajuste diferencial de hiperparámetros.
 
@@ -979,7 +995,7 @@ El entrenamiento se restringe además a las observaciones con \texttt{hubo\_fall
 \label{sec:validacion_modelo}
 La validación es \textit{holdout temporal}: se reserva aproximadamente el $15$~\% final de semanas ordenadas y no se permite muestreo aleatorio, por las razones de autocorrelación expuestas en la Sección~\ref{sec:particion_train_test}. Sobre $105$ semanas disponibles, el corte deja alrededor de dieciséis semanas de evaluación, un horizonte suficiente para detectar degradación sistemática del pronóstico pero demasiado corto para evaluar estabilidad interanual, limitación que se discute en el Capítulo~\ref{sec:discusion}.
 
-La elección de un esquema de \emph{holdout} simple en lugar de validación cruzada deliberada merece justificación. La validación cruzada con $k$ pliegues aleatorios es inadmisible aquí porque rompería el orden temporal. Como verificación de estabilidad, el desempeño se evalúa además mediante validación de origen móvil: se fijan cuatro cortes sucesivos (semanas $52$, $64$, $76$ y $88$ del panel), en cada uno se reestiman los modelos con todas las semanas anteriores y se evalúan sobre las doce semanas siguientes. Se reportan la media y la desviación estándar del RMSE entre cortes (Tabla~\ref{tab:origen_movil}), lo que permite distinguir diferencias sistemáticas entre modelos de las que dependen de una ventana de prueba particular.
+La elección de un esquema de \emph{holdout} simple en lugar de validación cruzada deliberada merece justificación. La validación cruzada con $k$ pliegues aleatorios es inadmisible aquí porque rompería el orden temporal. Como verificación de estabilidad, el desempeño se evalúa además mediante validación de origen móvil: se fijan cuatro cortes sucesivos (semanas $52$, $64$, $76$ y $88$ del panel) y en cada uno se reestiman los modelos usando únicamente las semanas anteriores, incluida la selección de hiperparámetros del Random Forest, que se repite en cada corte con una validación interna sobre ese mismo pasado; la media del cuadrante también se calcula solo con el pasado de cada corte. Cada corte se evalúa sobre las doce semanas siguientes con pronósticos a una semana, en los que los rezagos se actualizan con lo observado hasta la semana anterior. Se reportan las fechas, los tamaños y el RMSE de cada corte (Tabla~\ref{tab:origen_movil}), lo que permite distinguir diferencias sistemáticas entre modelos de las que dependen de una ventana de prueba particular.
 
 Un caso particular exige tratamiento explícito. El FE de cuadrante y semana no resulta evaluable fuera de muestra cuando las semanas de prueba no están representadas en el entrenamiento, situación que la partición temporal estricta garantiza por construcción: los efectos fijos $\tau_s$ de las semanas de prueba no están estimados y el modelo no puede generar predicción para ellas. La consecuencia no es un defecto del estimador sino una incompatibilidad estructural entre efectos fijos temporales y validación prospectiva; la especificación se conserva por su valor descriptivo dentro de muestra y se excluye de la comparación predictiva, en la que participan \emph{Pooled} OLS, FE de cuadrante, Random Forest y los dos pronósticos de referencia.
 
@@ -987,15 +1003,37 @@ Como verificación complementaria, el aporte de la dimensión espacial al pronó
 
 \subsection{Ajuste de hiperparámetros}
 \label{sec:ajuste_hiperparametros}
-En Random Forest se ajustan los dos hiperparámetros que controlan el grado de regularización: el número de variables candidatas en cada división (\texttt{mtry}) y el tamaño mínimo de los nodos terminales. Se evalúa una grilla de $6\times4$ combinaciones ($\texttt{mtry}\in\{2,4,6,9,13,18\}$, donde $18$ equivale a usar todas las predictoras, y tamaño mínimo de nodo $\in\{5,10,20,50\}$), con $500$ árboles y semilla fija. Para no consumir información del conjunto de prueba, la selección se hace con una \textit{validación temporal interna}: cada combinación se estima con el $85$~\% inicial de las semanas de entrenamiento (hasta el 2 de junio de 2025) y se evalúa en las semanas de entrenamiento restantes; el error \emph{out-of-bag} se reporta como referencia. La combinación de menor error de validación interna se reestima con todo el entrenamiento y $1\,000$ árboles, y es la que se evalúa en prueba. El resultado se presenta en la Tabla~\ref{tab:tuning_rf} y la Figura~\ref{fig:tuning_rf}.
+En Random Forest se ajustan los dos hiperparámetros que controlan el grado de regularización: el número de variables candidatas en cada división (\texttt{mtry}) y el tamaño mínimo de los nodos terminales. Se evalúa una grilla de $6\times4$ combinaciones ($\texttt{mtry}\in\{2,4,6,9,12,16\}$, donde $16$ equivale a usar todas las predictoras, y tamaño mínimo de nodo $\in\{5,10,20,50\}$), con $500$ árboles y semilla fija. Para no consumir información del conjunto de prueba, la selección se hace con una \textit{validación temporal interna}: cada combinación se estima con el $85$~\% inicial de las semanas de entrenamiento (hasta el 2 de junio de 2025) y se evalúa en las semanas de entrenamiento restantes. El error \emph{out-of-bag} no se usa para seleccionar, porque mezcla semanas próximas entre la muestra y las observaciones excluidas. La combinación de menor error de validación interna se reestima con todo el entrenamiento y $1\,000$ árboles, y es la que se evalúa en prueba. El resultado se presenta en la Tabla~\ref{tab:tuning_rf} y la Figura~\ref{fig:tuning_rf}.
 
 En SAR y SEM el ajuste no es de hiperparámetros en sentido estricto sino de \textit{especificación}: se compara el AIC entre ambas estructuras de dependencia y frente al OLS de referencia sobre el mismo corte transversal, y se selecciona la que minimiza el criterio. Dado que SAR y SEM no son modelos anidados entre sí, el AIC es el instrumento adecuado para discriminarlos, en tanto penaliza la complejidad sin requerir una relación jerárquica entre especificaciones.
 
-La robustez de los modelos de corte transversal se verifica mediante cuatro pruebas complementarias, orientadas a descartar que el alto ajuste observado sea un artefacto de colinealidad estructural con el tamaño del cuadrante. La primera examina la correlación entre los predictores retenidos y el número de usuarios del cuadrante, candidato natural a variable de confusión por estar asociado simultáneamente a la cantidad de infraestructura y al numerador del indicador. La segunda reestima el modelo incorporando $\log(1+\texttt{cantidad\_usuarios\_cuadrante})$ como control explícito y mide la caída del $R^2$: una caída pequeña indica que la capacidad explicativa no provenía del tamaño. La tercera cuantifica la pérdida de ajuste al excluir cada predictor por separado, lo que detecta si el resultado depende de una única variable dominante. La cuarta es una prueba de permutación con $500$ remuestreos de la respuesta, que construye la distribución empírica del $R^2$ bajo la hipótesis nula de ausencia de relación y permite asignar un valor~$p$ empírico al ajuste observado. La quinta es una validación cruzada espacial: los cuadrantes se dividen en cinco franjas de latitud y cada franja se predice con el modelo estimado sobre las otras cuatro, lo que mide si el patrón explicado es transferible entre zonas o solo describe la muestra. El detalle de sensibilidad y los resultados de las cuatro pruebas se documentan en los Apéndices~\ref{app:html-etapa5-01} (\href{\urlEtapaCincoUno}{informe HTML}) y~\ref{app:html-etapa5-02} (\href{\urlEtapaCincoDos}{informe HTML}).
+La robustez de los modelos de corte transversal se verifica mediante cinco pruebas complementarias, orientadas a descartar que el alto ajuste observado sea un artefacto de colinealidad estructural con el tamaño del cuadrante. La primera examina la correlación entre los predictores retenidos y el número de usuarios del cuadrante, candidato natural a variable de confusión por estar asociado simultáneamente a la cantidad de infraestructura y al numerador del indicador. La segunda reestima el modelo incorporando $\log(1+\texttt{cantidad\_usuarios\_cuadrante})$ como control explícito y mide la caída del $R^2$: una caída pequeña indica que la capacidad explicativa no provenía del tamaño. La tercera cuantifica la pérdida de ajuste al excluir cada predictor por separado, lo que detecta si el resultado depende de una única variable dominante. La cuarta es una prueba de permutación de la respuesta que repite la selección \emph{stepwise} en cada permutación, de modo que la distribución empírica del $R^2$ bajo la hipótesis nula de ausencia de relación incorpora el sobreajuste propio de la selección y permite asignar un valor~$p$ empírico al ajuste observado. La quinta es una validación cruzada espacial: los cuadrantes se dividen en cinco franjas de latitud y cada franja se predice con un modelo cuya selección de variables y estimación se hacen únicamente con las otras cuatro; los modelos SAR y SEM se evalúan del mismo modo, prediciendo la franja retenida con la forma reducida $(\mathbf{I}-\hat\rho\mathbf{W})^{-1}\mathbf{X}\hat{\boldsymbol\beta}$ y con la tendencia $\mathbf{X}\hat{\boldsymbol\beta}$, respectivamente, sin usar las respuestas de esa franja. Esta prueba mide si el patrón explicado es transferible entre zonas o solo describe la muestra. El detalle de sensibilidad y los resultados de las cinco pruebas se documentan en los Apéndices~\ref{app:html-etapa5-01} (\href{\urlEtapaCincoUno}{informe HTML}) y~\ref{app:html-etapa5-02} (\href{\urlEtapaCincoDos}{informe HTML}).
 
 \subsection{Evaluación de desempeño}
 \label{sec:evaluacion_desempeno}
-Sobre el conjunto de prueba se calculan $RMSE$, $MAE$ y $R^2$ en escala $\log(1+y)$, además del MASE (MAE del modelo dividido por el MAE de la persistencia) y del MAE en la escala original del indicador. La significancia de las diferencias de error entre modelos se contrasta con la prueba de Diebold--Mariano~\cite{diebold1995} sobre los errores cuadráticos con horizonte de una semana. Las tres métricas se reportan conjuntamente porque informan sobre aspectos distintos del error y su lectura aislada puede inducir a conclusiones opuestas. El $RMSE$ penaliza cuadráticamente las desviaciones grandes y es, por tanto, sensible a los fallos de pronóstico en las semanas de mayor afectación, que son precisamente las de mayor relevancia operativa. El $MAE$ pondera todos los errores por igual y resulta más representativo del desempeño típico. El $R^2$, calculado como el cuadrado de la correlación entre observado y predicho, mide la proporción de variabilidad ordenada correctamente, con independencia de un posible sesgo de nivel. Un modelo puede, en consecuencia, presentar menor $RMSE$ y menor $R^2$ que otro: el primero sería más preciso en magnitud y el segundo mejor en ordenamiento relativo de cuadrantes, y la elección entre ambos depende del uso previsto.
+Sobre el conjunto de prueba se calculan, en escala $\log(1+y)$, el $RMSE$, el $MAE$, el cuadrado de la correlación de Pearson ($r^2$), el $R^2$ predictivo, el MAE relativo a la persistencia y el MASE de la ecuación~\eqref{eq:mase}. Todas las métricas se calculan sobre una \emph{muestra común}: las mismas llaves cuadrante--semana para todos los modelos, que excluye solo las observaciones de cuadrantes sin semanas con falla en el entrenamiento, para los que el efecto fijo y la media del cuadrante no están definidos; el flujo de inclusión se reporta junto con los resultados. En la escala original del indicador, los pronósticos de los modelos estimados en logaritmos se retransforman con el factor de \emph{smearing} de~\cite{duan1983}, estimado con los residuos de entrenamiento (los residuos \emph{out-of-bag} en el caso del Random Forest), porque $\exp(\hat\mu)-1$ no es el valor esperado de $Y$.
+
+La significancia de las diferencias de error entre dos modelos $A$ y $B$ se contrasta con una adaptación de la prueba de Diebold--Mariano~\cite{diebold1995} a la estructura del panel. Como los errores de los cuadrantes de una misma semana están correlacionados entre sí, la unidad de inferencia es la semana y no la fila cuadrante--semana:
+\begin{equation}
+    \begin{aligned}
+    d_s &= \frac{1}{n_s}\sum_{q=1}^{n_s} \left( e_{A,q,s}^{2} - e_{B,q,s}^{2} \right), \\
+    \mathrm{DM} &= \sqrt{\frac{T-1}{T}}\,\frac{\bar{d}}{\sqrt{\hat{\sigma}^{2}_{\mathrm{LP}}/T}},
+    \end{aligned}
+    \label{eq:dm_semanal}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $d_s$: Diferencia media de pérdida cuadrática entre los modelos $A$ y $B$ en la semana $s$; cada semana pesa lo mismo.
+    \item $e_{A,q,s}$, $e_{B,q,s}$: Errores de pronóstico de cada modelo para el cuadrante $q$ en la semana $s$.
+    \item $n_s$: Número de cuadrantes evaluados en la semana $s$.
+    \item $T$: Número de semanas de prueba; $\bar{d}$, media de $d_s$.
+    \item $\hat{\sigma}^{2}_{\mathrm{LP}}$: Varianza de largo plazo de $d_s$, estimada con el núcleo de Bartlett y $\lfloor T^{1/3}\rfloor$ rezagos.
+\end{itemize}
+El factor $\sqrt{(T-1)/T}$ es la corrección de muestra pequeña de~\cite{harvey1997} para horizonte de una semana, y el estadístico se compara con una distribución $t$ con $T-1$ grados de libertad. Con solo $T=16$ semanas de prueba la potencia del contraste es baja, por lo que se reporta también el tamaño del efecto ---la mejora porcentual del RMSE de $A$ frente a $B$--- con un intervalo de confianza del $95$~\% obtenido por remuestreo de bloques móviles de tres semanas ($2\,000$ réplicas), que conserva la dependencia temporal y la correlación entre cuadrantes de una misma semana. Un valor~$p$ alto se lee como ausencia de evidencia de mejora, no como equivalencia entre los modelos.
+
+El clasificador de ocurrencia se evalúa por su discriminación (área bajo la curva ROC y bajo la curva de precisión--exhaustividad), por su calibración (puntaje de Brier, pérdida logarítmica y tasa observada de falla por decil de probabilidad pronosticada) y por su utilidad operativa: la proporción de aciertos y de afectación capturada entre los $k$ cuadrantes de mayor probabilidad en cada semana de prueba, con $k=10$ y $k=30$ como presupuestos de atención ilustrativos. Se compara con tres referencias: la tasa histórica de falla de cada cuadrante en el entrenamiento, la persistencia (falla si la hubo la semana anterior) y una regresión logística con las mismas predictoras. Las diferencias de AUC y de Brier se acompañan de intervalos por remuestreo de bloques de semanas.
+
+Las métricas de magnitud se reportan conjuntamente porque informan sobre aspectos distintos del error y su lectura aislada puede inducir a conclusiones opuestas. El $RMSE$ penaliza cuadráticamente las desviaciones grandes y es, por tanto, sensible a los fallos de pronóstico en las semanas de mayor afectación, que son precisamente las de mayor relevancia operativa. El $MAE$ pondera todos los errores por igual y resulta más representativo del desempeño típico. El $r^2$ mide la proporción de variabilidad ordenada correctamente, con independencia de un posible sesgo de nivel, mientras que el $R^2$ predictivo sí penaliza ese sesgo y es negativo cuando el modelo pronostica peor que la media de entrenamiento. Un modelo puede, en consecuencia, presentar menor $RMSE$ y menor $r^2$ que otro: el primero sería más preciso en magnitud y el segundo mejor en ordenamiento relativo de cuadrantes, y la elección entre ambos depende del uso previsto.
 
 Debe subrayarse que todas las métricas se expresan en escala logarítmica, lo que las hace comparables entre modelos del mismo indicador pero no entre SAIDI y SAIFI, cuyas escalas difieren en varios órdenes de magnitud, ni con errores expresados en horas-usuario. Los valores observados frente a los predichos del mejor modelo de cada indicador se presentan en las Figuras~\ref{fig:saidi_pred_obs} y~\ref{fig:saifi_pred_obs} (Sección~\ref{sec:resultados-etapa5}). La lectura de estos diagramas es informativa más allá del resumen numérico: la dispersión en torno a la diagonal revela si el error es homogéneo a lo largo del rango o si se concentra en los valores extremos, diagnóstico que ninguna de las tres métricas agregadas permite por sí sola.
 
@@ -1003,9 +1041,67 @@ Debe subrayarse que todas las métricas se expresan en escala logarítmica, lo q
 \label{sec:comparacion_modelos}
 La comparación distingue dos usos que responden a preguntas diferentes y que, por tanto, no admiten un criterio único de selección. El primero es el \textit{pronóstico semanal}, evaluado por el menor $RMSE$ en el conjunto de prueba entre \emph{Pooled} OLS, FE de cuadrante y Random Forest, con la condición adicional de superar de forma significativa a los dos pronósticos de referencia. El segundo es la \textit{explicación estructural} del patrón territorial, evaluada por el menor AIC entre OLS, SAR y SEM sobre el corte transversal ponderado.
 
-Esta separación no es una concesión metodológica sino una consecuencia de la naturaleza del problema. Un modelo de pronóstico se juzga por su error sobre observaciones que no ha visto; un modelo estructural se juzga por la verosimilitud con que describe la generación de los datos observados y por la interpretabilidad de sus parámetros. Las métricas correspondientes no son conmensurables: un $RMSE$ en escala logarítmica sobre $2\,215$ observaciones semanales y un AIC sobre $343$ promedios por cuadrante miden objetos distintos, y compararlos directamente carecería de sentido. Por esta misma razón el Capítulo~\ref{sec:resultados} advierte explícitamente contra la lectura conjunta del $R^2$ de ambas escalas.
+Esta separación no es una concesión metodológica sino una consecuencia de la naturaleza del problema. Un modelo de pronóstico se juzga por su error sobre observaciones que no ha visto; un modelo estructural se juzga por la verosimilitud con que describe la generación de los datos observados y por la interpretabilidad de sus parámetros. Las métricas correspondientes no son conmensurables: un $RMSE$ en escala logarítmica sobre $2\,212$ observaciones semanales y un AIC sobre $344$ promedios por cuadrante miden objetos distintos, y compararlos directamente carecería de sentido. Por esta misma razón el Capítulo~\ref{sec:resultados} advierte explícitamente contra la lectura conjunta del $R^2$ de ambas escalas.
 
 SAIDI y SAIFI se reportan por separado, lo que permite detectar si el modelo preferido coincide entre indicadores. Que no coincida es, en sí mismo, un resultado sustantivo: indicaría que la duración y la frecuencia de interrupción obedecen a estructuras de dependencia distintas y que una política de gestión única para ambos indicadores estaría mal especificada. Las tablas numéricas completas se concentran en el Capítulo~\ref{sec:resultados} y en los Apéndices~\ref{app:html-etapa5-01} (\href{\urlEtapaCincoUno}{informe HTML}) y~\ref{app:html-etapa5-02} (\href{\urlEtapaCincoDos}{informe HTML}).
+
+\subsection{Descomposición territorial del SAIDI}
+\label{sec:descomposicion_saidi_met}
+El SAIDI operativo de un cuadrante combina tres magnitudes de naturaleza distinta: el número de eventos, su duración y el número de usuarios que alcanza cada uno. Un mismo factor estructural puede actuar sobre una de ellas y no sobre las otras, o en sentidos opuestos, de modo que su efecto sobre el índice compuesto oculte mecanismos diferentes. Para separarlos, el SAIDI acumulado de cada cuadrante se aproxima por el producto de sus tres componentes medios,
+\begin{equation}
+    \begin{aligned}
+    \log \tilde{S}_{q} = \log F_{q} + \log D_{q} + \log U_{q},
+    \end{aligned}
+    \label{eq:descomposicion_saidi}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $\tilde{S}_{q}$: Aproximación del SAIDI operativo acumulado del cuadrante $q$ en 2024--2025.
+    \item $F_{q}$: Frecuencia, número medio de eventos por semana.
+    \item $D_{q}$: Duración media por evento, en horas.
+    \item $U_{q}$: Alcance medio por evento, en usuarios afectados.
+\end{itemize}
+La participación de cada componente en la variación territorial se mide como la razón entre su covarianza con $\log \tilde{S}_{q}$ y la varianza de este último, de modo que las tres participaciones suman uno. La asociación de los factores estructurales con cada componente se resume con la correlación de rangos de Spearman, en lugar de coeficientes de regresión múltiple, porque las variables de escala del cuadrante están fuertemente correlacionadas entre sí y sus coeficientes individuales resultan inestables.
+
+\subsection{Sensibilidad a la definición de vecindad}
+\label{sec:sensibilidad_w_met}
+Los modelos SAR y SEM dependen de la matriz de pesos espaciales $\mathbf{W}$, cuya elección no es única. Para verificar que la selección del modelo y el signo de los parámetros espaciales no son un artefacto de la vecindad adoptada, los modelos de corte transversal se reestimaron con ocho definiciones de $\mathbf{W}$, todas normalizadas por filas: contigüidad tipo reina (referencia) y tipo torre; los cuatro, seis y ocho vecinos más cercanos según la distancia entre centroides; una banda de distancia igual a la mínima que conecta a todos los cuadrantes ($10{.}9$~km) y otra de $1{.}5$ veces esa distancia; y una matriz de inverso de la distancia dentro de esta última banda.
+
+\subsection{Pronóstico incondicional de la afectación}
+\label{sec:pronostico_incondicional}
+Los modelos de magnitud se estiman sobre las semanas con al menos una falla y el clasificador estima la probabilidad de que esa falla ocurra. Para el operador, sin embargo, la cantidad relevante es el valor esperado de la afectación de cada cuadrante en la semana siguiente, ocurra o no una falla. Ambos componentes se combinan en un pronóstico incondicional,
+\begin{equation}
+    \begin{aligned}
+    \hat{Y}_{q,s} = \hat{p}_{q,s} \left[ \exp\left( \hat{\mu}_{q,s} \right) \hat{\varphi} - 1 \right],
+    \end{aligned}
+    \label{eq:pronostico_incondicional}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $\hat{Y}_{q,s}$: Pronóstico incondicional del indicador operativo del cuadrante $q$ en la semana $s$, en su escala original.
+    \item $\hat{p}_{q,s}$: Probabilidad de falla estimada por el clasificador Random Forest.
+    \item $\hat{\mu}_{q,s}$: Pronóstico de $\log(1+Y_{q,s})$ del modelo de efectos fijos de cuadrante, estimado sobre las semanas con falla.
+    \item $\hat{\varphi}$: Factor de corrección por retransformación de Duan, igual al promedio de $\exp(\hat{e})$ sobre los residuos del modelo de magnitud.
+\end{itemize}
+El pronóstico se evalúa sobre todas las semanas del periodo de prueba, con y sin falla, en la escala original del indicador y frente a la persistencia y al promedio histórico del cuadrante, que en esta evaluación también incluye las semanas sin falla. Como alternativa de un solo paso se estima un modelo lineal generalizado con distribución Tweedie y enlace logarítmico, adecuado para variables continuas con masa en cero, cuyo parámetro de potencia se elige por el menor error en las últimas doce semanas del entrenamiento.
+
+\subsection{Validación de la priorización territorial}
+\label{sec:validacion_priorizacion}
+El componente territorial se destina a ordenar los cuadrantes según su contribución esperada a la afectación, con el fin de focalizar el mantenimiento preventivo, la poda y la inversión. Un orden de esta naturaleza solo tiene valor operativo si, construido con información pasada, anticipa dónde se concentrará la afectación en el periodo siguiente. Por ello, además de las métricas de error de la Sección~\ref{sec:evaluacion_desempeno}, la priorización se valida fuera de muestra: los cuadrantes se ordenan con la afectación acumulada de 2024 y se evalúa la proporción de la afectación de 2025 que concentran los primeros $k$ cuadrantes de ese orden,
+\begin{equation}
+    \begin{aligned}
+    C(k) = \frac{\sum_{q \in \mathcal{T}_k} Y_{q}^{2025}}{\sum_{q=1}^{Q} Y_{q}^{2025}},
+    \end{aligned}
+    \label{eq:curva_captura}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $C(k)$: Proporción de la afectación de 2025 capturada por los $k$ primeros cuadrantes.
+    \item $\mathcal{T}_k$: Conjunto de los $k$ cuadrantes con mayor afectación acumulada en 2024.
+    \item $Y_{q}^{2025}$: Suma del indicador operativo ($\mathrm{SAIDI}$ o $\mathrm{SAIFI}$) del cuadrante $q$ en las semanas de 2025.
+    \item $Q$: Número de cuadrantes del panel.
+\end{itemize}
+La curva $C(k)$ se contrasta con tres referencias: la selección aleatoria, cuyo valor esperado es $k/Q$; el orden por número de usuarios del cuadrante, que representa una priorización basada solo en la exposición; y el orden óptimo, construido con los valores observados de 2025, que actúa como cota superior. La estabilidad del orden se evalúa mediante un \emph{bootstrap} sobre las semanas de 2024 ($500$ réplicas), del que se obtienen la frecuencia con la que cada cuadrante permanece entre los diez primeros y el índice de Jaccard entre el conjunto remuestreado y el original.
 
 \subsection{Interpretación de resultados}
 \label{sec:interpretacion_resultados_etapa5}
@@ -1019,12 +1115,13 @@ El criterio de interpretación adoptado es, en consecuencia, de \textit{triangul
 \label{sec:resultados_etapa5_met}
 La Etapa~5 produce seis modelos estimados por indicador y escala de análisis: cuatro especificaciones de panel semanal y dos espaciales formales, para SAIDI y SAIFI respectivamente. Su valor no reside únicamente en el modelo de mejor desempeño, sino en la comparación sistemática entre especificaciones bajo una matriz de diseño homologada, que permite atribuir las diferencias observadas a la estructura de dependencia y no a decisiones arbitrarias de preparación de datos.
 
-\textit{Resultado:} modelos de SAIDI y SAIFI entrenados, validados en \emph{holdout} temporal, contrastados con especificaciones espaciales formales y sometidos a verificación de robustez frente a colinealidad estructural.
+\textit{Resultado:} modelos de SAIDI y SAIFI entrenados, validados en \emph{holdout} temporal, contrastados con especificaciones espaciales formales y sometidos a verificación de robustez frente a colinealidad estructural, clima extremo y definición de la vecindad; pronóstico incondicional de la afectación; descomposición territorial del SAIDI, y priorización validada fuera de muestra.
 
 \textit{Entregables:}
 \begin{itemize}
     \item \texttt{Etapa5\_01\_modelo\_SAIDI\_espacial.html}, con la estimación, validación, diagnóstico de supuestos y pruebas de robustez del modelo de duración (Apéndice~\ref{app:html-etapa5-01}; \href{\urlEtapaCincoUno}{informe HTML}).
     \item \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html}, con el análisis equivalente para el modelo de frecuencia (Apéndice~\ref{app:html-etapa5-02}; \href{\urlEtapaCincoDos}{informe HTML}).
+    \item Los informes de los análisis de clima extremo, validación de la priorización, pronóstico incondicional, descomposición del SAIDI y sensibilidad a la matriz de vecindad (Apéndices~\ref{app:html-etapa4-03} a~\ref{app:html-etapa5-08}).
 \end{itemize}
 
 \section{Etapa 6 – Cierre metodológico, documentación y reportes}
@@ -1042,9 +1139,9 @@ El criterio de organización privilegia la comparabilidad sobre la exhaustividad
 
 \subsection{Métricas de desempeño}
 \label{sec:metricas_desempeno}
-Sobre el conjunto de prueba se calcularon RMSE, MAE y $R^2$ en escala $\log(1+y)$ para los cuatro modelos de panel, y AIC para los modelos espaciales SAR/SEM, siguiendo las definiciones formalizadas en la Sección~\ref{sec:metodos-modelos} y los criterios de lectura de la Sección~\ref{sec:evaluacion_desempeno}.
+Sobre el conjunto de prueba se calcularon RMSE, MAE, $r^2$, $R^2$ predictivo y MASE en escala $\log(1+y)$ para los modelos de panel evaluables, y AIC para los modelos espaciales SAR/SEM, siguiendo las definiciones formalizadas en la Sección~\ref{sec:metodos-modelos} y los criterios de lectura de la Sección~\ref{sec:evaluacion_desempeno}.
 
-A estas métricas se añadió una verificación de significancia empírica sobre el corte transversal, consistente en contrastar el $R^2$ observado contra la distribución generada por $500$ permutaciones aleatorias de la respuesta. Esta prueba responde a una preocupación específica de los modelos estimados sobre $343$ observaciones con un número no trivial de predictores: parte del ajuste podría deberse a capacidad de sobreajuste y no a una relación real. La distribución de permutación proporciona el punto de comparación correcto, puesto que preserva la estructura de la matriz de predictores y destruye únicamente su asociación con la respuesta.
+A estas métricas se añadió una verificación de significancia empírica sobre el corte transversal, consistente en contrastar el $R^2$ observado contra la distribución generada por $200$ permutaciones aleatorias de la respuesta, repitiendo en cada una la selección \emph{stepwise}. Esta prueba responde a una preocupación específica de los modelos estimados sobre $344$ observaciones con un número no trivial de predictores: parte del ajuste podría deberse a capacidad de sobreajuste y no a una relación real. La distribución de permutación proporciona el punto de comparación correcto, puesto que preserva la estructura de la matriz de predictores y destruye únicamente su asociación con la respuesta.
 
 \subsection{Hallazgos principales}
 \label{sec:hallazgos_principales}
@@ -1054,7 +1151,7 @@ La consolidación distingue dos clases de hallazgo que conviene no confundir. Lo
 
 \subsection{Interpretación técnica y operativa}
 \label{sec:interpretacion_tecnica_operativa}
-Los resultados se tradujeron en implicaciones para la gestión operativa del operador de red, priorizando aquellas variables sobre las cuales existe margen de acción. Esta distinción es central: no todas las variables relevantes son accionables. La exposición sísmica y la distancia al epicentro son determinantes del riesgo pero no modificables; la vegetación es modificable mediante poda programada; la densidad de red, la antigüedad de los activos y el ritmo de reposición son directamente gestionables mediante planes de inversión. Una recomendación operativa útil debe, por tanto, ordenar las variables no solo por importancia estadística sino por el cruce entre importancia y capacidad de intervención.
+Los resultados se tradujeron en implicaciones para la gestión operativa del operador de red, priorizando aquellas variables sobre las cuales existe margen de acción. Esta distinción es central: no todas las variables relevantes son accionables. La exposición sísmica no es modificable; la vegetación lo es mediante poda programada; la densidad de red y el ritmo de reposición de activos dependen de los planes de inversión. Como los modelos estimados son observacionales, la relevancia de una variable indica asociación y no el efecto de intervenirla: las recomendaciones que se derivan se formulan como hipótesis que el operador debe contrastar con criterio de ingeniería, con su historial de intervenciones y, cuando sea posible, con una prueba piloto. Una recomendación útil debe, además, ordenar las variables no solo por importancia estadística sino por el cruce entre importancia y capacidad de intervención.
 
 La traducción también exige explicitar el horizonte de uso de cada modelo. El modelo de panel semanal sirve a la programación de cuadrillas y a la anticipación de semanas críticas; el modelo espacial de corte transversal sirve a la priorización de inversión en cuadrantes estructuralmente vulnerables, una decisión de ciclo anual o plurianual. Confundir ambos horizontes llevaría a usar un modelo de ordenamiento territorial para decisiones operativas de corto plazo, para las que no fue validado. Esta interpretación se desarrolla en el Capítulo~\ref{sec:discusion}.
 
@@ -1070,7 +1167,7 @@ El análisis crítico de fortalezas, limitaciones y comparaciones entre los mode
 
 \subsection{Limitaciones y trabajos futuros}
 \label{sec:limitaciones_etapa6}
-Las limitaciones identificadas a lo largo del proyecto y las líneas de trabajo futuro se consolidan en la Sección~\ref{sec:trabajo-futuro}. Las de origen metodológico quedan ya señaladas en este capítulo y conviene enumerarlas aquí para trazabilidad: el sesgo de cobertura del emparejamiento 2021--2023, que redujo el horizonte de modelado a dos años (Sección~\ref{sec:particion_train_test}); la señal climática contemporánea débil en el grano semanal, que limita el aporte del bloque meteorológico sin rezagos de mayor orden (Sección~\ref{sec:construccion_predictoras}); la restricción del modelado a semanas con falla, que deja fuera el componente de ocurrencia (Sección~\ref{sec:segmentacion_analitica}); la imposibilidad de validar fuera de muestra la especificación con efectos fijos dobles (Sección~\ref{sec:validacion_modelo}); y la brevedad del \emph{holdout}, que impide evaluar estabilidad interanual (Sección~\ref{sec:ajuste_hiperparametros}).
+Las limitaciones identificadas a lo largo del proyecto y las líneas de trabajo futuro se consolidan en la Sección~\ref{sec:trabajo-futuro}. Las de origen metodológico quedan ya señaladas en este capítulo y conviene enumerarlas aquí para trazabilidad: el sesgo de cobertura del emparejamiento 2021--2023, que redujo el horizonte de modelado a dos años (Sección~\ref{sec:particion_train_test}); la señal climática contemporánea débil en el grano semanal, que limita el aporte del bloque meteorológico sin rezagos de mayor orden (Sección~\ref{sec:construccion_predictoras}); la restricción del modelado de magnitud a semanas con falla, que obliga a modelar la ocurrencia por separado (Sección~\ref{sec:segmentacion_analitica}); la construcción del indicador operativo a partir del panel diario, cuyos efectos se cuantifican en el Apéndice~\ref{app:robustez_indicador}; la ausencia de histórico del inventario y de fechas de modificación anteriores al periodo, que impidió usar la antigüedad de los activos (Sección~\ref{sec:matrices_diseno}); la imposibilidad de validar fuera de muestra la especificación con efectos fijos dobles (Sección~\ref{sec:validacion_modelo}); y la brevedad del \emph{holdout}, que impide evaluar estabilidad interanual (Sección~\ref{sec:ajuste_hiperparametros}).
 
 \subsection{Resultados y entregables de la etapa}
 \label{sec:resultados_etapa6_met}

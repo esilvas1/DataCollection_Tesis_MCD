@@ -10,14 +10,14 @@ La unidad de integración corresponde a un activo eléctrico por día, lo que de
 
 \subsection{Lógica estructural}
 
-La construcción del conjunto de datos sigue la siguiente lógica:
+El conjunto de datos se construyó en tres pasos:
 
 \begin{itemize}
-    \item Se crea un calendario diario para el periodo comprendido entre el 01-01-2021 y el 31-12-2025.
+    \item Se creó un calendario diario entre el 1 de enero de 2021 y el 31 de diciembre de 2025.
     
-    \item Se construye el producto cartesiano entre el inventario de activos eléctricos y el calendario diario, garantizando la presencia de todos los activos en cada día del periodo de análisis.
+    \item Se construyó el producto cartesiano entre el inventario de activos eléctricos y el calendario, de modo que cada activo está presente en todos los días del periodo.
     
-    \item Sobre esta estructura base se integran:
+    \item Sobre esa estructura se integraron:
     \begin{itemize}
         \item Variables de red.
         \item Variables climáticas agregadas a nivel de activo por día.
@@ -28,7 +28,7 @@ La construcción del conjunto de datos sigue la siguiente lógica:
 
 \subsection{Definición de variables de evento}
 
-Las variables de eventos se definen así:
+Las variables de evento se definieron así:
 
 \begin{itemize}
     \item \textit{Duración} (\texttt{DURACION\_min}, en minutos): minutos de interrupción del activo en el día de observación, prorrateados según la intersección de \texttt{[Fecha\_Desconexion, Fecha\_Conexion]} con ese día calendario. Si el evento cruza varios días, su duración se reparte entre ellos; si hay varios eventos el mismo día, se suman. No se asigna la duración total del evento solo al día de desconexión. En días sin falla, el valor es $0$.
@@ -92,7 +92,7 @@ Variables objetivo &
 \subsection{Variables incorporadas al panel cuadrante--semana}
 
 Para complementar la caracterización técnica, demográfica y socioeconómica
-del panel de modelado se incorporaron 16 variables adicionales.
+del panel de modelado se incorporaron dieciséis variables adicionales.
 \texttt{usuarios\_totales} permite construir los indicadores SAIDI y SAIFI
 con el denominador mensual del sistema, mientras que
 \texttt{cantidad\_usuarios\_cuadrante} representa la escala local de
@@ -114,10 +114,11 @@ SAIFI.
 
 Como salvedad metodológica, las fechas corresponden a
 \texttt{TT2\_FMODIFICACION} y no necesariamente a la instalación original
-del activo. Para evitar fuga de información, en los modelos predictivos
-solo deben emplearse modificaciones conocidas antes de la semana que se
-pretende pronosticar. Finalmente, SAIDI y SAIFI se incorporan como variables
-objetivo y no como predictoras contemporáneas.
+del activo, de modo que la edad derivada mide la distancia a la última
+intervención registrada. Para evitar fuga de información, los modelos
+predictivos solo emplean modificaciones conocidas antes de la semana
+pronosticada. SAIDI y SAIFI se incorporan como variables respuesta y no como
+predictoras contemporáneas.
 
 Adicionalmente, el panel cuadrante--semana incorpora variables de exposición territorial provenientes de las fuentes externas descritas más adelante (sismicidad y vegetación): \texttt{sismos\_conteo} y \texttt{dist\_sismo\_prom\_km} (sismicidad, SGC); y \texttt{ndvi\_semanal} junto con sus derivadas \texttt{log\_ndvi} y \texttt{cat\_ndvi} (vegetación, NDVI/MODIS). Se suman también las métricas de topología de red \texttt{longitud\_red\_km}, densidad de nodos terminales y número de circuitos por cuadrante.
 
@@ -139,10 +140,10 @@ donde:
 \section{Procedencia de la información}
 
 \paragraph{Origen de la información.}
-La empresa origen de los datos operativos y técnicos es Centrales Eléctricas de Norte de Santander S.A E.S.P (Cens S.A E.S.P).
+Los datos operativos y técnicos provienen de Centrales Eléctricas de Norte de Santander S.A. E.S.P. (CENS S.A. E.S.P.).
 
 \paragraph{Lugar donde se registra la información.}
-Sistemas corporativos (BRAE, OMS y GIS). Para variables climatológicas se utiliza la fuente institucional externa NASA POWER~\cite{ref48}.
+La información operativa se registra en los sistemas corporativos de la empresa (BRAE, OMS y GIS), y la climatológica proviene de la fuente institucional externa NASA POWER~\cite{ref48}.
 
 La información se registra en la red de distribución eléctrica de Norte de Santander, con soporte de localización geográfica por activo y por cuadrante.
 

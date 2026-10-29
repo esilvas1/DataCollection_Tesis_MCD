@@ -1,0 +1,20 @@
+\begin{tabular}{l r r}
+\toprule
+& \textbf{SAIDI} & \textbf{SAIFI} \\
+\midrule
+AIC OLS & $-1238{.}1$ & $\mathbf{-4278{.}1}$ \\
+AIC SAR & $\mathbf{-1275{.}8}$ & $-4276{.}1$ \\
+AIC SEM & $-1236{.}4$ & $-4278{.}1$ \\
+$\hat\rho$ (SAR) & $-0{.}322$ ($p<0{.}001$) & $-0{.}002$ ($p=0{.}971$) \\
+$\hat\lambda$ (SEM) & $0{.}071$ ($p=0{.}547$) & $-0{.}145$ ($p=0{.}159$) \\
+$R^2$ OLS completo (en muestra) & 0.890 & 0.836 \\
+$R^2$ OLS \emph{stepwise} (en muestra) & 0.889 & 0.835 \\
+\addlinespace
+\multicolumn{3}{l}{\textit{$R^2$ de validación cruzada espacial (5 franjas de latitud)}} \\
+\quad OLS \emph{stepwise} (selección dentro de cada franja) & 0.397 & 0.751 \\
+\quad OLS completo & 0.396 & 0.741 \\
+\quad SAR (forma reducida) & 0.389 & 0.732 \\
+\quad SEM (tendencia) & 0.390 & 0.742 \\
+Permutación con selección repetida (valor $p$) & $0{.}005$ & $0{.}005$ \\
+\bottomrule
+\end{tabular}

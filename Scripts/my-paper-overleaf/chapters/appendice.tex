@@ -121,7 +121,7 @@ parametros_nasa = ("PRECTOT", "T2M", "T2M_MAX", "T2M_MIN", "RH2M", "WS2M")
 \section{Informes reproducibles (HTML)}
 \label{app:informes-html}
 
-Los procedimientos de extracción, integración y análisis exploratorio descritos en la metodología se documentan de forma reproducible en informes HTML publicados en el repositorio del proyecto (GitHub Pages). En el cuerpo del documento se cita el apartado correspondiente de este apéndice; los hipervínculos a cada informe se concentran aquí.
+Los procedimientos de extracción, integración, análisis exploratorio y modelado descritos en la metodología se documentan de forma reproducible en informes HTML publicados en el repositorio del proyecto (GitHub Pages). En el cuerpo del documento se cita el apartado correspondiente de este apéndice; los hipervínculos a cada informe se concentran aquí.
 
 \subsection{Consolidación del panel activo--día}
 \label{app:html-consolidada}
@@ -270,8 +270,32 @@ Informe \texttt{Etapa5\_02\_modelo\_SAIFI\_espacial.html}: estimación, validaci
 
 \subsection{Re-estimación final de la Etapa 5}
 \label{app:codigo-cierre}
-Scripts \texttt{Etapa2\_13\_correccion\_sismos.R} (reconstrucción de las variables sísmicas) y \texttt{Etapa5\_03\_reestimacion\_cierre.R} (especificación \emph{ex ante}, pronósticos de referencia, ajuste de hiperparámetros, origen móvil, Diebold--Mariano, modelos espaciales, componente de ocurrencia, atípicos y diccionario de variables). Generan todas las cifras de la Sección~\ref{sec:resultados-etapa5}.
+Script \texttt{Etapa2\_13\_correccion\_sismos.R} (reconstrucción de las variables sísmicas) e informe \texttt{Etapa5\_09\_reestimacion\_v3.Rmd} (especificación \emph{ex ante} sin variables con fechas posteriores, muestra común, pronósticos de referencia, ajuste de hiperparámetros, origen móvil anidado, Diebold--Mariano semanal y remuestreo por bloques, calibración y utilidad del clasificador de ocurrencia, pronóstico incondicional con retransformación de Duan, modelos espaciales con validación por franjas y trazabilidad de variables). Generan las cifras de la Sección~\ref{sec:resultados-etapa5}; reemplazan a \texttt{Etapa5\_03\_reestimacion\_cierre.R} de la versión anterior.
+
+\subsection{Panel construido por evento}
+\label{app:html-etapa2-14}
+Informe \texttt{Etapa2\_14\_panel\_por\_evento.html}: diagnóstico de la tabla de eventos (eventos múltiples por elemento y día, eventos que cruzan semanas, duraciones extremas), reconstrucción de las respuestas evento a evento y conciliación con el panel vigente (Apéndice~\ref{app:robustez_indicador}).
 \href{\urlCodigoCierre}{Abrir carpeta de código}.
+
+\subsection{Indicadores de clima extremo}
+\label{app:html-etapa4-03}
+Informe \texttt{Etapa4\_03\_clima\_extremos.html}: construcción de los indicadores de clima extremo a partir de la serie diaria de NASA POWER y su evaluación en la magnitud y en la ocurrencia de falla (Sección~\ref{sec:resultados_clima_extremo}).
+
+\subsection{Validación fuera de muestra de la priorización territorial}
+\label{app:html-etapa5-04}
+Informe \texttt{Etapa5\_04\_validacion\_priorizacion.html}: curva de captura del orden de 2024 sobre la afectación de 2025, referencias de comparación y estabilidad por \emph{bootstrap} (Sección~\ref{sec:validacion_ranking}).
+
+\subsection{Pronóstico incondicional de la afectación}
+\label{app:html-etapa5-05}
+Sección del informe \texttt{Etapa5\_09\_reestimacion\_v3.html}: combinación de la probabilidad de falla y la magnitud condicional con retransformación de Duan, modelo Tweedie y pruebas de Diebold--Mariano semanales sobre todas las semanas de prueba (Sección~\ref{sec:resultados_ocurrencia}).
+
+\subsection{Descomposición territorial del SAIDI}
+\label{app:html-etapa5-06}
+Informe \texttt{Etapa5\_06\_descomposicion\_saidi.html}: descomposición del SAIDI en frecuencia, duración y alcance de los eventos, y asociación de los factores estructurales con cada componente (Sección~\ref{sec:resultados_descomposicion}).
+
+\subsection{Sensibilidad a la matriz de vecindad}
+\label{app:html-etapa5-08}
+Informe \texttt{Etapa5\_08\_sensibilidad\_W.html}: reestimación de los modelos SAR y SEM con ocho definiciones de la matriz de vecindad (Tabla~\ref{tab:sensibilidad_w}).
 
 \subsection{Reporte técnico de priorización territorial}
 \label{app:html-etapa6-01}
@@ -326,37 +350,97 @@ Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de s
 \texttt{n\_\allowbreak{}sismos\_\allowbreak{}r50}, \texttt{dist\_\allowbreak{}sismo\_\allowbreak{}min\_\allowbreak{}km\_\allowbreak{}r50} & Sismos a menos de $50$~km del centroide; distancia al epicentro más cercano de la semana (SGC) & conteo; km & Predictora ($t-1$) \\
 \texttt{longitud\_\allowbreak{}red\_\allowbreak{}km}, \texttt{densidad\_\allowbreak{}terminales}, \texttt{n\_\allowbreak{}elementos} & Topología e infraestructura de red & km; nodos/km; elementos & Predictora \\
 \texttt{prop\_\allowbreak{}estrato\_\allowbreak{}1}, \texttt{prop\_\allowbreak{}estrato\_\allowbreak{}2}, \texttt{prop\_\allowbreak{}no\_\allowbreak{}residencial} & Composición de usuarios del cuadrante & proporción & Predictora \\
-\texttt{edad\_\allowbreak{}activo\_\allowbreak{}mas\_\allowbreak{}viejo\_\allowbreak{}anios}, \texttt{PROM\_\allowbreak{}CANT\_\allowbreak{}MODIFICACIONES} & Años desde la última modificación registrada del transformador más antiguo (negativa en el $93{.}2$~\% de las filas) y número medio de modificaciones & años; modificaciones & Predictora \\
-\texttt{SAIDI\_\allowbreak{}lag1}, \texttt{SAIFI\_\allowbreak{}lag1}, \texttt{*\_\allowbreak{}vecinos\_\allowbreak{}lag1} & Rezago propio y espacial de la respuesta & -- & Predictora \\
+\texttt{edad\_\allowbreak{}activo\_\allowbreak{}mas\_\allowbreak{}viejo\_\allowbreak{}anios}, \texttt{PROM\_\allowbreak{}CANT\_\allowbreak{}MODIFICACIONES} & Años desde la última modificación registrada del transformador más antiguo (negativa en el $93{.}2$~\% de las filas) y número medio de modificaciones; calculadas con fechas de 2026 & años; modificaciones & Excluida (información posterior) \\
+\texttt{ly\_\allowbreak{}lag1}, \texttt{ly\_\allowbreak{}vec\_\allowbreak{}lag1} & Rezago propio y espacial de la respuesta en escala $\log(1+y)$ & -- & Predictora \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+La Tabla~\ref{tab:trazabilidad_variables} complementa el diccionario con la trazabilidad de cada variable candidata: la fuente, la fecha a la que corresponde la observación, la transformación aplicada, la decisión adoptada y los modelos que la usan. Las variables del inventario de red provienen del corte vigente del inventario, que no conserva el histórico de altas y bajas; su uso en 2024--2025 supone que la red del cuadrante fue estable en ese periodo, supuesto que se declara como limitación.
+
+\begin{landscape}
+\begin{table}[!htbp]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.05}
+\caption{Trazabilidad de las variables candidatas: fuente, disponibilidad, transformación, decisión y uso}
+\label{tab:trazabilidad_variables}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=1.25\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.85\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.85\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.1\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.0\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.95\hsize\linewidth=\hsize}X @{}}
+\toprule
+\textbf{Variable} & \textbf{Fuente} & \textbf{Fecha de observación} & \textbf{Transformación} & \textbf{Decisión} & \textbf{Modelos} \\
+\midrule
+\texttt{temp\_media\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana} & NASA POWER (diario por cuadrante) & Semana $s$, disponible al cierre de $s$ & Agregación semanal; rezago de una semana & Retenida ($t-1$) & Panel (FE, OLS, RF) y ocurrencia \\
+\texttt{precip\_ma4} & NASA POWER & Semanas $s-3$ a $s$ & Media móvil de cuatro semanas; rezago de una semana & Retenida ($t-1$) & Panel y ocurrencia \\
+\texttt{ndvi\_semanal}, \texttt{ndvi\_vecinos} & MODIS MOD13Q1 & Composición de la semana $s$ & Interpolación semanal; promedio de vecinos con $\mathbf{W}$; rezago de una semana & Retenida ($t-1$) & Panel y ocurrencia \\
+\texttt{n\_sismos\_r50}, \texttt{dist\_sismo\_min\_km\_r50} & SGC & Semana $s$ & Conteo en $50$~km y distancia mínima; rezago de una semana & Retenida ($t-1$) & Panel y ocurrencia \\
+$\log(1+Y_{s-1})$ y $\log(1+\overline{Y}_{\mathcal{N},s-1})$ & Respuesta construida & Semana $s-1$ & \texttt{log1p} del nivel rezagado & Retenida & Panel \\
+\texttt{hubo\_falla} rezagada & Respuesta construida & Semana $s-1$ & Indicador $0/1$ & Retenida & Ocurrencia \\
+\texttt{longitud\_red\_km}, \texttt{densidad\_terminales}, \texttt{n\_elementos} & Inventario GIS (GTECH) & Corte vigente del inventario & Agregación por cuadrante; constante en el tiempo & Retenida (red estable en 2024--2025) & Panel, ocurrencia y corte transversal \\
+\texttt{prop\_transformadores} & Inventario GIS (GTECH) & Corte vigente del inventario & Proporción por cuadrante & Retenida solo en el corte transversal (absorbida por el efecto fijo) & Corte transversal \\
+\texttt{prop\_estrato\_1}, \texttt{prop\_estrato\_2}, \texttt{prop\_no\_residencial} & Inventarios de usuarios (SAC) & Mensual 2021--2025 & Proporción por cuadrante & Retenida & Panel, ocurrencia y corte transversal \\
+Promedios de NDVI, precipitación y distancia al sismo & NASA POWER, MODIS, SGC & 2024--2025 & Promedio del periodo por cuadrante & Retenida & Corte transversal \\
+\texttt{edad\_activo\_mas\_viejo\_anios} & Fechas de modificación del inventario & $67$~\% de las fechas en 2026 & Diferencia entre la semana y la fecha & Excluida (información posterior) & Ninguno \\
+\texttt{PROM\_CANT\_MODIFICACIONES} & Historial de modificaciones & Registros hasta 2026 & Promedio por cuadrante & Excluida (información posterior) & Ninguno \\
+\texttt{n\_eventos\_catastroficos} y su rezago espacial & UNGRD & 2019--2022 & Conteo semanal & Excluidas (sin solape con 2024--2025) & Ninguno \\
+Temperatura máxima y mínima, humedad, viento medio & NASA POWER & Semana $s$ & Agregación semanal & Excluidas por redundancia con las retenidas (Spearman y VIF) & Ninguno \\
+\texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados} & Tabla de eventos & Semana $s$ & Insumos de la respuesta & Excluidas (\emph{ex post}) & Ninguno \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\end{landscape}
+
 \section{Robustez de la construcción del indicador operativo}
 \label{app:robustez_indicador}
 
-Para verificar que la forma agregada del numerador de $\mathrm{SAIDI}_{q,s}$ no altera las conclusiones, se recalculó el indicador evento a evento, $\mathrm{SAIDI}^{\mathrm{ev}}_{q,s}=\sum_{i\in(q,s)} D_i\,NU_i\,/\,UT_{m(s)}$, a partir de \texttt{tabla\_eventos\_ajustado.csv}, asignando cada evento a su cuadrante mediante el elemento fallado (\texttt{ELEMENTO\_FALLA\_CUADRANTE\_800}) y a la semana de su fecha de desconexión. La comparación se realizó sobre las $13\,350$ semanas con falla de $D_{\mathrm{mod}}$ para las que existe la versión evento a evento (de $13\,351$); en el $95{.}5$~\% de ellas el número de eventos coincide con el registrado en el panel. La Tabla~\ref{tab:robustez_indicador} resume la concordancia.
+El panel de modelado construye las respuestas a partir del panel activo--día, y esa construcción tiene tres rasgos que pueden afectar al indicador. Primero, cuando un mismo elemento registra varios eventos en un día, el panel diario suma su frecuencia y su duración pero conserva los usuarios afectados de uno solo de ellos. Segundo, el SAIDI operativo semanal es el producto de totales semanales, $\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}/UT_{m(s)}$, y no la suma de duración por usuarios de cada evento. Tercero, la frecuencia y los usuarios se asignan a la semana en que inicia el evento, mientras que la duración se distribuye entre los días que abarca. Para cuantificar el efecto de estas decisiones se reconstruyeron las respuestas directamente desde \texttt{tabla\_eventos\_ajustado.csv} con una sola regla temporal ---cada evento completo se asigna a la semana en que inicia--- y con la forma por evento del indicador,
+\begin{equation}
+    \begin{aligned}
+    \mathrm{SAIDI}^{\mathrm{ev}}_{q,s} &= \frac{\sum_{i \in (q,s)} D_i\,NU_i}{UT_{m(s)}}, \\[4pt]
+    \mathrm{SAIFI}^{\mathrm{ev}}_{q,s} &= \frac{\sum_{i \in (q,s)} NU_i}{UT_{m(s)}},
+    \end{aligned}
+    \label{eq:indicador_por_evento}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $i \in (q,s)$: Eventos cuyo elemento fallado pertenece al cuadrante $q$ y que inician en la semana $s$.
+    \item $D_i$: Duración del evento $i$, en horas.
+    \item $NU_i$: Usuarios afectados por el evento $i$.
+    \item $UT_{m(s)}$: Usuarios totales del operador en el mes de inicio de la semana $s$.
+\end{itemize}
+El procedimiento y sus verificaciones se documentan en el informe \texttt{Etapa2\_14\_panel\_por\_evento}. La Tabla~\ref{tab:robustez_indicador} resume el diagnóstico de la tabla de eventos y la comparación entre ambas construcciones.
 
 \begin{table}[!htbp]
 \centering\small
-\caption{Concordancia entre la versión agregada y la versión evento a evento de $\mathrm{SAIDI}_{q,s}$ ($D_{\mathrm{mod}}$, semanas con falla)}
+\caption{Diagnóstico de la tabla de eventos 2024--2025 y comparación entre el panel vigente y el panel construido por evento}
 \label{tab:robustez_indicador}
 \begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r}
 \toprule
 \textbf{Medida} & \textbf{Valor} \\
 \midrule
-Semanas con falla con un único evento (\%) & $46{.}3$ \\
-Correlación de Spearman entre versiones & $0{.}874$ \\
-Coincidencia del grupo de 20 cuadrantes con mayor $\mathrm{SAIDI}$ promedio (\%) & $65$ \\
-Razón mediana entre la versión agregada y la versión evento a evento & $1{.}80$ \\
-Rango intercuartílico de la razón & $1{.}00$--$4{.}67$ \\
+\multicolumn{2}{l}{\textit{Tabla de eventos ($39\,272$ eventos que inician en 2024--2025)}} \\
+Eventos en un elemento--día con más de un evento & $2\,444$ ($6{.}2$~\%) \\
+Usuarios afectados de los eventos no conservados en el panel diario & $4\,095\,442$ ($36{.}6$~\%) \\
+Eventos que terminan en una semana posterior a la de inicio & $3\,892$ ($9{.}9$~\%) \\
+Horas de interrupción de esos eventos (\% del total) & $59{.}1$ \\
+Eventos de más de $24$ horas & $8\,987$ ($22{.}9$~\%) \\
+\addlinespace
+\multicolumn{2}{l}{\textit{Comparación entre construcciones (semanas con falla, $D_{\mathrm{mod}}$)}} \\
+Semanas con el mismo número de eventos en ambas construcciones (\%) & $95{.}5$ \\
+Correlación de Spearman semanal: SAIDI / SAIFI & $0{.}874$ / $0{.}999$ \\
+Razón mediana SAIDI vigente / por evento (rango intercuartílico) & $1{.}80$ ($1{.}00$--$4{.}67$) \\
+Razón entre los totales 2024--2025: SAIDI / SAIFI (vigente / por evento) & $11{.}3$ / $0{.}67$ \\
+\addlinespace
+\multicolumn{2}{l}{\textit{Ordenamiento territorial por cuadrante (totales 2024--2025)}} \\
+Correlación de Spearman: SAIDI / SAIFI & $0{.}974$ / $0{.}999$ \\
+Coincidencia de los 10, 20 y 30 primeros cuadrantes, SAIDI & $8$, $15$ y $25$ \\
+Coincidencia de los 10, 20 y 30 primeros cuadrantes, SAIFI & $9$, $18$ y $28$ \\
+Captura del SAIDI de 2025 por los 10 primeros cuadrantes de 2024 (\%): vigente / por evento & $59{.}6$ / $32{.}4$ \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
-La lectura de la tabla tiene dos partes. En \textit{orden}, ambas versiones son altamente concordantes: la correlación de rangos es de $0{.}87$ y trece de los veinte cuadrantes más críticos coinciden, de modo que la priorización territorial, que es el uso que este trabajo da al indicador, no depende de la forma del numerador. En \textit{nivel}, en cambio, la versión agregada sobrestima la evento a evento en las semanas con varios eventos, porque el producto de la duración total por el total de usuarios afectados excede la suma de los productos por evento; la razón vale exactamente $1$ en las semanas con un único evento ($46{.}3$~\%) y crece con el número de eventos. En consecuencia, los valores de $\mathrm{SAIDI}_{q,s}$ se interpretan como un índice de severidad relativa para ordenar y anticipar la afectación, no como minutos de SAIDI sumables al indicador de la empresa. Para $\mathrm{SAIFI}_{q,s}$ esta diferencia no existe, porque su numerador ya es la suma de los usuarios afectados por evento.
+La comparación tiene tres lecturas. La primera es de \textit{nivel}: el SAIDI vigente multiplica en conjunto por $11$ el SAIDI por evento, porque el producto de totales suma términos cruzados entre eventos distintos, y el SAIFI vigente subestima en un tercio la suma de usuarios afectados, por los usuarios que el panel diario no conserva. Los valores de $\mathrm{SAIDI}_{q,s}$ y $\mathrm{SAIFI}_{q,s}$ del panel vigente se interpretan, por tanto, como índices de severidad relativa para ordenar y anticipar la afectación, y no como horas o interrupciones sumables a los indicadores de la empresa. La segunda es de \textit{orden semanal}: en SAIFI ambas construcciones son prácticamente idénticas fila a fila (Spearman de $0{.}999$), mientras que en SAIDI la concordancia es menor ($0{.}874$), porque el producto de totales crece con el número de eventos de la semana. La tercera es de \textit{orden territorial}: los totales por cuadrante conservan el orden en ambas construcciones (Spearman de $0{.}97$ y $0{.}999$), pero el grupo de cuadrantes prioritarios de SAIDI cambia en dos de los diez primeros y en cinco de los veinte primeros, y la concentración de la afectación es muy distinta: los diez cuadrantes con mayor SAIDI de 2024 capturan el $59{.}6$~\% del SAIDI vigente de 2025, pero solo el $32{.}4$~\% del SAIDI por evento. La priorización territorial no es, por tanto, independiente de la forma del numerador: el núcleo de cuadrantes críticos se mantiene, pero la magnitud de la concentración, y con ella el beneficio esperable de focalizar la intervención, depende de la construcción del indicador. Estas cifras delimitan el alcance de las conclusiones de la Etapa~5, que se obtienen con el panel vigente.
 
 \section{Artefactos reproducibles y reportes técnicos}
 \label{app:reportes_tecnicos}
@@ -370,7 +454,7 @@ Los \textit{reportes técnicos} alineados con los entregables del proyecto son t
     \item \textit{Reporte técnico de variables relevantes y priorización territorial}: ranking de los cuadrantes con mayor contribución esperada a SAIDI y SAIFI, variables que la explican y acciones de gestión asociadas (mantenimiento, poda e inversión), orientado al uso operativo y al seguimiento de la meta regulatoria (\href{\urlEtapaSeisUno}{informe HTML}; Apéndice~\ref{app:html-etapa6-01}).
 \end{enumerate}
 
-El reporte de priorización muestra que la afectación está muy concentrada: $6$ de los $344$ cuadrantes ($1{.}7$~\%) acumulan la mitad del SAIDI operativo de 2024--2025 y $30$ cuadrantes acumulan el $80$~\%; para SAIFI, la mitad se concentra en $9$ cuadrantes y el $80$~\% en $41$. Con ese criterio, $10$ cuadrantes quedan en prioridad~A (los que acumulan el primer $50$~\% de SAIDI o de SAIFI), $37$ en prioridad~B (hasta el $80$~\%) y $297$ en seguimiento. La Tabla~\ref{tab:prioridad_a} lista los cuadrantes de prioridad~A. La probabilidad semanal de falla del clasificador validado está bien calibrada: en el decil de mayor probabilidad la tasa observada de falla en el periodo de prueba es del $90{.}7$~\%, frente al $2{.}0$~\% en el decil más bajo.
+El reporte de priorización muestra que la afectación operativa está muy concentrada: $6$ de los $344$ cuadrantes ($1{.}7$~\%) acumulan la mitad del SAIDI operativo de 2024--2025 y $30$ cuadrantes acumulan el $80$~\%; para SAIFI, la mitad se concentra en $9$ cuadrantes y el $80$~\% en $41$. Con ese criterio, $10$ cuadrantes quedan en prioridad~A (los que acumulan el primer $50$~\% de SAIDI o de SAIFI), $37$ en prioridad~B (hasta el $80$~\%) y $297$ en seguimiento. La concentración del SAIDI es menor cuando el indicador se reconstruye evento a evento (Apéndice~\ref{app:robustez_indicador}). La Tabla~\ref{tab:prioridad_a} lista los cuadrantes de prioridad~A. La probabilidad semanal de falla del clasificador está razonablemente calibrada: en el decil de mayor probabilidad la tasa observada de falla en el periodo de prueba es del $90{.}6$~\%, frente al $2{.}2$~\% en el decil más bajo. Este orden es un insumo para un prototipo de priorización; su utilidad operativa debe evaluarse con listas emitidas semana a semana bajo un presupuesto de atención definido.
 
 \begin{table}[!htbp]
 \centering
@@ -383,21 +467,21 @@ El reporte de priorización muestra que la afectación está muy concentrada: $6
 \textbf{Cuadrante} & \textbf{Municipio} & \textbf{Rango SAIDI} & \textbf{\% SAIDI} & \textbf{Rango SAIFI} & \textbf{\% SAIFI} & \textbf{P(falla) semanal} \\
 \midrule
 117 & Cúcuta     & 1  & 30.5 & 1  & 17.7 & 98~\% \\
-107 & Los Patios & 2  & 7.0  & 2  & 7.9  & 96~\% \\
-296 & Tibú       & 3  & 4.0  & 8  & 2.5  & 68~\% \\
-116 & Cúcuta     & 4  & 3.4  & 6  & 3.3  & 93~\% \\
-126 & Cúcuta     & 5  & 3.0  & 4  & 4.2  & 98~\% \\
-198 & Cúcuta     & 6  & 2.4  & 10 & 2.3  & 69~\% \\
-310 & Tibú       & 9  & 1.8  & 3  & 5.6  & 78~\% \\
-203 & Aguachica  & 11 & 1.7  & 5  & 3.9  & 89~\% \\
-38  & Pamplona   & 18 & 1.1  & 9  & 2.4  & 86~\% \\
-190 & Ocaña      & 42 & 0.4  & 7  & 2.6  & 60~\% \\
+107 & Los Patios & 2  & 7.0  & 2  & 7.9  & 94~\% \\
+296 & Tibú       & 3  & 4.0  & 8  & 2.5  & 61~\% \\
+116 & Cúcuta     & 4  & 3.4  & 6  & 3.3  & 92~\% \\
+126 & Cúcuta     & 5  & 3.0  & 4  & 4.2  & 97~\% \\
+198 & Cúcuta     & 6  & 2.4  & 10 & 2.3  & 71~\% \\
+310 & Tibú       & 9  & 1.8  & 3  & 5.6  & 75~\% \\
+203 & Aguachica  & 11 & 1.7  & 5  & 3.9  & 87~\% \\
+38  & Pamplona   & 18 & 1.1  & 9  & 2.4  & 84~\% \\
+190 & Ocaña      & 42 & 0.4  & 7  & 2.6  & 54~\% \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 
 \vspace{2pt}
-\noindent\footnotesize\textit{Nota:} participación en la suma de los indicadores operativos por cuadrante--semana; se interpreta como orden relativo y no como fracción del indicador regulatorio (Apéndice~\ref{app:robustez_indicador}). P(falla): probabilidad media pronosticada en las $16$ semanas de prueba.
+\noindent\footnotesize\textit{Nota:} participación en la suma de los indicadores operativos por cuadrante--semana; se interpreta como orden relativo y no como fracción del indicador regulatorio (Apéndice~\ref{app:robustez_indicador}). P(falla): probabilidad media pronosticada por el clasificador en las $16$ semanas de prueba; es un resumen del periodo y no una secuencia de listas emitidas y evaluadas semana a semana, que corresponde a la evaluación de la Tabla~\ref{tab:topk}.
 \end{table}
 
 \section{Muestra completa de tablas base del proyecto}

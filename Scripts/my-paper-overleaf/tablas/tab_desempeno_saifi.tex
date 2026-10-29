@@ -1,0 +1,11 @@
+\begin{tabular}{l r r r r r r}
+\toprule
+\textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$r^2$} & \makecell[c]{\textbf{$R^2$}\\\textbf{predictivo}} & \makecell[c]{\textbf{MAE rel.}\\\textbf{persistencia}} & \textbf{MASE} \\
+\midrule
+Persistencia ($t-1$) & 0.00324 & 0.00081 & 0.085 & -0.413 & 1.000 & 0.926 \\
+Media del cuadrante & \textbf{0.00238} & 0.00071 & 0.261 & 0.240 & 0.881 & 0.816 \\
+\emph{Pooled} OLS & 0.00243 & 0.00080 & 0.221 & 0.208 & 0.986 & 0.913 \\
+FE cuadrante & 0.00239 & 0.00073 & 0.257 & 0.233 & 0.907 & 0.840 \\
+Random Forest ajustado & 0.00253 & 0.00092 & 0.225 & 0.136 & 1.143 & 1.058 \\
+\bottomrule
+\end{tabular}
