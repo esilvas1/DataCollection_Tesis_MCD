@@ -289,7 +289,7 @@ Este apéndice materializa el catálogo de datos previsto en el OE1. La Tabla~\r
 \setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.05}
 \caption{Catálogo de fuentes: cobertura, integridad y limitaciones}
 \label{tab:catalogo_fuentes}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{5.3cm} >{\raggedright\arraybackslash}p{2.5cm}@{}}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=0.720\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.960\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.780\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.200\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.590\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.750\hsize\linewidth=\hsize}X @{}}
 \toprule
 \textbf{Fuente del OE1} & \textbf{Sistema o tabla consultada} & \textbf{Cobertura} & \textbf{Métricas de integridad} & \textbf{Limitación documentada} & \textbf{Uso en el modelo} \\
 \midrule
@@ -305,7 +305,7 @@ Clima & NASA POWER (reanálisis MERRA-2) & Diario 2021--2025; $100$~\% del área
 \addlinespace[1pt]
 Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de sismos); DANE & 2024--2025 & $0$~\% de faltantes en NDVI, sismicidad y estrato & DANE en escala municipal; dos errores de la sismicidad corregidos (Sección~\ref{sec:sismicidad_sgc}) & NDVI y sismicidad rezagados \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 \end{landscape}
 
@@ -313,23 +313,23 @@ Exposición externa (complementaria) & MODIS MOD13Q1 (NDVI); SGC (catálogo de s
 \centering\footnotesize
 \caption{Diccionario de variables del panel de modelado cuadrante~$\times$~semana}
 \label{tab:catalogo_variables}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{2.4cm}@{}}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=1.100\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.450\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.700\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.750\hsize\linewidth=\hsize}X @{}}
 \toprule
 \textbf{Variable} & \textbf{Descripción} & \textbf{Unidad} & \textbf{Rol} \\
 \midrule
-\texttt{id\_cuadrante}, \texttt{semana} & Identificación de la fila (cuadrante de la malla; lunes de inicio de la semana) & -- & Llave \\
+\texttt{id\_\allowbreak{}cuadrante}, \texttt{semana} & Identificación de la fila (cuadrante de la malla; lunes de inicio de la semana) & -- & Llave \\
 \texttt{SAIDI}, \texttt{SAIFI} & Indicadores operativos de afectación (Sección~\ref{sec:construccion_respuesta}) & h; eventos & Respuesta \\
-\texttt{usuarios\_afectados}, \texttt{elementos\_afectados} & Severidad del evento, conocida solo al cerrarlo & usuarios; elementos & Excluida (\emph{ex post}) \\
-\texttt{n\_eventos}, \texttt{duracion\_total} & Insumos de la respuesta & eventos; h & Solo rezagadas \\
-\texttt{temp\_media\_semana}, \texttt{viento\_max\_semana}, \texttt{precip\_total\_semana}, \texttt{precip\_ma4} & Clima semanal NASA POWER & °C; m/s; mm & Predictora ($t-1$) \\
-\texttt{ndvi\_semanal}, \texttt{ndvi\_vecinos} & Índice de vegetación MODIS del cuadrante y de sus vecinos & adimensional & Predictora ($t-1$) \\
-\texttt{n\_sismos\_r50}, \texttt{dist\_sismo\_min\_km\_r50} & Sismos a menos de $50$~km del centroide; distancia al epicentro más cercano de la semana (SGC) & conteo; km & Predictora ($t-1$) \\
-\texttt{longitud\_red\_km}, \texttt{densidad\_terminales}, \texttt{n\_elementos} & Topología e infraestructura de red & km; nodos/km; elementos & Predictora \\
-\texttt{prop\_estrato\_1}, \texttt{prop\_estrato\_2}, \texttt{prop\_no\_residencial} & Composición de usuarios del cuadrante & proporción & Predictora \\
-\texttt{edad\_activo\_mas\_viejo\_anios}, \texttt{PROM\_CANT\_MODIFICACIONES} & Años desde la última modificación registrada del transformador más antiguo (negativa en el $93{.}2$~\% de las filas) y número medio de modificaciones & años; modificaciones & Predictora \\
-\texttt{SAIDI\_lag1}, \texttt{SAIFI\_lag1}, \texttt{*\_vecinos\_lag1} & Rezago propio y espacial de la respuesta & -- & Predictora \\
+\texttt{usuarios\_\allowbreak{}afectados}, \texttt{elementos\_\allowbreak{}afectados} & Severidad del evento, conocida solo al cerrarlo & usuarios; elementos & Excluida (\emph{ex post}) \\
+\texttt{n\_\allowbreak{}eventos}, \texttt{duracion\_\allowbreak{}total} & Insumos de la respuesta & eventos; h & Solo rezagadas \\
+\texttt{temp\_\allowbreak{}media\_\allowbreak{}semana}, \texttt{viento\_\allowbreak{}max\_\allowbreak{}semana}, \texttt{precip\_\allowbreak{}total\_\allowbreak{}semana}, \texttt{precip\_\allowbreak{}ma4} & Clima semanal NASA POWER & °C; m/s; mm & Predictora ($t-1$) \\
+\texttt{ndvi\_\allowbreak{}semanal}, \texttt{ndvi\_\allowbreak{}vecinos} & Índice de vegetación MODIS del cuadrante y de sus vecinos & adimensional & Predictora ($t-1$) \\
+\texttt{n\_\allowbreak{}sismos\_\allowbreak{}r50}, \texttt{dist\_\allowbreak{}sismo\_\allowbreak{}min\_\allowbreak{}km\_\allowbreak{}r50} & Sismos a menos de $50$~km del centroide; distancia al epicentro más cercano de la semana (SGC) & conteo; km & Predictora ($t-1$) \\
+\texttt{longitud\_\allowbreak{}red\_\allowbreak{}km}, \texttt{densidad\_\allowbreak{}terminales}, \texttt{n\_\allowbreak{}elementos} & Topología e infraestructura de red & km; nodos/km; elementos & Predictora \\
+\texttt{prop\_\allowbreak{}estrato\_\allowbreak{}1}, \texttt{prop\_\allowbreak{}estrato\_\allowbreak{}2}, \texttt{prop\_\allowbreak{}no\_\allowbreak{}residencial} & Composición de usuarios del cuadrante & proporción & Predictora \\
+\texttt{edad\_\allowbreak{}activo\_\allowbreak{}mas\_\allowbreak{}viejo\_\allowbreak{}anios}, \texttt{PROM\_\allowbreak{}CANT\_\allowbreak{}MODIFICACIONES} & Años desde la última modificación registrada del transformador más antiguo (negativa en el $93{.}2$~\% de las filas) y número medio de modificaciones & años; modificaciones & Predictora \\
+\texttt{SAIDI\_\allowbreak{}lag1}, \texttt{SAIFI\_\allowbreak{}lag1}, \texttt{*\_\allowbreak{}vecinos\_\allowbreak{}lag1} & Rezago propio y espacial de la respuesta & -- & Predictora \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \section{Robustez de la construcción del indicador operativo}
@@ -341,6 +341,7 @@ Para verificar que la forma agregada del numerador de $\mathrm{SAIDI}_{q,s}$ no 
 \centering\small
 \caption{Concordancia entre la versión agregada y la versión evento a evento de $\mathrm{SAIDI}_{q,s}$ ($D_{\mathrm{mod}}$, semanas con falla)}
 \label{tab:robustez_indicador}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r}
 \toprule
 \textbf{Medida} & \textbf{Valor} \\
@@ -352,6 +353,7 @@ Razón mediana entre la versión agregada y la versión evento a evento & $1{.}8
 Rango intercuartílico de la razón & $1{.}00$--$4{.}67$ \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 La lectura de la tabla tiene dos partes. En \textit{orden}, ambas versiones son altamente concordantes: la correlación de rangos es de $0{.}87$ y trece de los veinte cuadrantes más críticos coinciden, de modo que la priorización territorial, que es el uso que este trabajo da al indicador, no depende de la forma del numerador. En \textit{nivel}, en cambio, la versión agregada sobrestima la evento a evento en las semanas con varios eventos, porque el producto de la duración total por el total de usuarios afectados excede la suma de los productos por evento; la razón vale exactamente $1$ en las semanas con un único evento ($46{.}3$~\%) y crece con el número de eventos. En consecuencia, los valores de $\mathrm{SAIDI}_{q,s}$ se interpretan como un índice de severidad relativa para ordenar y anticipar la afectación, no como minutos de SAIDI sumables al indicador de la empresa. Para $\mathrm{SAIFI}_{q,s}$ esta diferencia no existe, porque su numerador ya es la suma de los usuarios afectados por evento.
@@ -375,6 +377,7 @@ El reporte de priorización muestra que la afectación está muy concentrada: $6
 \small
 \caption{Cuadrantes de prioridad A según su participación en la afectación de 2024--2025}
 \label{tab:prioridad_a}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{r l r r r r r}
 \toprule
 \textbf{Cuadrante} & \textbf{Municipio} & \textbf{Rango SAIDI} & \textbf{\% SAIDI} & \textbf{Rango SAIFI} & \textbf{\% SAIFI} & \textbf{P(falla) semanal} \\
@@ -391,6 +394,7 @@ El reporte de priorización muestra que la afectación está muy concentrada: $6
 190 & Ocaña      & 42 & 0.4  & 7  & 2.6  & 60~\% \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 
 \vspace{2pt}
 \noindent\footnotesize\textit{Nota:} participación en la suma de los indicadores operativos por cuadrante--semana; se interpreta como orden relativo y no como fracción del indicador regulatorio (Apéndice~\ref{app:robustez_indicador}). P(falla): probabilidad media pronosticada en las $16$ semanas de prueba.

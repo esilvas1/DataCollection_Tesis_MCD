@@ -24,6 +24,8 @@
 \usepackage{multirow}
 \renewcommand{\tabularxcolumn}[1]{m{#1}}
 \usepackage{longtable}
+\usepackage{adjustbox} % tablas que se ajustan al ancho de texto
+\setlength{\emergencystretch}{3em} \appto{\bibsetup}{\sloppy} % evita que líneas con nombres de variables se salgan del margen
 
 \definecolor{codebg}{RGB}{248,249,251}
 \definecolor{codeframe}{RGB}{210,214,220}
@@ -209,4 +211,4 @@ Edwin Silva Salas}}
     \chapter{Anexos}
         \input{chapters/appendice}
     \end{appendices}
-\end{document}
+\end{document}

@@ -45,7 +45,7 @@ El dataset final incluye las variables agrupadas por bloque temático, como se r
 \small
 \caption{Estructura del dataset consolidado (grano activo $\times$ día).}
 \label{tab:estructura_dataset_consolidado}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{10cm}@{}}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=0.507\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.493\hsize\linewidth=\hsize}X @{}}
 \toprule
 \textbf{Bloque} & \textbf{Variables} \\
 \midrule
@@ -86,7 +86,7 @@ Variables objetivo &
 \texttt{FRECUENCIA}
 \end{minipage} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{Variables incorporadas al panel cuadrante--semana}
@@ -123,10 +123,18 @@ Adicionalmente, el panel cuadrante--semana incorpora variables de exposición te
 
 \paragraph{Número de observaciones.}
 La tabla consolidada del nivel de integración se obtiene como
-\[
-\text{Total de observaciones} = 47\,649 \times 1\,826 = 87\,007\,074,
-\]
-correspondiente a cinco años de información a nivel elemento-día.
+\begin{equation}
+    \begin{aligned}
+    N = A \times T = 47\,649 \times 1\,826 = 87\,007\,074,
+    \end{aligned}
+    \label{eq:total_observaciones}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $N$: Número de observaciones de la tabla consolidada (activo~$\times$~día).
+    \item $A$: Número de activos eléctricos de la red.
+    \item $T$: Número de días observados, equivalente a cinco años de información diaria.
+\end{itemize}
 
 \section{Procedencia de la información}
 

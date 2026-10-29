@@ -81,7 +81,8 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
 \small
     \caption{Valores extremos y dispersión relativa en variables climáticas (panel completo)}
     \label{tab:extremos_clima}
-    \begin{tabular}{l r r r r r}
+    \begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{l r r r r r}
 \toprule
     \textbf{Variable} & \textbf{Mediana} & \textbf{CV} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} & \textbf{\% P1--P99} \\
 \midrule
@@ -93,6 +94,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \texttt{precipitacion\_total\_mm} & 0.50 & 2.12 & 10.38 & 5.30 & 1.00 \\
     \bottomrule
     \end{tabular}
+\end{adjustbox}
     \end{table}
     
 
@@ -105,7 +107,8 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \small
     \caption{Valores extremos y dispersión relativa en severidad y continuidad (días con evento, $\text{valor} > 0$)}
     \label{tab:extremos_evento}
-    \begin{tabular}{l r r r r r r}
+    \begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{l r r r r r r}
     \toprule
     \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{CV} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
     \midrule
@@ -115,6 +118,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \texttt{FRECUENCIA}          & 48\,364 & 1   & 6         & 0.15 & 1.96  & 1.96  \\
 \bottomrule
     \end{tabular}
+\end{adjustbox}
     \end{table}
     
     
@@ -152,7 +156,8 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \small
     \caption{Valores extremos y dispersión relativa en severidad y continuidad (semanas con evento, $\text{valor} > 0$)}
     \label{tab:extremos_evento_agrupada}
-    \begin{tabular}{l r r r r r r}
+    \begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{l r r r r r r}
     \toprule
     \textbf{Variable} & \textbf{$n$} & \textbf{Mediana} & \textbf{Máximo} & \textbf{CV} & \textbf{\% IQR 1.5} & \textbf{\% IQR 3.0} \\
     \midrule
@@ -162,6 +167,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \texttt{n\_eventos}            & 22\,659 & 1     & 58       & 1.08 & 14.53 & 5.73  \\
     \bottomrule
     \end{tabular}
+\end{adjustbox}
     \end{table}
     
     
@@ -342,8 +348,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     respectivo cuadrante; los cuadrantes 68, 140, 333 y 344, ausentes en la
     fuente, se asignaron en cero.
 
-    Finalmente, mediante la llave \texttt{ID\_CUADRANTE} se integró
-    \texttt{Fecha\_transformadores.csv}. Para cada elemento se contabilizaron
+    Finalmente, se integró el archivo \texttt{Fecha\_transformadores.csv} mediante la llave \texttt{ID\_CUADRANTE}. Para cada elemento se contabilizaron
     sus registros de modificación y se tomó la última
     \texttt{TT2\_FMODIFICACION} en estado \texttt{OPERACION}; posteriormente,
     por cuadrante, se derivaron \texttt{FECHA\_ACTIVO\_MAS\_VIEJO},
@@ -577,6 +582,7 @@ Las Tablas~\ref{tab:desempeno_saidi} y~\ref{tab:desempeno_saifi} presentan el de
 \small
 \caption{Desempeño en el conjunto de prueba para SAIDI (escala $\log(1+y)$; $N=2\,215$)}
 \label{tab:desempeno_saidi}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r r r r r}
 \toprule
 \textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{MASE} & \textbf{$\Delta$RMSE vs. persistencia} \\
@@ -589,6 +595,7 @@ Random Forest (valores por defecto) & 0.1236 & 0.0576 & 0.192 & 1.528 & $-3{.}2$
 Random Forest ajustado          & 0.1143 & 0.0536 & 0.192 & 1.422 & $-10{.}6$~\% \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \begin{table}[!htbp]
@@ -596,6 +603,7 @@ Random Forest ajustado          & 0.1143 & 0.0536 & 0.192 & 1.422 & $-10{.}6$~\%
 \small
 \caption{Desempeño en el conjunto de prueba para SAIFI (escala $\log(1+y)$; $N=2\,215$)}
 \label{tab:desempeno_saifi}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r r r r r}
 \toprule
 \textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{MASE} & \textbf{$\Delta$RMSE vs. persistencia} \\
@@ -608,6 +616,7 @@ Random Forest (valores por defecto) & 0.00273 & 0.00109 & 0.224 & 1.348 & $-15{.
 Random Forest ajustado          & 0.00255 & 0.00105 & 0.218 & 1.304 & $-21{.}3$~\% \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 Tres resultados se desprenden de las tablas y se confirman con la prueba de Diebold--Mariano sobre los errores cuadráticos (Tabla~\ref{tab:diebold_mariano}). Primero, los modelos lineales superan con claridad a la persistencia: el RMSE se reduce entre un $20$ y un $27$~\%, y la diferencia es significativa para FE de cuadrante en ambos indicadores ($p<0{.}001$). Segundo, ninguno de ellos supera de forma significativa a la media histórica del cuadrante: para SAIDI, FE de cuadrante reduce el RMSE en un $0{.}8$~\% ($p=0{.}11$), y para SAIFI la media del cuadrante es incluso marginalmente mejor ($p=0{.}03$). Tercero, Random Forest es inferior a FE de cuadrante en ambos indicadores ($p<0{.}001$), aun después del ajuste de hiperparámetros, y su MASE mayor que uno indica que, en error absoluto medio, no mejora siquiera a la persistencia.
@@ -644,6 +653,7 @@ El bajo desempeño de Random Forest tiene una explicación coherente con lo ante
 \small
 \caption{Ajuste de hiperparámetros del Random Forest: mejores configuraciones según la validación temporal interna}
 \label{tab:tuning_rf}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r r r r}
 \toprule
 \textbf{Indicador} & \textbf{\texttt{mtry}} & \textbf{Tamaño mínimo de nodo} & \textbf{RMSE OOB} & \textbf{RMSE validación interna} \\
@@ -657,6 +667,7 @@ SAIFI & 2 & 50 & 0.00276 & 0.00257 \\
       & 4 & 50 & 0.00277 & 0.00264 \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 
 \vspace{2pt}
 \noindent\footnotesize\textit{Nota:} grilla de $6\times4$ combinaciones ($\texttt{mtry}\in\{2,4,6,9,13,18\}$; tamaño mínimo de nodo $\in\{5,10,20,50\}$), estimadas con \texttt{ranger} ($500$ árboles) sobre el entrenamiento hasta el 2 de junio de 2025 y evaluadas en las semanas de entrenamiento posteriores. El conjunto de prueba no interviene en el ajuste.
@@ -702,6 +713,7 @@ Para la explicación del patrón territorial se agregó cada indicador como prom
 \small
 \caption{Modelos de corte transversal ($N=343$): comparación OLS, SAR y SEM}
 \label{tab:espaciales}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{l r r}
 \toprule
 & \textbf{SAIDI} & \textbf{SAIFI} \\
@@ -719,6 +731,7 @@ Caída de $R^2$ al excluir \texttt{n\_elementos} & $0{.}252$ & $0{.}181$ \\
 Prueba de permutación ($500$ réplicas) & $p<0{.}002$ & $p<0{.}002$ \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 El signo negativo de los parámetros espaciales requiere interpretación, porque el índice de Moran de la respuesta es positivo. Las dos afirmaciones son compatibles: los cuadrantes vecinos se parecen entre sí principalmente porque comparten infraestructura y exposición, y una vez que las covariables absorben esa similitud, el remanente espacial es negativo. Una explicación plausible, no verificada con los datos disponibles, es la forma en que se asignan los eventos: cada interrupción se atribuye íntegramente al cuadrante del elemento fallado, aunque sus usuarios afectados se distribuyan sobre cuadrantes vecinos del mismo circuito, lo que concentra la afectación en un cuadrante y la sustrae de los adyacentes.

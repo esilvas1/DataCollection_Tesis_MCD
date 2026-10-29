@@ -7,10 +7,13 @@ Los indicadores de continuidad del servicio SAIDI (Índice de Duración Promedio
 
 El objetivo predictivo de este trabajo son los indicadores $SAIFI$ y $SAIDI$ a escala de cuadrante~$\times$~semana. Se construyen a partir de los registros operativos del panel, con el denominador de usuarios totales del operador ($UT$) tomado de la serie mensual \texttt{data\_usuarios\_totales\_sistema.csv} y asignado a cada semana según el mes calendario de su fecha de inicio:
 
-\begin{align}
-\mathrm{SAIFI}_{q,s} &= \dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}, \\[4pt]
-\mathrm{SAIDI}_{q,s} &= \dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}.
-\end{align}
+\begin{equation}
+    \begin{aligned}
+    \mathrm{SAIFI}_{q,s} &= \frac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}, \\[4pt]
+    \mathrm{SAIDI}_{q,s} &= \frac{\texttt{duracion\_total}_{q,s} \times \texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}.
+    \end{aligned}
+    \label{eq:indicadores_operativos}
+\end{equation}
 
 \texttt{n\_eventos} y \texttt{duracion\_total} permanecen como insumos de construcción y de historial \emph{ex ante}; no constituyen las variables a predecir. \texttt{usuarios\_afectados} entra en el numerador de $Y$, pero no como predictora contemporánea.
 

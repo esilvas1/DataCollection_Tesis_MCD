@@ -58,7 +58,7 @@ Frente a estos antecedentes, en la revisión realizada no se identificaron estud
 \setlength{\tabcolsep}{3pt}
 \caption{Síntesis de los antecedentes más relacionados con este trabajo}
 \label{tab:antecedentes}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{4.4cm}@{}}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=0.845\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.704\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.056\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.845\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.549\hsize\linewidth=\hsize}X @{}}
 \toprule
 \textbf{Estudio} & \textbf{Ámbito} & \textbf{Unidad y respuesta} & \textbf{Método} & \textbf{Relación con este trabajo} \\
 \midrule
@@ -74,7 +74,7 @@ Frente a estos antecedentes, en la revisión realizada no se identificaron estud
 \textcite{delavechia2023} & Suramérica & País; indicadores regulatorios & Revisión regulatoria & Desempeño relativo de Colombia y esquema de incentivos de la CREG \\
 \textbf{Este trabajo} & Norte de Santander, Colombia & Cuadrante de $\sim5\times2{.}5$~km y semana; SAIDI y SAIFI operativos & Panel FE, Random Forest, clasificador de ocurrencia, SAR y SEM & Integración de sistemas del operador y fuentes externas; evaluación frente a pronósticos de referencia \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 
@@ -91,4 +91,4 @@ La revisión anterior permite identificar un conjunto relativamente estable de v
 
 \paragraph{Variables topográficas y geográficas.} La elevación y variables derivadas de modelos digitales de terreno se han incorporado por su efecto indirecto sobre la velocidad del viento y los patrones de precipitación a escala local \parencite{ref43}, aunque en varios estudios su contribución marginal al poder predictivo resulta baja una vez controlado por viento y precipitación directamente medidos, por lo que su inclusión debe evaluarse en función de la disponibilidad de las variables meteorológicas primarias \parencite{ref43}.
 
-\paragraph{Variables de historial de fallas y autocorrelación.} Finalmente, un conjunto de estudios documenta la relevancia de incorporar la propia historia de interrupciones de la unidad espacial —o de sus vecinas— como predictor autorregresivo. \textcite{ref33} muestran que actualizar predicciones de duración de interrupciones a partir de reportes de campo en tiempo real mejora sustancialmente la precisión respecto a modelos que solo usan información ex ante, mientras que los enfoques de redes neuronales de grafos revisados en la sección anterior \parencite{ref14} evidencian que el número y la severidad de fallas en celdas vecinas aporta información predictiva adicional a la de los atributos propios de cada celda, lo cual sugiere la pertinencia de incluir rezagos espaciales y temporales de SAIDI/SAIFI —y no solo covariables exógenas— en la especificación del panel cuadrante $\times$ semana propuesto en este trabajo.
+\paragraph{Variables de historial de fallas y autocorrelación.} Finalmente, un conjunto de estudios documenta la relevancia de incorporar la propia historia de interrupciones de la unidad espacial —o de sus vecinas— como predictor autorregresivo. \textcite{ref33} muestran que actualizar predicciones de duración de interrupciones a partir de reportes de campo en tiempo real mejora sustancialmente la precisión respecto a modelos que solo usan información ex ante, mientras que los enfoques de redes neuronales de grafos revisados en la sección anterior \parencite{ref14} evidencian que el número y la severidad de fallas en celdas vecinas aporta información predictiva adicional a la de los atributos propios de cada celda, lo cual sugiere la pertinencia de incluir rezagos espaciales y temporales de SAIDI/SAIFI —y no solo covariables exógenas— en la especificación del panel cuadrante $\times$ semana propuesto en este trabajo.
