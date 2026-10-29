@@ -144,148 +144,318 @@ En este trabajo, la unidad de análisis del modelado es el par \textit{cuadrante
 
 El vector climático de referencia, sujeto a la regla de disponibilidad del grupo~1, es
 \begin{equation}
-\begin{aligned}
-\mathbf{x} = \bigl(
-&\texttt{precip\_total\_semana},\;
-\texttt{temp\_media\_semana},\\
-&\texttt{humedad\_media\_semana},\;
-\texttt{viento\_medio\_semana}
-\bigr),
-\end{aligned}
+    \begin{aligned}
+    \mathbf{x}_{q,s} = \left( P_{q,s},\; T_{q,s},\; H_{q,s},\; V_{q,s} \right)^{\top},
+    \end{aligned}
+    \label{eq:vector_clima}
 \end{equation}
-eventualmente enriquecido con rezagos temporales de $Y$ (o $Y'$) y términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación/modelado.
+donde:
+\begin{itemize}
+    \item $\mathbf{x}_{q,s}$: Vector climático del cuadrante $q$ en la semana $s$.
+    \item $P_{q,s}$: Precipitación total semanal, en mm (\texttt{precip\_total\_semana}).
+    \item $T_{q,s}$: Temperatura media semanal, en $^{\circ}$C (\texttt{temp\_media\_semana}).
+    \item $H_{q,s}$: Humedad relativa media semanal, en \% (\texttt{humedad\_media\_semana}).
+    \item $V_{q,s}$: Velocidad media semanal del viento, en m/s (\texttt{viento\_medio\_semana}).
+\end{itemize}
+El vector se enriquece eventualmente con rezagos temporales de $Y$ (o $Y'$) y con términos de estratificación territorial. A continuación se formalizan los métodos empleados en el EDA y en la preparación y el modelado.
 
 \begin{enumerate}
     \item \textit{Datos faltantes, tipos e imputación:}
-    Sea $X_j$ la $j$-ésima variable del panel. La proporción de faltantes se define como
-    \[
-    p_j^{\mathrm{NA}} = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{X_{ij}=\texttt{NA}\}.
-    \]
+    La proporción de faltantes de cada variable del panel se define como
+    \begin{equation}
+        \begin{aligned}
+        p_j^{\mathrm{NA}} = \frac{1}{N}\sum_{i=1}^{N} \mathbf{1}\{X_{ij} = \mathrm{NA}\},
+        \end{aligned}
+        \label{eq:prop_na}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $p_j^{\mathrm{NA}}$: Proporción de valores faltantes de la variable $j$.
+        \item $X_{ij}$: Valor de la variable $j$ en la observación $i$.
+        \item $N$: Número de observaciones del panel.
+        \item $\mathbf{1}\{\cdot\}$: Función indicadora, igual a 1 si se cumple la condición y 0 en otro caso.
+    \end{itemize}
     En el panel activo~$\times$~día, los \texttt{NA} se concentran en el bloque climático y en \texttt{ALTITUD}; en la tabla agregada cuadrante~$\times$~semana ($D_{\mathrm{EDA}}$, $D_{\mathrm{mod}}$) no se observan faltantes. Las reglas de imputación o exclusión se aplican en la Etapa~4 solo donde $p_j^{\mathrm{NA}}>0$ en el grano de origen, conforme a los criterios de tratamiento de datos incompletos de~\cite{ref49}.
 
     \item \textit{Dispersión relativa (coeficiente de variación):}
     Para comparar la variabilidad de variables cuantitativas con distintas unidades o escalas, se emplea el coeficiente de variación
-    \[
-    \mathrm{CV}(X)=\frac{s_X}{\bar{x}},\qquad \bar{x}\neq 0,
-    \]
-    donde $s_X$ es la desviación estándar muestral y $\bar{x}$ la media. Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
+    \begin{equation}
+        \begin{aligned}
+        \mathrm{CV}(X) = \frac{s_X}{\bar{x}}, \qquad \bar{x} \neq 0,
+        \end{aligned}
+        \label{eq:cv}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathrm{CV}(X)$: Coeficiente de variación de la variable $X$.
+        \item $s_X$: Desviación estándar muestral de $X$.
+        \item $\bar{x}$: Media muestral de $X$.
+    \end{itemize}
+    Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
 
     \item \textit{Análisis de atípicos y extremos:}
-    Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por~\cite{ref50}. Con $Q_1$ y $Q_3$ los cuartiles e $\mathrm{IQR}=Q_3-Q_1$, se marcan como extremos candidatos los valores
-    \[
-    x \notin \bigl[Q_1 - k\cdot\mathrm{IQR},\; Q_3 + k\cdot\mathrm{IQR}\bigr]
-    \]
-    con factor $k=1{.}5$ (regla de Tukey) y, de forma complementaria, $k=3{.}0$ (extremos más severos). Estas reglas se contrastan con el criterio de percentiles P1--P99 sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
+    Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por~\cite{ref50}. Se marcan como extremos candidatos los valores que cumplen
+    \begin{equation}
+        \begin{aligned}
+        x \notin \left[ Q_1 - k\,\mathrm{IQR},\; Q_3 + k\,\mathrm{IQR} \right],
+        \end{aligned}
+        \label{eq:atipicos_iqr}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $x$: Valor observado de la variable $X$.
+        \item $Q_1$, $Q_3$: Primer y tercer cuartil de $X$.
+        \item $\mathrm{IQR}$: Rango intercuartílico, $\mathrm{IQR} = Q_3 - Q_1$.
+        \item $k$: Factor de amplitud, $k = 1{.}5$ (regla de Tukey) y, de forma complementaria, $k = 3{.}0$ (extremos más severos).
+    \end{itemize}
+    Estas reglas se contrastan con el criterio de percentiles P1--P99 sobre \texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados} y \texttt{precip\_total\_semana}. El tratamiento definitivo (retención, winsorización o exclusión) se decide en la Etapa~4.
 
     \item \textit{Transformaciones de variables:}
-    Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de~\cite{ref51},
-    \[
-    T(x)=\log(1+x),\qquad x\geq 0,
-    \]
-    aplicada en particular a \texttt{precip\_total\_semana} y al bloque operativo (\texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) cuando se requieren densidades o PCA más estables. Para homogenizar variables con distintas unidades (p.\,ej.\ antes del PCA o del clustering), se emplea la estandarización por $z$-scores,
-    \[
-    z=\frac{x-\bar{x}}{s},
-    \]
-    que sitúa cada variable en media~$0$ y desviación típica~$1$.
+    Ante asimetría y ceros, se usa la transformación logarítmica desplazada, caso límite de la familia de transformaciones de potencia de~\cite{ref51}:
+    \begin{equation}
+        \begin{aligned}
+        T(x) = \log(1 + x), \qquad x \geq 0,
+        \end{aligned}
+        \label{eq:log1p}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $T(x)$: Valor transformado.
+        \item $x$: Valor original, no negativo.
+    \end{itemize}
+    Se aplica en particular a \texttt{precip\_total\_semana} y al bloque operativo (\texttt{n\_eventos}, \texttt{duracion\_total}, \texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) cuando se requieren densidades o PCA más estables. Para homogenizar variables con distintas unidades (p.\,ej.\ antes del PCA o del agrupamiento), se emplea la estandarización
+    \begin{equation}
+        \begin{aligned}
+        z = \frac{x - \bar{x}}{s},
+        \end{aligned}
+        \label{eq:zscore}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $z$: Valor estandarizado, con media~$0$ y desviación estándar~$1$.
+        \item $\bar{x}$, $s$: Media y desviación estándar muestrales de la variable.
+    \end{itemize}
 
     \item \textit{Series de tiempo y sus características:}
-    Sea $E_t$ el total semanal territorial de eventos. La función de autocorrelación (ACF) en el rezago $h$ es
-    \[
-    \rho(h)=\frac{\mathrm{Cov}(E_t,E_{t-h})}{\mathrm{Var}(E_t)}.
-    \]
+    La función de autocorrelación (ACF) del total semanal de eventos en el rezago $h$ es
+    \begin{equation}
+        \begin{aligned}
+        \rho(h) = \frac{\mathrm{Cov}(E_t, E_{t-h})}{\mathrm{Var}(E_t)},
+        \end{aligned}
+        \label{eq:acf}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\rho(h)$: Autocorrelación en el rezago $h$.
+        \item $E_t$: Total semanal territorial de eventos en la semana $t$.
+        \item $h$: Rezago, en semanas.
+    \end{itemize}
     En $D_{\mathrm{mod}}$ se observa $\rho(1)\approx 0{.}80$, lo que motiva incorporar rezagos $E_{t-1},\ldots,E_{t-h}$ (o de \texttt{n\_eventos} a nivel cuadrante) como predictoras. La PACF complementa la identificación del orden autorregresivo~\cite{ref52}; la estacionalidad mensual se analiza agrupando $E_t$ por mes calendario.
 
     \item \textit{Análisis de correlación:}
     Por la asimetría y la cero-inflación de las variables operativas, se emplea el coeficiente de correlación por rangos de~\cite{ref53}:
-    \[
-    \rho_S(X,Y)=1-\frac{6\sum_{i=1}^{n}d_i^{2}}{n(n^{2}-1)},
-    \]
-    donde $d_i$ es la diferencia de rangos. En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es $(\texttt{viento\_max\_semana},\,\texttt{n\_eventos})$ con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, $(\texttt{precip\_total\_semana},\,\texttt{n\_eventos})$, alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\cite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
+    \begin{equation}
+        \begin{aligned}
+        \rho_S(X, Y) = 1 - \frac{6 \sum_{i=1}^{n} d_i^{2}}{n\left(n^{2} - 1\right)},
+        \end{aligned}
+        \label{eq:spearman}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\rho_S(X, Y)$: Coeficiente de correlación de Spearman entre $X$ y $Y$.
+        \item $d_i$: Diferencia entre los rangos de $X$ y $Y$ en la observación $i$.
+        \item $n$: Número de observaciones.
+    \end{itemize}
+    En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es (\texttt{viento\_max\_semana}, \texttt{n\_eventos}) con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, (\texttt{precip\_total\_semana}, \texttt{n\_eventos}), alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\cite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
 
     \item \textit{Datos de entrenamiento y prueba:}
-    La partición es temporal (no aleatoria). Con $t^{\ast}$ la semana de corte, ubicada en el percentil~$85$ de las semanas ordenadas de $D_{\mathrm{mod}}$ (8 de septiembre de 2025),
-    \[
-    \mathcal{D}_{\mathrm{train}}=\{(i,t):t\leq t^{\ast}\},\qquad
-    \mathcal{D}_{\mathrm{test}}=\{(i,t):t> t^{\ast}\},
-    \]
-    sobre el grano cuadrante~$i$ y semana~$t$, de modo que la prueba comprende las últimas $16$ semanas de 2025 y ninguna semana de prueba precede a una de entrenamiento, lo que preserva el orden cronológico ante la autocorrelación de la serie~\cite{ref55,ref57}.
+    La partición es temporal (no aleatoria):
+    \begin{equation}
+        \begin{aligned}
+        \mathcal{D}_{\mathrm{train}} &= \left\{ (i, t) : t \leq t^{\ast} \right\}, \\
+        \mathcal{D}_{\mathrm{test}} &= \left\{ (i, t) : t > t^{\ast} \right\},
+        \end{aligned}
+        \label{eq:particion_temporal}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathcal{D}_{\mathrm{train}}$, $\mathcal{D}_{\mathrm{test}}$: Conjuntos de entrenamiento y de prueba.
+        \item $(i, t)$: Observación del cuadrante $i$ en la semana $t$.
+        \item $t^{\ast}$: Semana de corte, ubicada en el percentil~$85$ de las semanas ordenadas de $D_{\mathrm{mod}}$ (8 de septiembre de 2025).
+    \end{itemize}
+    De este modo la prueba comprende las últimas $16$ semanas de 2025 y ninguna semana de prueba precede a una de entrenamiento, lo que preserva el orden cronológico ante la autocorrelación de la serie~\cite{ref55,ref57}.
 
     \item \textit{Validación cruzada:}
     Cuando se ajusten hiperparámetros en $\mathcal{D}_{\mathrm{train}}$, se prioriza validación \emph{forward-chaining} (bloques temporales sucesivos) en lugar de $k$-fold aleatorio, para no romper la dependencia temporal de \texttt{n\_eventos}~\cite{ref56}.
 
     \item \textit{Análisis de componentes principales (PCA):}
-    El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\cite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Dado el bloque climático estandarizado $\mathbf{Z}$, se resuelve
-    \[
-    \mathbf{Z}^{\mathsf{T}}\mathbf{Z}\,\mathbf{v}_{\ell}=\lambda_{\ell}\mathbf{v}_{\ell},
-    \]
-    y las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen ejes de covarianza (temperaturas/vientos frente a precipitación). La importancia de cada variable en la componente $\ell$ se lee mediante las cargas (loadings) $v_{\ell j}$; en el EDA se interpretan como relevantes aquellas con $|v_{\ell j}|\geq 0{.}40$. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
+    El PCA se emplea como herramienta \emph{exploratoria} de redundancia, no como modelo predictivo final~\cite{ref58}. Requiere variables cuantitativas, preferiblemente homogenizadas (estandarización o transformación previa) y con $n\gg p$. Las componentes se obtienen al resolver
+    \begin{equation}
+        \begin{aligned}
+        \mathbf{Z}^{\top}\mathbf{Z}\,\mathbf{v}_{\ell} = \lambda_{\ell}\,\mathbf{v}_{\ell},
+        \end{aligned}
+        \label{eq:pca}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathbf{Z}$: Matriz del bloque climático estandarizado.
+        \item $\mathbf{v}_{\ell}$: Vector propio (cargas) de la componente $\ell$.
+        \item $\lambda_{\ell}$: Valor propio de la componente $\ell$, proporcional a la varianza que explica.
+    \end{itemize}
+    Las componentes $\mathrm{PC}_{\ell}=\mathbf{Z}\mathbf{v}_{\ell}$ resumen ejes de covarianza (temperaturas y vientos frente a precipitación). La importancia de cada variable en la componente $\ell$ se lee mediante las cargas $v_{\ell j}$; en el EDA se interpretan como relevantes aquellas con $|v_{\ell j}|\geq 0{.}40$. Sobre el bloque operativo en escala $\log(1+x)$, PC1 concentra la covarianza común de frecuencia, afectación y duración.
 
     \item \textit{Métodos de agrupación:}
-    Los cuadrantes se segmentan por actividad (cuantiles de $\sum_t \texttt{n\_eventos}$) y, de forma multivariada, por clustering (p.\,ej.\ jerárquico~\cite{ref60} o $k$-means~\cite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.
+    Los cuadrantes se segmentan por actividad (cuantiles del total de \texttt{n\_eventos}) y, de forma multivariada, por agrupamiento (p.\,ej.\ jerárquico~\cite{ref60} o $k$-means~\cite{ref59}) sobre perfiles de frecuencia, duración y clima, con el fin de estratificar el modelado en zonas de distinto riesgo operativo.
 
     \item \textit{Factor de inflación de la varianza (VIF):}
-    Para cada predictora $X_j$ del bloque climático en un modelo auxiliar lineal $\texttt{n\_eventos}\sim \mathbf{x}$,
-    \[
-    \mathrm{VIF}_j=\frac{1}{1-R_j^{2}},
-    \]
-    donde $R_j^{2}$ proviene de regresar $X_j$ sobre el resto de covariables~\cite{ref61}. Valores altos en \texttt{temp\_max}/\texttt{temp\_min} y \texttt{viento\_max} motivan el subconjunto reducido $\mathbf{x}$ indicado arriba (VIF aceptables tras la depuración), teniendo en cuenta las advertencias sobre el uso mecánico de umbrales fijos señaladas por~\cite{ref62}.
+    Para cada predictora del bloque climático en un modelo auxiliar lineal de \texttt{n\_eventos} sobre $\mathbf{x}$,
+    \begin{equation}
+        \begin{aligned}
+        \mathrm{VIF}_j = \frac{1}{1 - R_j^{2}},
+        \end{aligned}
+        \label{eq:vif}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathrm{VIF}_j$: Factor de inflación de la varianza de la predictora $X_j$.
+        \item $R_j^{2}$: Coeficiente de determinación de la regresión de $X_j$ sobre el resto de covariables~\cite{ref61}.
+    \end{itemize}
+    Valores altos en \texttt{temp\_max}/\texttt{temp\_min} y \texttt{viento\_max} motivan el subconjunto reducido $\mathbf{x}$ de la Ecuación~\eqref{eq:vector_clima} (VIF aceptables tras la depuración), teniendo en cuenta las advertencias sobre el uso mecánico de umbrales fijos señaladas por~\cite{ref62}.
 
     \item \textit{Modelo lineal generalizado de Poisson (GLM Poisson):}
-    Como modelo diagnóstico de conteos~\cite{ref63,ref64},
-    \[
-    Y_i\sim\mathrm{Poisson}(\mu_i),\qquad
-    \log\mu_i=\beta_0+\boldsymbol{\beta}^{\mathsf{T}}\mathbf{x}_i^{\ast},
-    \]
-    donde $Y_i=\texttt{n\_eventos}$ en la observación cuadrante--semana $i$ y $\mathbf{x}_i^{\ast}$ incluye, entre otros, $\log(1+\texttt{precip\_total\_semana})$ y el viento medio estandarizado. Los coeficientes $\hat{\beta}$ cuantifican el efecto multiplicativo $e^{\hat{\beta}_j}$ sobre la tasa esperada de interrupciones; este esquema orienta el modelado predictivo de la Etapa~5.
+    Como modelo diagnóstico de conteos~\cite{ref63,ref64}:
+    \begin{equation}
+        \begin{aligned}
+        Y_i &\sim \mathrm{Poisson}(\mu_i), \\
+        \log \mu_i &= \beta_0 + \boldsymbol{\beta}^{\top}\mathbf{x}_i^{\ast},
+        \end{aligned}
+        \label{eq:glm_poisson}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $Y_i$: Número de eventos (\texttt{n\_eventos}) en la observación cuadrante--semana $i$.
+        \item $\mu_i$: Tasa esperada de eventos de la observación $i$.
+        \item $\beta_0$, $\boldsymbol{\beta}$: Intercepto y vector de coeficientes.
+        \item $\mathbf{x}_i^{\ast}$: Vector de covariables, que incluye, entre otras, $\log(1+P)$ y el viento medio estandarizado.
+    \end{itemize}
+    Los coeficientes $\hat{\beta}_j$ cuantifican el efecto multiplicativo $e^{\hat{\beta}_j}$ sobre la tasa esperada de interrupciones; este esquema orienta el modelado predictivo de la Etapa~5.
 \end{enumerate}
 
 \subsection{Modelos predictivos y espaciales}
 \label{sec:modelos_formulacion}
 
-Sea $y_{q,s}=\log\bigl(1+Y_{q,s}\bigr)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIFI}\}$, la respuesta transformada del cuadrante~$q=1,\ldots,Q$ en la semana~$s=1,\ldots,S$, y $\mathbf{x}_{q,s}\in\mathbb{R}^{p}$ el vector de predictoras disponibles \emph{ex ante}.
+Sea $y_{q,s}=\log\left(1+Y_{q,s}\right)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIFI}\}$, la respuesta transformada del cuadrante~$q=1,\ldots,Q$ en la semana~$s=1,\ldots,S$, y $\mathbf{x}_{q,s}\in\mathbb{R}^{p}$ el vector de predictoras disponibles \emph{ex ante}.
 
 \begin{enumerate}
     \item \textit{Mínimos cuadrados agrupados (Pooled OLS).} Supone un intercepto común a todos los cuadrantes:
     \begin{equation}
-    y_{q,s}=\alpha+\mathbf{x}_{q,s}^{\top}\boldsymbol{\beta}+\varepsilon_{q,s}.
+        \begin{aligned}
+        y_{q,s} = \alpha + \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} + \varepsilon_{q,s},
+        \end{aligned}
+        \label{eq:pooled_ols}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $y_{q,s}$: Respuesta transformada del cuadrante $q$ en la semana $s$.
+        \item $\alpha$: Intercepto común.
+        \item $\boldsymbol{\beta}$: Vector de coeficientes de las predictoras.
+        \item $\varepsilon_{q,s}$: Término de error.
+    \end{itemize}
 
-    \item \textit{Efectos fijos de cuadrante (FE).} Permite un intercepto propio por cuadrante, $\mu_q$, que absorbe la heterogeneidad no observada invariante en el tiempo~\cite{wooldridge2010}:
+    \item \textit{Efectos fijos de cuadrante (FE).} Permite un intercepto propio por cuadrante, que absorbe la heterogeneidad no observada invariante en el tiempo~\cite{wooldridge2010}:
     \begin{equation}
-    y_{q,s}=\mu_q+\mathbf{x}_{q,s}^{\top}\boldsymbol{\beta}+\varepsilon_{q,s},
+        \begin{aligned}
+        y_{q,s} = \mu_q + \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} + \varepsilon_{q,s},
+        \end{aligned}
+        \label{eq:efectos_fijos}
     \end{equation}
-    estimado mediante la transformación \textit{within}, $\ddot{y}_{q,s}=y_{q,s}-\bar{y}_{q}$, que elimina $\mu_q$; por ello los atributos constantes del cuadrante no son identificables en esta especificación. La versión con efectos fijos de cuadrante y semana añade un término $\tau_s$ común a todos los cuadrantes en la semana~$s$. Dado que los residuos de un mismo cuadrante están autocorrelacionados, la inferencia se basa en errores estándar agrupados por cuadrante.
+    donde:
+    \begin{itemize}
+        \item $\mu_q$: Efecto fijo (intercepto propio) del cuadrante $q$.
+        \item $y_{q,s}$, $\mathbf{x}_{q,s}$, $\boldsymbol{\beta}$, $\varepsilon_{q,s}$: Como en la Ecuación~\eqref{eq:pooled_ols}.
+    \end{itemize}
+    El modelo se estima mediante la transformación \textit{within}, $\ddot{y}_{q,s}=y_{q,s}-\bar{y}_{q}$, que elimina $\mu_q$; por ello los atributos constantes del cuadrante no son identificables en esta especificación. La versión con efectos fijos de cuadrante y semana añade un término $\tau_s$ común a todos los cuadrantes en la semana~$s$. Dado que los residuos de un mismo cuadrante están autocorrelacionados, la inferencia se basa en errores estándar agrupados por cuadrante.
 
-    \item \textit{Random Forest (RF).} Promedia $B$ árboles de regresión $T_b$ entrenados sobre muestras \emph{bootstrap}, eligiendo en cada partición entre \texttt{mtry} predictoras tomadas al azar~\cite{ref19}:
+    \item \textit{Random Forest (RF).} Promedia árboles de regresión entrenados sobre muestras \emph{bootstrap}, eligiendo en cada partición entre \texttt{mtry} predictoras tomadas al azar~\cite{ref19}:
     \begin{equation}
-    \hat{f}(\mathbf{x})=\frac{1}{B}\sum_{b=1}^{B}T_b(\mathbf{x}).
+        \begin{aligned}
+        \hat{f}(\mathbf{x}) = \frac{1}{B}\sum_{b=1}^{B} T_b(\mathbf{x}),
+        \end{aligned}
+        \label{eq:random_forest}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\hat{f}(\mathbf{x})$: Predicción del bosque para el vector de predictoras $\mathbf{x}$.
+        \item $B$: Número de árboles.
+        \item $T_b(\mathbf{x})$: Predicción del árbol $b$.
+    \end{itemize}
     Las observaciones no incluidas en cada muestra (\emph{out-of-bag}, OOB) permiten estimar el error sin un conjunto de validación adicional. La importancia de la variable~$j$ (\%IncMSE) es el aumento porcentual del error cuadrático medio OOB cuando se permutan aleatoriamente sus valores. Los hiperparámetros \texttt{mtry} y tamaño mínimo de nodo terminal se ajustan siguiendo~\cite{probst2019}.
 
-    \item \textit{Índice de Moran.} Mide la autocorrelación espacial de una variable centrada $z$ dada una matriz de pesos $\mathbf{W}=[w_{ij}]$ normalizada por filas~\cite{moran1950}:
+    \item \textit{Índice de Moran.} Mide la autocorrelación espacial de una variable~\cite{moran1950}:
     \begin{equation}
-    I=\frac{n}{S_0}\,\frac{\sum_{i}\sum_{j}w_{ij}\,z_i z_j}{\sum_i z_i^{2}},\qquad S_0=\sum_i\sum_j w_{ij}.
+        \begin{aligned}
+        I = \frac{n}{S_0}\,\frac{\sum_{i}\sum_{j} w_{ij}\, z_i z_j}{\sum_{i} z_i^{2}}, \qquad S_0 = \sum_{i}\sum_{j} w_{ij},
+        \end{aligned}
+        \label{eq:moran}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $I$: Índice de Moran.
+        \item $n$: Número de cuadrantes.
+        \item $w_{ij}$: Peso espacial entre los cuadrantes $i$ y $j$, elemento de la matriz $\mathbf{W}=[w_{ij}]$ normalizada por filas.
+        \item $z_i$: Valor centrado de la variable en el cuadrante $i$.
+        \item $S_0$: Suma de todos los pesos espaciales.
+    \end{itemize}
     Valores positivos y significativos indican que cuadrantes vecinos presentan valores similares.
 
     \item \textit{Modelo de rezago espacial (SAR).} La respuesta de un cuadrante depende directamente de la de sus vecinos~\cite{anselin1988,lesage2009}:
     \begin{equation}
-    \mathbf{y}=\rho\,\mathbf{W}\mathbf{y}+\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\varepsilon},\qquad \boldsymbol{\varepsilon}\sim N(\mathbf{0},\sigma^{2}\mathbf{I}).
+        \begin{aligned}
+        \mathbf{y} &= \rho\,\mathbf{W}\mathbf{y} + \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \\
+        \boldsymbol{\varepsilon} &\sim N\left(\mathbf{0},\, \sigma^{2}\mathbf{I}\right),
+        \end{aligned}
+        \label{eq:sar}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathbf{y}$: Vector de respuestas de los cuadrantes.
+        \item $\rho$: Parámetro de dependencia espacial de la respuesta.
+        \item $\mathbf{W}$: Matriz de pesos espaciales normalizada por filas.
+        \item $\mathbf{X}$: Matriz de predictoras; $\boldsymbol{\beta}$, vector de coeficientes.
+        \item $\boldsymbol{\varepsilon}$: Vector de errores, con varianza $\sigma^{2}$; $\mathbf{I}$ es la matriz identidad.
+    \end{itemize}
     Como $\mathbf{y}=(\mathbf{I}-\rho\mathbf{W})^{-1}(\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\varepsilon})$, el efecto de una covariable no es $\beta_j$, sino que se descompone en un impacto directo y uno indirecto o de derrame hacia los vecinos~\cite{lesage2009}.
 
     \item \textit{Modelo de error espacial (SEM).} La dependencia reside en factores no observados espacialmente correlacionados:
     \begin{equation}
-    \mathbf{y}=\mathbf{X}\boldsymbol{\beta}+\mathbf{u},\qquad \mathbf{u}=\lambda\,\mathbf{W}\mathbf{u}+\boldsymbol{\varepsilon}.
+        \begin{aligned}
+        \mathbf{y} &= \mathbf{X}\boldsymbol{\beta} + \mathbf{u}, \\
+        \mathbf{u} &= \lambda\,\mathbf{W}\mathbf{u} + \boldsymbol{\varepsilon},
+        \end{aligned}
+        \label{eq:sem}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathbf{u}$: Vector de errores espacialmente correlacionados.
+        \item $\lambda$: Parámetro de dependencia espacial del error.
+        \item $\mathbf{y}$, $\mathbf{X}$, $\boldsymbol{\beta}$, $\mathbf{W}$, $\boldsymbol{\varepsilon}$: Como en la Ecuación~\eqref{eq:sar}.
+    \end{itemize}
     La elección entre SAR y SEM se apoya en las pruebas de multiplicadores de Lagrange robustas sobre los residuos de OLS y en el criterio de información de Akaike, $\mathrm{AIC}=2k-2\ln\hat{L}$~\cite{anselin1988}.
 
-    \item \textit{Métricas de evaluación.} Sobre el conjunto de prueba, con $n$ observaciones, valores observados $y_i$ y pronosticados $\hat{y}_i$:
+    \item \textit{Métricas de evaluación.} Sobre el conjunto de prueba:
     \begin{equation}
-    \mathrm{RMSE}=\sqrt{\tfrac{1}{n}\textstyle\sum_i (y_i-\hat{y}_i)^2},\qquad
-    \mathrm{MAE}=\tfrac{1}{n}\textstyle\sum_i |y_i-\hat{y}_i|,\qquad
-    R^2=\mathrm{cor}(y,\hat{y})^{2}.
+        \begin{aligned}
+        \mathrm{RMSE} &= \sqrt{\frac{1}{n}\sum_{i=1}^{n} \left(y_i - \hat{y}_i\right)^{2}}, \\
+        \mathrm{MAE} &= \frac{1}{n}\sum_{i=1}^{n} \left| y_i - \hat{y}_i \right|, \\
+        R^{2} &= \mathrm{cor}\left(y, \hat{y}\right)^{2},
+        \end{aligned}
+        \label{eq:metricas}
     \end{equation}
+    donde:
+    \begin{itemize}
+        \item $y_i$, $\hat{y}_i$: Valor observado y valor pronosticado de la observación $i$.
+        \item $n$: Número de observaciones del conjunto de prueba.
+    \end{itemize}
     Como el error porcentual (MAPE) no está definido cuando $y_i=0$, la comparación relativa se hace con el error absoluto escalado~\cite{hyndman2006}, $\mathrm{MASE}=\mathrm{MAE}/\mathrm{MAE}_{\mathrm{ingenuo}}$, donde el pronóstico ingenuo es la persistencia $\hat{y}_{q,s}=y_{q,s-1}$; un $\mathrm{MASE}<1$ indica que el modelo supera a la persistencia. La diferencia de exactitud entre dos modelos se contrasta con la prueba de~\cite{diebold1995}.
 \end{enumerate}
 

@@ -54,7 +54,7 @@ Posteriormente, se aplicaron criterios de depuración y filtrado. En primer luga
 \small
 \caption{Muestra de eventos depurados de interrupción (BRAE; primeras cinco filas)}
 \label{tab:muestra_eventos_brae}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.8cm} >{\raggedright\arraybackslash}p{3.7cm} >{\raggedright\arraybackslash}p{3.7cm} >{\raggedright\arraybackslash}p{2.6cm}}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash\hsize=0.610\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.254\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.254\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=0.881\hsize\linewidth=\hsize}X}
 \toprule
     \textbf{Id evento} & \textbf{Fecha desconexión} & \textbf{Fecha conexión} & \textbf{Elemento fallado} \\
 \midrule
@@ -84,11 +84,7 @@ Posteriormente, se aplicaron los mismos criterios de depuración utilizados en l
 \small
 \caption{Muestra de afectación por evento (BRAE + QA\_TTC1; primeras cinco filas)}
 \label{tab:muestra_afectacion_evento}
-\begin{tabularx}{0.9\textwidth}{
-    >{\raggedright\arraybackslash}p{2.0cm}
-    >{\centering\arraybackslash}p{4.6cm}
-    >{\centering\arraybackslash}p{3.0cm}
-}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash\hsize=0.625\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.438\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=0.938\hsize\linewidth=\hsize}X}
 \toprule
     \textbf{Id evento} & \textbf{Cantidad elementos fallados} & \textbf{Cantidad usuarios afectados} \\
 \midrule
@@ -116,7 +112,7 @@ Adicionalmente, se aplicaron criterios de filtrado temporal y de calidad de dato
 \small
 \caption{Muestra de elemento causante histórico (OMS SPARD; primeras cinco filas)}
 \label{tab:muestra_elemento_causante_historico}
-\begin{tabularx}{0.72\textwidth}{>{\centering\arraybackslash}p{3.0cm} >{\centering\arraybackslash}p{4.0cm}}
+\begin{tabularx}{\linewidth}{>{\centering\arraybackslash\hsize=0.857\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.143\hsize\linewidth=\hsize}X}
 \toprule
     \textbf{Código maniobra} & \textbf{Elemento fallado} \\
 \midrule
@@ -144,10 +140,7 @@ A continuación, se seleccionaron únicamente las variables relevantes para el a
 \small
 \caption{Muestra de elemento causante actual (OMS SP7; primeras cinco filas)}
 \label{tab:muestra_elemento_causante_actual}
-\begin{tabularx}{0.95\textwidth}{
-    >{\centering\arraybackslash}p{3.8cm} 
-    >{\raggedright\arraybackslash}p{4.8cm} 
-    >{\centering\arraybackslash}p{2.7cm}}
+\begin{tabularx}{\linewidth}{>{\centering\arraybackslash\hsize=1.009\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.274\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=0.717\hsize\linewidth=\hsize}X}
 \toprule
     \textbf{Maniobra apertura} & \textbf{Tipo elemento} & \textbf{Elemento falla} \\
 \midrule
@@ -207,14 +200,7 @@ Asimismo, se definió explícitamente el tipo de activo como \texttt{Transformad
 \small
 \caption{Muestra de variables meteorológicas (NASA POWER; primeras cinco filas)}
 \label{tab:muestra_nasa_power_1}
-\begin{tabularx}{\textwidth}{
->{\centering\arraybackslash}p{2.0cm}
->{\centering\arraybackslash}p{2.0cm}
->{\centering\arraybackslash}p{2.0cm}
->{\centering\arraybackslash}p{2.0cm}
->{\centering\arraybackslash}p{2.0cm}
->{\centering\arraybackslash}p{2.0cm}
-}
+\begin{tabularx}{\linewidth}{>{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=1.000\hsize\linewidth=\hsize}X}
 \toprule
     \textbf{Vel. viento} & \textbf{Temp. media} & \textbf{Humedad} & \textbf{Temp. min} & \textbf{Temp. max} & \textbf{Precip.} \\
 \midrule
@@ -346,7 +332,8 @@ NASA POWER
     \small
     \caption{Vista previa de la tabla base consolidada (grano activo--día)}
     \label{tab:muestra_consolidado_preview}
-    \begin{tabular}{l l r r r r r}
+    \begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{l l r r r r r}
     \toprule
     \textbf{Id activo} & \textbf{Fecha día} & \textbf{C. elem.} & \textbf{C. usu.} & \textbf{Temp. med.} & \textbf{Precip.} & \textbf{Duración (min)} \\
     \midrule
@@ -357,6 +344,7 @@ NASA POWER
     INT39845 & 02/01/2021 & 0   & 0    & 23.83 & 1.99 & 0     \\
     \bottomrule
     \end{tabular}
+\end{adjustbox}
     \end{table}
 
     \noindent\textit{Nota:} los registros sin interrupción en el día presentan \texttt{DURACION\_min = 0} y \texttt{FRECUENCIA = 0}. La duración del panel diario se expresa en \textit{minutos} (columna \texttt{DURACION\_min} en \texttt{data\_consolidada.csv}).
@@ -544,7 +532,8 @@ NASA POWER
     \small
     \caption{Vista previa de la tabla base semanal cuadrante (grano cuadrante--semana)}
     \label{tab:muestra_semanal_preview}
-    \begin{tabular}{r l r r r r r}
+    \begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{r l r r r r r}
     \toprule
     \textbf{Id cuad.} & \textbf{Semana} & \textbf{Usu. afect.} & \textbf{Temp. med.} & \textbf{Precip.} & \textbf{N eventos} & \textbf{Dur. total (h)} \\
     \midrule
@@ -555,6 +544,7 @@ NASA POWER
     203 & 01/02/2021 &    0 & 24.5 &  4.1 & 0 &  0.0 \\
     \bottomrule
     \end{tabular}
+\end{adjustbox}
     \end{table}
 
     \noindent\textit{Nota:} la muestra completa, con coordenadas, temperaturas máxima/mínima, viento y humedad por bloques temáticos, se documenta en el Apéndice~\ref{app:muestra-semanal-completa}. Cadena de unidades de continuidad: panel diario en \textit{minutos} (\texttt{DURACION\_min}) $\rightarrow$ conversión \texttt{/60} $\rightarrow$ \texttt{duracion\_total} semanal en \textit{horas}. El prorrateo entre días se aplica solo al construir \texttt{DURACION\_min} (paso~\ref{paso:int-7}); la agregación semanal suma esos minutos ya prorrateados, convertidos a horas. Las semanas sin interrupciones registran \texttt{n\_eventos = 0} y \texttt{duracion\_total = 0}. Las unidades de temperatura, humedad, viento y precipitación coinciden con las del panel diario (°C, \%, m/s y mm, respectivamente).
@@ -698,10 +688,20 @@ A partir de los hallazgos del EDA y de la taxonomía de la Sección~\ref{sec:met
 
 \paragraph{Partición formal del conjunto de columnas.} Conviene precisar qué significa, en este trabajo, ``preparar los datos para modelar''. El panel enriquecido \texttt{data\_final\_modelo\_cuadrantes\_reales.rds} contiene decenas de columnas que no son intercambiables entre sí: unas identifican la observación, otras son el objeto del pronóstico, otras son legítimamente utilizables como información previa y otras solo se conocen \emph{después} de que el fenómeno ocurrió. Preparar el panel equivale, entonces, a inducir sobre el conjunto de columnas $\mathcal{C}$ una partición en cuatro clases disjuntas:
 \begin{equation}
-\mathcal{C} \;=\; \underbrace{\mathcal{K}}_{\text{llaves}} \;\sqcup\; \underbrace{\mathcal{Y}}_{\text{respuestas}} \;\sqcup\; \underbrace{\mathcal{X}}_{\text{predictoras \emph{ex ante}}} \;\sqcup\; \underbrace{\mathcal{P}}_{\text{impacto posterior}},
-\label{eq:particion_columnas}
+    \begin{aligned}
+    \mathcal{C} = \mathcal{K} \sqcup \mathcal{Y} \sqcup \mathcal{X} \sqcup \mathcal{P},
+    \end{aligned}
+    \label{eq:particion_columnas}
 \end{equation}
-donde $\mathcal{K}=\{\texttt{id\_cuadrante},\texttt{semana},\texttt{latitud},\texttt{longitud}\}$ identifica la fila y, en las especificaciones de efectos fijos, se consume como índice de absorción y no como covariable; $\mathcal{Y}=\{\mathrm{SAIDI},\mathrm{SAIFI}\}$ concentra lo que se quiere pronosticar; $\mathcal{X}$ reúne las covariables cuyo valor está determinado antes del inicio de la semana~$s$; y $\mathcal{P}$ agrupa las magnitudes que solo existen una vez ocurrido o cerrado el evento.
+donde:
+\begin{itemize}
+    \item $\mathcal{C}$: Conjunto de columnas del panel enriquecido.
+    \item $\mathcal{K}$: Llaves (\texttt{id\_cuadrante}, \texttt{semana}, \texttt{latitud} y \texttt{longitud}). Identifican la fila y, en las especificaciones de efectos fijos, se consumen como índice de absorción y no como covariables.
+    \item $\mathcal{Y}$: Respuestas ($\mathrm{SAIDI}$ y $\mathrm{SAIFI}$), es decir, lo que se quiere pronosticar.
+    \item $\mathcal{X}$: Predictoras \emph{ex ante}, covariables cuyo valor está determinado antes del inicio de la semana~$s$.
+    \item $\mathcal{P}$: Impacto posterior, magnitudes que solo existen una vez ocurrido o cerrado el evento.
+    \item $\sqcup$: Unión disjunta.
+\end{itemize}
 
 La partición no es una formalidad de notación: define el perímetro de validez del ejercicio predictivo. Si una columna de $\mathcal{P}$ migrara a $\mathcal{X}$, el modelo exhibiría un ajuste excelente y carecería de utilidad operativa, porque en el momento de pronosticar la semana~$s$ el operador no dispone todavía de esa información. El caso crítico es \texttt{usuarios\_afectados}: pertenece simultáneamente al numerador de ambas respuestas (ecuación~\eqref{eq:respuestas_saidi_saifi}) y al conjunto de severidad observada \emph{ex post}; incluirla como regresor equivaldría a regresar $Y$ contra una transformación de sí misma. El mismo razonamiento excluye \texttt{elementos\_afectados}, y excluye los valores contemporáneos de \texttt{n\_eventos} y \texttt{duracion\_total}, que sí se admiten en su versión rezagada. Esta disciplina es la que explica por qué el desempeño predictivo reportado en el Capítulo~\ref{sec:resultados} es moderado y no artificialmente alto: el modelo opera bajo la misma restricción de información que enfrentaría el operador en producción.
 
@@ -726,13 +726,20 @@ Quedan \textit{excluidas} como predictoras contemporáneas \texttt{usuarios\_afe
 \subsection{Construcción de la variable respuesta}
 \label{sec:construccion_respuesta}
 Las respuestas son $Y_t=\mathrm{SAIFI}_t$ y $Y'_t=\mathrm{SAIDI}_t$, calculadas en cada fila cuadrante~$\times$~semana como
-\begin{subequations}\label{eq:respuestas_saidi_saifi}
-\begin{align}
-\mathrm{SAIFI}_{q,s} &= \dfrac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}, \\[4pt]
-\mathrm{SAIDI}_{q,s} &= \dfrac{\texttt{duracion\_total}_{q,s}\times\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
-\end{align}
-\end{subequations}
-donde $UT_{m(s)}$ es el valor mensual de usuarios totales del sistema (\texttt{CS1\_UT\_M} en \texttt{data\_usuarios\_totales\_sistema.csv}) correspondiente al mes calendario de la fecha de inicio de la semana~$s$.
+\begin{equation}
+    \begin{aligned}
+    \mathrm{SAIFI}_{q,s} &= \frac{\texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}}, \\[4pt]
+    \mathrm{SAIDI}_{q,s} &= \frac{\texttt{duracion\_total}_{q,s} \times \texttt{usuarios\_afectados}_{q,s}}{UT_{m(s)}},
+    \end{aligned}
+    \label{eq:respuestas_saidi_saifi}
+\end{equation}
+donde:
+\begin{itemize}
+    \item $\mathrm{SAIFI}_{q,s}$, $\mathrm{SAIDI}_{q,s}$: Indicadores operativos de frecuencia y de duración del cuadrante $q$ en la semana $s$.
+    \item $\texttt{usuarios\_afectados}_{q,s}$: Usuarios afectados por los eventos del cuadrante $q$ en la semana $s$.
+    \item $\texttt{duracion\_total}_{q,s}$: Duración total de los eventos del cuadrante $q$ en la semana $s$.
+    \item $UT_{m(s)}$: Usuarios totales del sistema en el mes calendario de la fecha de inicio de la semana $s$ (\texttt{CS1\_UT\_M} en \texttt{data\_usuarios\_totales\_sistema.csv}).
+\end{itemize}
 
 Tres decisiones merecen justificación explícita. La primera concierne al alcance de los indicadores y a su denominador. Los indicadores regulatorios definidos en las ecuaciones~\eqref{eq:saidi_creg_015_2018} y~\eqref{eq:saifi_definicion} se calculan sobre la totalidad del SDL, con agregación mensual y cierre anual, y su cálculo oficial ya lo realiza el operador a partir de sus sistemas de reporte. Este trabajo no pretende replicar ese cálculo: el problema planteado en el Capítulo~\ref{sec:problema} es que el indicador agregado no revela \textit{dónde} ni \textit{cuándo} se concentra la afectación, que es la información necesaria para orientar la operación y el mantenimiento hacia la reducción de los índices anuales y de las compensaciones asociadas. Por esa razón, $\mathrm{SAIDI}_{q,s}$ y $\mathrm{SAIFI}_{q,s}$, definidos de forma idéntica en el planteamiento del problema, se interpretan como \textit{indicadores operativos de afectación} del cuadrante~$q$ en la semana~$s$ y no como el indicador regulatorio desagregado.
 
@@ -827,10 +834,22 @@ Una consecuencia conocida de la partición temporal estricta afecta a la especif
 \label{sec:matrices_diseno}
 Esta subsección cierra la partición formulada en la ecuación~\eqref{eq:particion_columnas}: fija de manera explícita y verificable qué columnas constituyen el vector de respuesta $\mathbf{y}$ y cuáles la matriz de predictoras $\mathbf{X}$ con la que se estiman los modelos de la Etapa~5. La especificación semanal que se somete a estimación adopta la forma
 \begin{equation}
-\log\!\bigl(1+Y_{q,s}\bigr) \;=\; \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} \;+\; \gamma\,\log\!\bigl(1+Y_{q,s-1}\bigr) \;+\; \phi\,\overline{Y}_{\mathcal{N}(q),\,s-1} \;+\; \mu_q \;+\; \tau_s \;+\; \varepsilon_{q,s},
-\label{eq:especificacion_panel}
+    \begin{aligned}
+    \log\left(1 + Y_{q,s}\right) ={}& \mathbf{x}_{q,s}^{\top}\boldsymbol{\beta} + \gamma \log\left(1 + Y_{q,s-1}\right) + \phi\,\overline{Y}_{\mathcal{N}(q),\,s-1} \\
+    &+ \mu_q + \tau_s + \varepsilon_{q,s},
+    \end{aligned}
+    \label{eq:especificacion_panel}
 \end{equation}
-donde $Y\in\{\mathrm{SAIDI},\mathrm{SAIFI}\}$, $\mathbf{x}_{q,s}$ recoge las covariables \emph{ex ante}, $\overline{Y}_{\mathcal{N}(q),s-1}$ es el promedio de la respuesta en los cuadrantes vecinos de~$q$ en la semana anterior, con coeficiente $\phi$ (se usa $\phi$ y no $\rho$ para no confundirlo con el parámetro autorregresivo espacial del modelo SAR), y $\mu_q$ y $\tau_s$ son los efectos fijos de cuadrante y semana, presentes solo en las especificaciones que los declaran.
+donde:
+\begin{itemize}
+    \item $Y_{q,s}$: Respuesta del cuadrante $q$ en la semana $s$, con $Y \in \{\mathrm{SAIDI}, \mathrm{SAIFI}\}$.
+    \item $\mathbf{x}_{q,s}$: Vector de covariables \emph{ex ante}; $\boldsymbol{\beta}$, su vector de coeficientes.
+    \item $\gamma$: Coeficiente del rezago propio de la respuesta.
+    \item $\overline{Y}_{\mathcal{N}(q),\,s-1}$: Promedio de la respuesta en los cuadrantes vecinos de $q$ en la semana anterior.
+    \item $\phi$: Coeficiente del rezago espacial; se usa $\phi$ y no $\rho$ para no confundirlo con el parámetro autorregresivo espacial del modelo SAR.
+    \item $\mu_q$, $\tau_s$: Efectos fijos de cuadrante y de semana, presentes solo en las especificaciones que los declaran.
+    \item $\varepsilon_{q,s}$: Término de error.
+\end{itemize}
 
 La Tabla~\ref{tab:particion_variables_modelado} detalla la asignación final de columnas a cada clase. La estructura de $\mathbf{X}$ es prácticamente idéntica para ambos indicadores; la única diferencia es que los términos autorregresivos y el rezago espacial se construyen sobre la respuesta que se está modelando, de modo que al estimar $\mathrm{SAIDI}$ entran \texttt{SAIDI\_lag1} y \texttt{SAIDI\_vecinos\_lag1}, y al estimar $\mathrm{SAIFI}$ sus equivalentes. Esta simetría es deliberada: permite atribuir las diferencias de desempeño entre indicadores a la naturaleza del fenómeno y no a una asimetría introducida por el diseño de la matriz.
 
@@ -1071,7 +1090,7 @@ La Tabla~\ref{tab:etapas_objetivos} sintetiza cómo cada etapa de la metodologí
 \small
 \caption{Correspondencia entre preguntas de sistematización, objetivos específicos y etapas metodológicas}
 \label{tab:etapas_objetivos}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.3cm} >{\centering\arraybackslash}p{1.3cm} >{\centering\arraybackslash}p{1.7cm} >{\raggedright\arraybackslash}p{6.5cm}@{}}
+\begin{tabularx}{\linewidth}{@{} >{\raggedright\arraybackslash\hsize=0.900\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=0.500\hsize\linewidth=\hsize}X >{\centering\arraybackslash\hsize=0.650\hsize\linewidth=\hsize}X >{\raggedright\arraybackslash\hsize=1.950\hsize\linewidth=\hsize}X @{}}
 \toprule
 \textbf{Etapa} & \textbf{Pregunta} & \textbf{Objetivo} & \textbf{Aporte y evidencia} \\
 \midrule
@@ -1087,7 +1106,7 @@ Etapa~5 -- Modelado (Sección~\ref{sec:metodología-etapa5}) & P3 & OE2, OE3 & C
 \addlinespace
 Etapa~6 -- Cierre y reportes (Sección~\ref{sec:metodología-etapa6}) & P4 & Transversal (OE1--OE3) & Artefactos reproducibles (informes R Markdown, entorno \texttt{renv} y contenedor) y reportes técnicos (Apéndice~\ref{app:reportes_tecnicos}). \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \noindent P1 a P4 denotan las preguntas de sistematización en el orden en que se formulan en la Sección~1.2. En síntesis, las Etapas~1 y~2 materializan el OE1 y responden a la primera pregunta; las Etapas~3 y~4 sustentan el OE2 y la segunda pregunta; la Etapa~5 concentra el OE3 y la tercera pregunta, con aporte interpretativo al OE2; y la Etapa~6, transversal a los tres objetivos, responde a la cuarta pregunta mediante los artefactos reproducibles y los reportes técnicos del proyecto.
