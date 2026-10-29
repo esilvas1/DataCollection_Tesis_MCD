@@ -6,7 +6,7 @@
 
 
 \subsection{Contexto del estudio}
-    La calidad del servicio eléctrico se refiere a la entrega de energía de forma segura y eficiente, en cumplimiento de estándares regulatorios que garanticen continuidad, confiabilidad y estabilidad para todos los tipos de usuarios: residenciales, industriales, comerciales e institucionales. En Colombia, este servicio es esencial y por eso está regulado por la CREG~\cite{ref1}, que ha establecido métricas y estándares específicos para hacer seguimiento a cómo se presta el servicio. Entre estas métricas, dos son particularmente importantes: el SAIDI y el SAIFI, ya definidos en la introducción de este trabajo.
+    La calidad del servicio eléctrico comprende la entrega de energía de forma segura y eficiente, en cumplimiento de estándares regulatorios que garantizan continuidad, confiabilidad y estabilidad a usuarios residenciales, industriales, comerciales e institucionales. En Colombia, la CREG regula la prestación de este servicio esencial y ha establecido métricas y estándares para su seguimiento~\cite{ref1}. Entre ellas, el SAIDI y el SAIFI son las de mayor relevancia para la continuidad del suministro; su definición regulatoria se presenta a continuación.
 
      \begin{enumerate}
           \item \textit{Definición del SAIDI según la Resolución CREG 015 de 2018:}
@@ -97,10 +97,10 @@
             \end{quote}
 
          \item \textit{Dimensión social y económica:}
-          Desde una dimensión social y económica, un servicio deficiente ocasiona pérdidas significativas en la productividad empresarial y en los ingresos por remuneración al operador de red, y afecta la operación de instituciones comerciales e industriales. Por ello, mejorar la gestión y la capacidad de predicción de $SAIDI$ y $SAIFI$ es un objetivo estratégico para los operadores y para la regulación del sector, con impactos directos en usuarios, empresas y entes de control.
+          Un servicio con interrupciones frecuentes o prolongadas reduce la productividad de las empresas, afecta la operación de instituciones comerciales e industriales y disminuye los ingresos del operador de red por el esquema de incentivos y compensaciones. Por ello, mejorar la gestión y la capacidad de pronóstico de SAIDI y SAIFI es un objetivo estratégico para los operadores y para la regulación del sector.
 
           \item \textit{Exclusiones de eventos:}
-          Para la realización del cálculo de la calidad del servicio y el seguimiento de estos indicadores se tienen algunas exclusiones que permiten exonerar o excluir eventos de este cálculo. Entre los aspectos de la calidad del servicio de energía eléctrica que no serán observados dentro de este estudio se encuentran las siguientes exclusiones de eventos, tal como lo dicta la Resolución CREG 015 de 2018~\cite{ref1}:
+          La Resolución CREG 015 de 2018 excluye del cálculo de los indicadores un conjunto de eventos~\cite{ref1}. Este trabajo adopta las mismas exclusiones, de modo que los indicadores operativos se construyen sobre el mismo universo de eventos que el cálculo regulatorio (Sección~\ref{sec:construccion_respuesta}). Las principales exclusiones son las siguientes:
             \begin{itemize}
                 \item Los menores o iguales a 3 minutos.
                 \item Los debidos a racionamientos programados.
@@ -111,20 +111,20 @@
                 \item Los debidos a actos de terrorismo.
                 \item Eventos originados en exigencias de traslados y adecuaciones de la infraestructura eléctrica.
                 \item Los eventos debidos a trabajos de reposición o modernización en subestaciones.
-                \item Y otros menos relevantes para este estudio, pero que serán igualmente excluidos.
+                \item Las demás causales previstas en la resolución, que también se excluyen en este trabajo.
             \end{itemize}
          
          \item \textit{Factores que afectan los indicadores:}
-         Hay varios factores que deben considerarse, ya que terminan afectando negativamente los indicadores de calidad~\cite{ref6,ref7,ref43}:
+         La literatura identifica cuatro grupos de factores que deterioran los indicadores de calidad~\cite{ref6,ref7,ref43}:
          
             \begin{itemize}
-                \item \textit{El clima:} Las tormentas eléctricas, vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
-                \item \textit{Aspectos técnicos e infraestructura:} Si el mantenimiento es deficiente, si los equipos están viejos u obsoletos, o si no hay redundancia en la red, se generan problemas que impactan los indicadores.
-                \item \textit{La gestión operativa:} Cuando falta planificación en el mantenimiento, cuando existen redes y equipos sin hojas de vida documentadas, cuando la respuesta a fallas es lenta o cuando el servicio está saturado, los indicadores se ven afectados. El problema se agrava al tener la información dispersa en múltiples sistemas.
-                \item \textit{Los datos:} Cuando la información está fragmentada en diferentes aplicativos, se dificulta el desarrollo de modelos predictivos que funcionen adecuadamente.
+                \item \textit{Clima:} las tormentas eléctricas, los vientos fuertes y otros fenómenos meteorológicos pueden dañar la infraestructura de distribución y causar interrupciones.
+                \item \textit{Infraestructura:} el mantenimiento deficiente, la obsolescencia de los equipos y la falta de redundancia de la red aumentan la frecuencia y la duración de las interrupciones.
+                \item \textit{Gestión operativa:} la falta de planificación del mantenimiento, la ausencia de hojas de vida documentadas de redes y equipos, la respuesta lenta a las fallas y la saturación de la capacidad de atención deterioran los indicadores.
+                \item \textit{Información:} la fragmentación de los datos en distintos aplicativos dificulta el diagnóstico de las causas y el desarrollo de modelos predictivos confiables.
             \end{itemize}
 
-        Por lo tanto, analizar en conjunto todas estas situaciones que afectan el indicador de forma negativa o positiva constituye un ejercicio relevante, ya que permitiría fortalecer la confiabilidad de los procesos internos y mejorar la gestión de los indicadores de calidad del servicio público de redes eléctricas de la empresa operadora de red de Norte de Santander.
+        El análisis conjunto de estos factores permite fortalecer la confiabilidad de los procesos internos y orientar la gestión de los indicadores de calidad del operador de red de Norte de Santander.
     
      \end{enumerate}
 
@@ -134,7 +134,7 @@
 En este trabajo, la unidad de análisis del modelado es el par \textit{cuadrante $\times$ semana} sobre $D_{\mathrm{mod}}$ (2024--2025). Para evitar \textit{fuga de información} en el pronóstico, las variables del panel se separan en tres grupos mutuamente excluyentes según su disponibilidad temporal respecto de la semana~$t$ a predecir:
 
 \begin{enumerate}
-    \item \textit{Disponibles antes del periodo a pronosticar} (candidatas a predictoras): clima \emph{rezagado} ($t-1,\ldots,t-h$) o \emph{pronosticado} para~$t$ cuando exista un forecast operativo \emph{ex ante}; histórico de eventos del cuadrante (y vecinos, si aplica); características del cuadrante (altitud, tipología de zona, número de activos, usuarios totales del inventario); estacionalidad y calendario; rezagos de $Y$ o $Y'$. El clima contemporáneo de la semana~$t$ solo entra como predictora si está disponible \emph{antes} de observar los eventos de~$t$; en el EDA se usa como asociación descriptiva, no como garantía de usabilidad predictiva.
+    \item \textit{Disponibles antes del periodo a pronosticar} (candidatas a predictoras): clima \emph{rezagado} ($t-1,\ldots,t-h$) o \emph{pronosticado} para~$t$ cuando exista un pronóstico operativo \emph{ex ante}; histórico de eventos del cuadrante (y vecinos, si aplica); características del cuadrante (altitud, tipología de zona, número de activos, usuarios totales del inventario); estacionalidad y calendario; rezagos de $Y$ o $Y'$. El clima contemporáneo de la semana~$t$ solo entra como predictora si está disponible \emph{antes} de observar los eventos de~$t$; en el EDA se usa como asociación descriptiva, no como garantía de usabilidad predictiva.
     \item \textit{Variables respuesta:} $Y = \mathrm{SAIFI}$ y $Y' = \mathrm{SAIDI}$, construidas en el grano cuadrante~$\times$~semana como
     $\mathrm{SAIFI}=\texttt{usuarios\_afectados}/UT_{m}$ y
     $\mathrm{SAIDI}=(\texttt{duracion\_total}\times\texttt{usuarios\_afectados})/UT_{m}$,
@@ -191,7 +191,7 @@ El vector se enriquece eventualmente con rezagos temporales de $Y$ (o $Y'$) y co
         \item $s_X$: Desviación estándar muestral de $X$.
         \item $\bar{x}$: Media muestral de $X$.
     \end{itemize}
-    Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
+    El CV solo es interpretable en variables medidas en escala de razón, con un cero absoluto (precipitación, viento, humedad relativa o conteos). En la temperatura expresada en grados Celsius el cero es arbitrario y el CV cambia con el origen de la escala, por lo que su dispersión se describe con la desviación estándar y el rango intercuartílico. Valores de $\mathrm{CV}$ cercanos a cero indican dispersión baja respecto a la media; valores $\mathrm{CV}\gtrsim 1$ señalan alta heterogeneidad relativa. En variables cero-infladas (p.\,ej.\ métricas de interrupción), el CV del panel completo queda inflado por la masa en cero, por lo que se reporta también el CV condicionado a observaciones con valor positivo.
 
     \item \textit{Análisis de atípicos y extremos:}
     Para una variable cuantitativa $X$, se emplean reglas basadas en cuartiles, siguiendo el criterio de rango intercuartílico propuesto por~\cite{ref50}. Se marcan como extremos candidatos los valores que cumplen
@@ -266,6 +266,7 @@ El vector se enriquece eventualmente con rezagos temporales de $Y$ (o $Y'$) y co
         \item $d_i$: Diferencia entre los rangos de $X$ y $Y$ en la observación $i$.
         \item $n$: Número de observaciones.
     \end{itemize}
+    La expresión~\eqref{eq:spearman} es exacta solo en ausencia de empates. Con empates, frecuentes en este trabajo por la masa de ceros de las variables operativas, $\rho_S$ se calcula como el coeficiente de correlación de Pearson entre los rangos promedio de $X$ y de $Y$, que es el cálculo que realiza la función \texttt{cor(\ldots, method = "spearman")} empleada en los informes.
     En $D_{\mathrm{mod}}$, el par climático de mayor magnitud frente a \texttt{n\_eventos} es (\texttt{viento\_max\_semana}, \texttt{n\_eventos}) con $\rho_S\approx 0{.}14$, mientras el par de mayor interés conceptual, (\texttt{precip\_total\_semana}, \texttt{n\_eventos}), alcanza $\rho_S\approx 0{.}07$. Entre variables cualitativas se emplea el estadístico $V$ de Cramér~\cite{ref54}. Para el agrupamiento jerárquico de covariables se usa la distancia $d=1-|\rho_S|$.
 
     \item \textit{Datos de entrenamiento y prueba:}
@@ -389,7 +390,7 @@ Sea $y_{q,s}=\log\left(1+Y_{q,s}\right)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIF
         \item $B$: Número de árboles.
         \item $T_b(\mathbf{x})$: Predicción del árbol $b$.
     \end{itemize}
-    Las observaciones no incluidas en cada muestra (\emph{out-of-bag}, OOB) permiten estimar el error sin un conjunto de validación adicional. La importancia de la variable~$j$ (\%IncMSE) es el aumento porcentual del error cuadrático medio OOB cuando se permutan aleatoriamente sus valores. Los hiperparámetros \texttt{mtry} y tamaño mínimo de nodo terminal se ajustan siguiendo~\cite{probst2019}.
+    Las observaciones no incluidas en cada muestra (\emph{out-of-bag}, OOB) permiten una estimación interna del error. En un panel con dependencia temporal, el muestreo con reemplazo mezcla semanas próximas entre la muestra y las observaciones OOB, de modo que ese error tiende a ser optimista; en este trabajo se usa solo como diagnóstico complementario, y la selección de hiperparámetros y la evaluación se basan en particiones temporales. La importancia de la variable~$j$ (\%IncMSE) es el aumento porcentual del error cuadrático medio OOB cuando se permutan aleatoriamente sus valores. Los hiperparámetros \texttt{mtry} y tamaño mínimo de nodo terminal se ajustan siguiendo~\cite{probst2019}.
 
     \item \textit{Índice de Moran.} Mide la autocorrelación espacial de una variable~\cite{moran1950}:
     \begin{equation}
@@ -447,7 +448,8 @@ Sea $y_{q,s}=\log\left(1+Y_{q,s}\right)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIF
         \begin{aligned}
         \mathrm{RMSE} &= \sqrt{\frac{1}{n}\sum_{i=1}^{n} \left(y_i - \hat{y}_i\right)^{2}}, \\
         \mathrm{MAE} &= \frac{1}{n}\sum_{i=1}^{n} \left| y_i - \hat{y}_i \right|, \\
-        R^{2} &= \mathrm{cor}\left(y, \hat{y}\right)^{2},
+        r^{2} &= \mathrm{cor}\left(y, \hat{y}\right)^{2}, \\
+        R^{2}_{\mathrm{pred}} &= 1 - \frac{\sum_{i=1}^{n} \left(y_i - \hat{y}_i\right)^{2}}{\sum_{i=1}^{n} \left(y_i - \bar{y}_{\mathrm{ent}}\right)^{2}},
         \end{aligned}
         \label{eq:metricas}
     \end{equation}
@@ -455,8 +457,22 @@ Sea $y_{q,s}=\log\left(1+Y_{q,s}\right)$, con $Y\in\{\mathrm{SAIDI},\mathrm{SAIF
     \begin{itemize}
         \item $y_i$, $\hat{y}_i$: Valor observado y valor pronosticado de la observación $i$.
         \item $n$: Número de observaciones del conjunto de prueba.
+        \item $r^{2}$: Cuadrado de la correlación de Pearson entre observado y pronosticado; mide el ordenamiento relativo y no penaliza sesgos de nivel ni de escala.
+        \item $R^{2}_{\mathrm{pred}}$: Coeficiente de determinación predictivo; compara el error del modelo con el de pronosticar la media de entrenamiento $\bar{y}_{\mathrm{ent}}$, y es negativo cuando el modelo es peor que esa media.
     \end{itemize}
-    Como el error porcentual (MAPE) no está definido cuando $y_i=0$, la comparación relativa se hace con el error absoluto escalado~\cite{hyndman2006}, $\mathrm{MASE}=\mathrm{MAE}/\mathrm{MAE}_{\mathrm{ingenuo}}$, donde el pronóstico ingenuo es la persistencia $\hat{y}_{q,s}=y_{q,s-1}$; un $\mathrm{MASE}<1$ indica que el modelo supera a la persistencia. La diferencia de exactitud entre dos modelos se contrasta con la prueba de~\cite{diebold1995}.
+    Como el error porcentual (MAPE) no está definido cuando $y_i=0$, la comparación relativa se hace con el error absoluto escalado de~\cite{hyndman2006},
+    \begin{equation}
+        \begin{aligned}
+        \mathrm{MASE} = \frac{\mathrm{MAE}}{\frac{1}{n_{\mathrm{ent}}}\sum_{(q,s) \in \mathcal{D}_{\mathrm{ent}}} \left| y_{q,s} - y_{q,s-1} \right|},
+        \end{aligned}
+        \label{eq:mase}
+    \end{equation}
+    donde:
+    \begin{itemize}
+        \item $\mathcal{D}_{\mathrm{ent}}$, $n_{\mathrm{ent}}$: Observaciones de entrenamiento y su número.
+        \item $y_{q,s-1}$: Pronóstico ingenuo de persistencia del cuadrante $q$ para la semana $s$.
+    \end{itemize}
+    Un $\mathrm{MASE}<1$ indica que el modelo mejora, en prueba, el error que la persistencia comete dentro del entrenamiento. Se reporta además el \emph{MAE relativo a la persistencia}, cociente entre el MAE del modelo y el de la persistencia sobre las mismas observaciones de prueba, que responde directamente a si el modelo supera a esa referencia. La diferencia de exactitud entre dos modelos se contrasta con la prueba de~\cite{diebold1995}, adaptada a la estructura de panel como se describe en la Sección~\ref{sec:evaluacion_desempeno}.
 \end{enumerate}
 
 

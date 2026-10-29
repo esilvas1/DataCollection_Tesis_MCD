@@ -14,7 +14,7 @@ Cada fuente quedó sujeta a reglas explícitas y verificables de filtrado y homo
 
 La integración secuencial descrita en la Sección~\ref{sec:metodología-etapa2} produjo dos tablas base, cuya construcción se documenta en los Apéndices~\ref{app:html-consolidada} (\href{\urlconsolidada}{informe HTML}) y~\ref{app:html-agrupacion} (\href{\urlagrupacion}{informe HTML}). La primera, con grano activo eléctrico~$\times$~día (Tabla~\ref{tab:muestra_consolidado_preview}), alcanza $N = 87\,007\,074$ observaciones ($47\,649$ activos únicos $\times$ $1\,826$ días), preservando trazabilidad completa entre el inventario georreferenciado y el calendario de análisis 2021--2025. La segunda, agregada a grano cuadrante~$\times$~semana sobre la malla institucional de $800$ cuadrantes (Figura~\ref{fig:cuadrantes_800}), alcanza $N_{\mathrm{agr}} = 90\,128$ observaciones (Tabla~\ref{tab:muestra_semanal_preview}) para el horizonte completo 2021--2025. En esta segunda tabla se incorporaron, además del clima y los eventos, variables de caracterización territorial por cuadrante: composición socioeconómica (estrato, proporción de clientes no residenciales), topología e infraestructura de red (número de elementos, longitud de red, densidad de nodos terminales, número de circuitos) y las fuentes de exposición adicionales descritas en el Capítulo de Datos (sismicidad y vegetación/NDVI).
 
-Un hallazgo relevante de esta etapa es un sesgo sistemático detectado al contrastar el conteo anual de eventos de la base BRAE con la suma territorial de eventos de la tabla agregada durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). El diagnóstico descarta la ausencia de datos como causa —el campo \texttt{COMPONENTE\_FALLADO} está completo en el $100$~\% de los registros BRAE— y la atribuye a una incompatibilidad entre esquemas de codificación al cruzar eventos con el inventario georreferenciado. Este hallazgo, que no era anticipable antes del análisis, llevó a delimitar el subconjunto de datos con cobertura de emparejamiento confiable como el dataset de modelado $D_{\mathrm{mod}}$: $36\,120$ filas cuadrante--semana, $105$ semanas y $33\,410$ eventos georreferenciados en el periodo 2024--2025 ($15\,211$ en 2024 y $18\,199$ en 2025), que es el que efectivamente alimenta el modelado de la Etapa~5. El horizonte completo 2021--2025 ($D_{\mathrm{EDA}}$) se conserva para el análisis exploratorio de la Etapa~3. El diagnóstico de cobertura se documenta en el Apéndice~\ref{app:html-emparejamiento} (\href{\urlemparejamientoeventos}{informe HTML}) y la materialización del subconjunto de modelado en el Apéndice~\ref{app:html-datamod} (\href{\urlconsolidadodatamod}{informe HTML}).
+Un hallazgo relevante de esta etapa es un sesgo sistemático detectado al contrastar el conteo anual de eventos de la base BRAE con la suma territorial de eventos de la tabla agregada durante 2021--2023 (Tabla~\ref{tab:cobertura_emparejamiento_oms}; Figura~\ref{fig:cobertura_emparejamiento}). El diagnóstico descarta la ausencia de datos como causa —el campo \texttt{COMPONENTE\_FALLADO} está completo en el $100$~\% de los registros BRAE— y la atribuye a una incompatibilidad entre esquemas de codificación al cruzar eventos con el inventario georreferenciado. Este hallazgo, que no era anticipable antes del análisis, llevó a delimitar el subconjunto de datos con cobertura de emparejamiento confiable como el conjunto de modelado $D_{\mathrm{mod}}$: $36\,120$ filas cuadrante--semana, $105$ semanas y $33\,410$ eventos georreferenciados en el periodo 2024--2025 ($15\,211$ en 2024 y $18\,199$ en 2025), que es el que efectivamente alimenta el modelado de la Etapa~5. El horizonte completo 2021--2025 ($D_{\mathrm{EDA}}$) se conserva para el análisis exploratorio de la Etapa~3. El diagnóstico de cobertura se documenta en el Apéndice~\ref{app:html-emparejamiento} (\href{\urlemparejamientoeventos}{informe HTML}) y la materialización del subconjunto de modelado en el Apéndice~\ref{app:html-datamod} (\href{\urlconsolidadodatamod}{informe HTML}).
 
 Conviene subrayar el alcance de este hallazgo más allá de su consecuencia inmediata sobre el horizonte de modelado. Que el campo \texttt{COMPONENTE\_FALLADO} esté completo en el $100$~\% de los registros y que, pese a ello, solo alrededor del $31$~\% de los eventos de 2021--2023 logre emparejarse con el inventario georreferenciado, demuestra que la completitud formal de un campo no garantiza su utilidad analítica. La discrepancia no se origina en la ausencia de datos sino en la convivencia de dos esquemas de codificación —código de sitio, estable en el tiempo, y código de activo, sujeto a cambio en cada reposición— que el sistema histórico OMS-SPARD empleaba de forma intercambiable. Un diagnóstico basado únicamente en conteos de valores ausentes, como el que se reporta en la Sección~\ref{sec:resultados-etapa3}, habría calificado la fuente como de calidad alta y no habría detectado el problema. El hallazgo tiene, por tanto, valor propio para la gobernanza de datos del operador, con independencia de los modelos estimados en este trabajo.
 
@@ -33,6 +33,8 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     En el análisis por columna, para cada una de las $16$ variables del panel se calculó el número absoluto de \texttt{NA} y su porcentaje respecto a $N$. En el análisis por fila, se determinó cuántas observaciones $(i,t)$ presentan cero, uno o más campos incompletos, junto con el máximo de variables faltantes registradas en una misma fila.
     
     Los resultados muestran que la incompletitud se concentra en las variables climáticas integradas desde NASA POWER en el paso~\ref{paso:int-6}. Las seis variables meteorológicas (\texttt{velocidad\_viento\_ms}, \texttt{temperatura\_media\_c}, \texttt{humedad\_relativa\_pct}, \texttt{temperatura\_minima\_c}, \texttt{temperatura\_maxima\_c} y \texttt{precipitacion\_total\_mm}) presentan exactamente $3\,401\,838$ valores faltantes cada una, equivalente al $3{.}91$~\% de $N$. Este patrón es coherente con el cruce izquierdo por (\texttt{ELEMENTO}, \texttt{FECHA\_DIA}): las filas sin emparejamiento en la base climática conservan \texttt{NA} en el bloque meteorológico. La variable \texttt{ALTITUD} registra $32\,868$ faltantes ($0{.}04$~\% de $N$), asociados al inventario GIS. El resto de variables del panel, identificación del activo (\texttt{ELEMENTO}, \texttt{TIPO}, \texttt{LATITUD}, \texttt{LONGITUD}), calendario (\texttt{FECHA\_DIA}), severidad (\texttt{CANTIDAD\_ELEMENTOS}, \texttt{CANTIDAD\_USUARIOS}) y continuidad (\texttt{DURACION\_min}, \texttt{FRECUENCIA}), no presentan \texttt{NA}, dado que los pasos~\ref{paso:int-5} y~\ref{paso:int-7} asignan $0$ en días sin evento.
+
+    Los faltantes climáticos del panel activo--día no se trasladan al panel de modelado. La serie climática que alimenta el panel cuadrante~$\times$~semana se integra por cuadrante y día (\texttt{clima\_cuadrante\_dia.csv}): tiene $628\,144$ filas, exactamente $344$ cuadrantes $\times$ $1\,826$ días, sin valores ausentes ni no finitos en ninguna de sus variables. En 2024--2025 cada combinación cuadrante--semana se agrega con sus siete días observados, salvo la última semana del panel (29 de diciembre de 2025), que solo contiene los tres días hasta el cierre del año. La completitud de las variables climáticas semanales no proviene, por tanto, de omitir faltantes al agregar, y no fue necesario fijar reglas de cobertura mínima ni de imputación.
     
     A nivel de fila, $83\,576\,020$ observaciones ($96{.}06$~\%) están completas; $3\,431\,054$ filas ($3{.}94$~\%) tienen al menos un \texttt{NA}, y el máximo de variables incompletas en una misma observación es $7$ (combinación de las seis variables climáticas más \texttt{ALTITUD}). La Figura~\ref{fig:faltantes_por_variable} (Apéndice~\ref{app:figuras-eda-complementarias}) y la Tabla~\ref{tab:resumen_datos_faltantes} resumen el porcentaje de faltantes por variable, ordenado de mayor a menor.
     
@@ -74,7 +76,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     
     \paragraph{Panel consolidado activo $\times$ día.} Sobre \texttt{data\_consolidada.csv} ($N = 87\,007\,074$) se aplicó el protocolo descrito, excluyendo coordenadas geográficas (\texttt{LATITUD}, \texttt{LONGITUD}, \texttt{ALTITUD}). El detalle reproducible se documenta en el Apéndice~\ref{app:html-outliers}.
     
-    \subparagraph{Variables climáticas diarias.} Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas, baja dispersión relativa (CV entre $0{.}16$ y $0{.}20$) y un porcentaje muy bajo de extremos bajo la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{.}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{.}0$ prácticamente no se identifican extremos severos. El viento exhibe mayor heterogeneidad relativa (CV $= 0{.}69$). La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica, con exceso de ceros y CV $= 2{.}12$, la regla de Tukey marca el $10{.}38$~\% de las observaciones y la ampliada el $5{.}30$~\%, aunque la regla de percentiles solo señala el $1{.}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200\,000$ observaciones.
+    \subparagraph{Variables climáticas diarias.} Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas, baja dispersión (en la humedad, CV del orden de $0{.}16$--$0{.}20$; en la temperatura, en grados Celsius, el CV no se interpreta como dispersión relativa) y un porcentaje bajo de extremos según la regla de Tukey (entre $0$~\% para \texttt{humedad\_relativa\_pct} y $0{.}20$~\% para \texttt{temperatura\_minima\_c}); con el factor $3{.}0$ prácticamente no se identifican extremos severos. El viento exhibe mayor heterogeneidad relativa (CV $= 0{.}69$). La \texttt{precipitacion\_total\_mm} constituye la excepción: por su naturaleza fuertemente asimétrica, con exceso de ceros y CV $= 2{.}12$, la regla de Tukey marca el $10{.}38$~\% de las observaciones y la ampliada el $5{.}30$~\%, aunque la regla de percentiles solo señala el $1{.}00$~\%. Estos valores corresponden a días de lluvia intensa operativamente plausibles, no a errores de registro. La Tabla~\ref{tab:extremos_clima} resume estos resultados y las Figuras~\ref{fig:boxplot_clima} y~\ref{fig:histograma_clima} muestran, respectivamente, los diagramas de caja y los histogramas sobre una muestra de $200\,000$ observaciones.
 
 \begin{table}[!htbp]
 \centering
@@ -125,7 +127,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     
     \paragraph{Tabla agrupada cuadrante $\times$ semana.} Sobre \texttt{data\_agrupada.csv} (Sección~\ref{sec:agrupacion_cuadrante_semana}), con $N_{\mathrm{agr}} = 90\,128$ observaciones, se replicó el mismo esquema excluyendo \texttt{id\_cuadrante}, \texttt{latitud}, \texttt{longitud} y \texttt{altitud}. El procedimiento se documenta en el Apéndice~\ref{app:html-outliers-agrupada}.
     
-    \subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas, baja dispersión relativa (CV entre $0{.}16$ y $0{.}25$) y un porcentaje muy bajo de extremos bajo Tukey (entre $0$~\% y $0{.}03$~\%); con el factor $3{.}0$ no se identifican extremos severos. El viento semanal es más heterogéneo (CV $\approx 0{.}78$--$0{.}81$). La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal asimétrico a la derecha con CV $= 1{.}17$, la regla de Tukey marca el $6{.}21$~\% de las observaciones y la ampliada el $1{.}79$~\%, aunque la regla de percentiles solo señala el $0{.}99$~\%. Los valores señalados corresponden a semanas de lluvia intensa operativamente plausibles: el máximo observado es de $198{.}1$~mm acumulados en la semana, magnitud compatible con los registros de temporada de lluvia en la región. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90\,128$ observaciones.
+    \subparagraph{Variables climáticas semanales.} El diagnóstico se realizó sobre la tabla completa. Las variables de temperatura y humedad presentan distribuciones aproximadamente simétricas, baja dispersión (en la humedad, CV del orden de $0{.}16$; en la temperatura, en grados Celsius, el CV no se interpreta como dispersión relativa) y un porcentaje bajo de extremos según la regla de Tukey (entre $0$~\% y $0{.}03$~\%); con el factor $3{.}0$ no se identifican extremos severos. El viento semanal es más heterogéneo (CV $\approx 0{.}78$--$0{.}81$). La \texttt{precip\_total\_semana} constituye la excepción: al ser un acumulado semanal asimétrico a la derecha con CV $= 1{.}17$, la regla de Tukey marca el $6{.}21$~\% de las observaciones y la ampliada el $1{.}79$~\%, aunque la regla de percentiles solo señala el $0{.}99$~\%. Los valores señalados corresponden a semanas de lluvia intensa operativamente plausibles: el máximo observado es de $198{.}1$~mm acumulados en la semana, magnitud compatible con los registros de temporada de lluvia en la región. La Tabla~\ref{tab:extremos_clima_agrupada} resume estos resultados y las Figuras~\ref{fig:boxplot_clima_agrupada} y~\ref{fig:histograma_clima_agrupada} muestran los diagramas de caja y los histogramas sobre las $90\,128$ observaciones.
     
     \begin{table}[!htbp]
     \centering
@@ -182,7 +184,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     
     
     
-    \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas y baja dispersión relativa: el coeficiente de variación (CV) se ubica entre $0{.}16$ (\texttt{humedad\_media\_semana}) y $0{.}81$ (\texttt{viento\_medio\_semana}). La temperatura media semanal tiene mediana de $24{.}8$~\textdegree C (media $23{.}8$~\textdegree C; $Q_1$--$Q_3$: $20{.}4$--$27{.}2$~\textdegree C) y asimetría cercana a cero ($-0{.}37$). La humedad relativa media semanal concentra la mediana en $72{.}3$~\% (CV $= 0{.}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $9{.}8$~mm, media de $16{.}0$~mm, CV $= 1{.}17$ y asimetría positiva ($1{.}98$), con un recorrido de $0$ a $198{.}1$~mm y un percentil $99$ de $85{.}1$~mm que corresponde a semanas de lluvia intensa puntuales. La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
+    \paragraph{Variables climáticas semanales.} Las siete variables meteorológicas agregadas presentan distribuciones aproximadamente simétricas. Entre las medidas en escala de razón, el coeficiente de variación (CV) se ubica entre $0{.}16$ (\texttt{humedad\_media\_semana}) y $0{.}81$ (\texttt{viento\_medio\_semana}); para la temperatura se reportan cuartiles, porque el CV no es interpretable en grados Celsius. La temperatura media semanal tiene mediana de $24{.}8$~\textdegree C (media $23{.}8$~\textdegree C; $Q_1$--$Q_3$: $20{.}4$--$27{.}2$~\textdegree C) y asimetría cercana a cero ($-0{.}37$). La humedad relativa media semanal concentra la mediana en $72{.}3$~\% (CV $= 0{.}16$). La excepción es \texttt{precip\_total\_semana}: acumulado semanal con mediana de $9{.}8$~mm, media de $16{.}0$~mm, CV $= 1{.}17$ y asimetría positiva ($1{.}98$), con un recorrido de $0$ a $198{.}1$~mm y un percentil $99$ de $85{.}1$~mm que corresponde a semanas de lluvia intensa puntuales. La Tabla~\ref{tab:desc_clima_agrupada} resume tendencia central y dispersión; la Figura~\ref{fig:densidad_clima_agrupada} muestra las curvas de densidad.
     
     \begin{table}[!htbp]
     \centering
@@ -264,7 +266,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
         \label{fig:pct_ceros_evento_agrupada}
     \end{figure}
     
-    \noindent En síntesis, el análisis de distribución confirma dos regímenes claramente diferenciados: un bloque climático estable y casi simétrico (CV bajo, con la precipitación como excepción asimétrica de CV algo superior a la unidad) y un bloque operativo cero-inflado con colas pesadas y CV condicionado alto. Estos hallazgos fundamentan las transformaciones logarítmicas desplazadas (Sección~\ref{sec:metodos-modelos}) y la consideración de modelos aptos para datos cero-inflados en la Etapa~4.
+    \noindent En síntesis, el análisis de distribución confirma dos regímenes diferenciados: un bloque climático estable y casi simétrico (CV bajo, con la precipitación como excepción asimétrica de CV algo superior a la unidad) y un bloque operativo cero-inflado con colas pesadas y CV condicionado alto. Estos hallazgos fundamentan las transformaciones logarítmicas desplazadas (Sección~\ref{sec:metodos-modelos}) y la consideración de modelos aptos para datos cero-inflados en la Etapa~4.
     
 \subsection{Análisis temporal de eventos}
 \label{sec:analisis_temporal_eventos}
@@ -283,7 +285,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     
     El diagnóstico cuantitativo confirma esta hipótesis: la proporción de eventos cuyo \texttt{COMPONENTE\_FALLADO} coincide con algún \texttt{ELEMENTO} de \texttt{tipo\_elemento.csv} es del $30{.}5$~\% (2021), $30{.}9$~\% (2022) y $31{.}7$~\% (2023), valores cercanos a la cobertura del panel espacial en esos años ($28{.}1$~\%, $28{.}1$~\% y $29{.}1$~\%, respectivamente). Con la migración a OMS-SP7 (Sección~\ref{sec:extraccion_oms_actual}), la coincidencia asciende al $79{.}8$~\% (2024) y al $95{.}0$~\% (2025), acompañada por coberturas del panel del $77{.}7$~\% y $92{.}4$~\%. La Figura~\ref{fig:eventos_por_anio} debe interpretarse a la luz de esta brecha: el salto a partir de 2024 refleja en gran medida una \textit{mayor homogeneización de la codificación} bajo OMS-SP7, y no únicamente un incremento operativo de interrupciones.
     
-    El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-emparejamiento}. Con base en este hallazgo, emergido en el presente análisis temporal, se define el \textit{dataset de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36\,120$ filas cuadrante~$\times$~semana, $105$ semanas y $33\,410$ eventos georreferenciados en total ($15\,211$ en 2024 y $18\,199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:analisis_temporal_eventos}, pero \textit{no} se empleará para estimar el modelo predictivo de la Etapa~4.
+    El procedimiento reproducible se documenta en el Apéndice~\ref{app:html-emparejamiento}. Con base en este hallazgo, emergido en el presente análisis temporal, se define el \textit{conjunto de modelado} $D_{\mathrm{mod}}$ como el subconjunto de \texttt{data\_agrupada.csv} con \texttt{year(semana)} $\in \{2024,\,2025\}$, que comprende $36\,120$ filas cuadrante~$\times$~semana, $105$ semanas y $33\,410$ eventos georreferenciados en total ($15\,211$ en 2024 y $18\,199$ en 2025). El horizonte 2021--2025 se conserva como $D_{\mathrm{EDA}}$ para las Secciones~\ref{sec:identificacion_datos_faltantes}--\ref{sec:analisis_temporal_eventos}, pero \textit{no} se empleará para estimar el modelo predictivo de la Etapa~4.
     
     \begin{table}[!htbp]
     \centering
@@ -323,9 +325,9 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     
     
     
-    \noindent En síntesis, el análisis temporal sobre $D_{\mathrm{EDA}}$ revela: (i)~un cambio de nivel de la serie a partir de 2024, reinterpretado como mayor homogeneización de la codificación activo/sitio bajo OMS-SP7, y no como incremento operativo aislado, lo que motiva la restricción del dataset de modelado a $D_{\mathrm{mod}}$ (2024--2025; Sección~\ref{sec:delimitacion_temporal_modelado}); (ii)~estacionalidad intra-anual en la actividad de interrupciones, cuya atribución al régimen de lluvias no se sostiene con el acumulado semanal de precipitación (Sección~\ref{sec:analisis_correlacion_asociacion}); y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores en $D_{\mathrm{mod}}$. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
+    \noindent En síntesis, el análisis temporal sobre $D_{\mathrm{EDA}}$ revela: (i)~un cambio de nivel de la serie a partir de 2024, reinterpretado como mayor homogeneización de la codificación activo/sitio bajo OMS-SP7, y no como incremento operativo aislado, lo que motiva la restricción del conjunto de modelado a $D_{\mathrm{mod}}$ (2024--2025; Sección~\ref{sec:delimitacion_temporal_modelado}); (ii)~estacionalidad intra-anual en la actividad de interrupciones, cuya atribución al régimen de lluvias no se sostiene con el acumulado semanal de precipitación (Sección~\ref{sec:analisis_correlacion_asociacion}); y (iii)~fuerte persistencia semanal con componente anual, que fundamenta el uso de rezagos temporales como predictores en $D_{\mathrm{mod}}$. Estos hallazgos orientan la generación de ventanas temporales y la partición de datos de la Etapa~4.
     
-    \paragraph{Materialización de $D_{\mathrm{mod}}$.} Para operacionalizar la delimitación temporal sin alterar el insumo exploratorio, se construyó el archivo \texttt{data\_agrupada\_mod.csv} como subconjunto de \texttt{data\_agrupada.csv} con filtro \texttt{year(semana)} $\in \{2024,\,2025\}$, conservando el grano cuadrante~$\times$~semana y el conjunto completo de variables climáticas y operativas. La tabla original 2021--2025 permanece intacta como $D_{\mathrm{EDA}}$; el resultado filtrado ($36\,120$ filas; $344$ cuadrantes; $105$ semanas; $33\,410$ eventos) constituye el insumo analítico para las Secciones~\ref{sec:identificacion_patrones_tendencias} en adelante y la Etapa~4, con partición natural entrenamiento 2024 / prueba 2025. El procedimiento reproducible, lectura, filtro, resumen por año y exportación, se documenta en el Apéndice~\ref{app:html-datamod}.
+    \paragraph{Materialización de $D_{\mathrm{mod}}$.} Para operacionalizar la delimitación temporal sin alterar el insumo exploratorio, se construyó el archivo \texttt{data\_agrupada\_mod.csv} como subconjunto de \texttt{data\_agrupada.csv} con filtro \texttt{year(semana)} $\in \{2024,\,2025\}$, conservando el grano cuadrante~$\times$~semana y el conjunto completo de variables climáticas y operativas. La tabla original 2021--2025 permanece intacta como $D_{\mathrm{EDA}}$; el resultado filtrado ($36\,120$ filas; $344$ cuadrantes; $105$ semanas; $33\,410$ eventos) constituye el insumo analítico para las Secciones~\ref{sec:identificacion_patrones_tendencias} en adelante y la Etapa~4. Los análisis exploratorios de esta etapa contrastan 2024 con 2025; la partición de modelado es distinta y se define en la Sección~\ref{sec:particion_train_test} (corte el 8 de septiembre de 2025). El procedimiento reproducible, lectura, filtro, resumen por año y exportación, se documenta en el Apéndice~\ref{app:html-datamod}.
 
     \paragraph{Enriquecimiento de $D_{\mathrm{mod}}$.} Sobre la llave
     cuadrante--semana se incorporaron 16 variables destinadas a ampliar la
@@ -418,7 +420,7 @@ Esta sección presenta, para cada procedimiento del análisis descriptivo y expl
     \paragraph{Bloque climático: redundancias.} En el bloque meteorológico (Figura~\ref{fig:heatmap_cor_clima}) se identificaron \textit{diez} pares con $|\rho| \geq 0{.}70$, principalmente entre temperaturas (\texttt{temp\_media}--\texttt{temp\_max}: $\rho = 0{.}96$; \texttt{temp\_media}--\texttt{temp\_min}: $\rho = 0{.}91$) y entre componentes de viento ($\rho = 0{.}97$). Las temperaturas presentan además asociación negativa moderada con la humedad ($\rho \approx -0{.}76$ a $-0{.}80$) y con el viento ($\rho \approx -0{.}70$ a $-0{.}81$). La precipitación no participa en ninguno de estos pares: su mayor asociación dentro del bloque queda por debajo del umbral, lo que la señala como la única covariable climática no redundante. Estos resultados anticipan \textit{multicolinealidad} entre temperaturas y vientos, y orientan la depuración de variables en la Etapa~4.
     
     
-    \paragraph{Bloque operativo.} La Figura~\ref{fig:heatmap_cor_operativo} muestra que las cuatro métricas de continuidad y severidad están fuertemente correlacionadas entre sí ($\rho$ entre $0{.}83$ y $0{.}99$), aunque \texttt{duracion\_total} exhibe una asociación algo menor con \texttt{n\_eventos} ($\rho = 0{.}86$) que con las variables de afectación. Frecuencia y duración capturan dimensiones parcialmente distintas; el alcance (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) queda, en esta construcción, muy alineado con la frecuencia y se trata aquí como diagnóstico exploratorio de severidad, no como predictor independiente.
+    \paragraph{Bloque operativo.} La Figura~\ref{fig:heatmap_cor_operativo} muestra que las cuatro métricas de continuidad y severidad están fuertemente correlacionadas entre sí ($\rho$ entre $0{.}83$ y $0{.}99$), aunque \texttt{duracion\_total} exhibe una asociación algo menor con \texttt{n\_eventos} ($\rho = 0{.}86$) que con las variables de afectación. Frecuencia y duración capturan dimensiones parcialmente distintas; el alcance (\texttt{usuarios\_afectados}, \texttt{elementos\_afectados}) queda, en esta construcción, estrechamente alineado con la frecuencia y se trata aquí como diagnóstico exploratorio de severidad, no como predictor independiente.
     
     
     \paragraph{Clima $\rightarrow$ operativo.} La Figura~\ref{fig:barras_cor_clima_operativo} y la Tabla~\ref{tab:clima_operativo_cor} cuantifican la asociación entre covariables meteorológicas y métricas de interrupción. Todas las asociaciones son estadísticamente significativas, consecuencia esperable del tamaño del panel, pero de magnitud pequeña. Las variables de \textit{viento} encabezan el bloque: \texttt{viento\_max\_semana} con \texttt{n\_eventos} ($\rho = 0{.}139$) y \texttt{viento\_medio\_semana} con \texttt{n\_eventos} ($\rho = 0{.}135$), con valores del mismo orden frente a \texttt{usuarios\_afectados} ($\rho \approx 0{.}12$), \texttt{elementos\_afectados} ($\rho \approx 0{.}11$) y \texttt{duracion\_total} ($\rho \approx 0{.}11$). La \texttt{precip\_total\_semana} le sigue con asociaciones positivas débiles ($\rho = 0{.}069$ con \texttt{duracion\_total} y $\rho = 0{.}065$ con \texttt{n\_eventos}), mientras la humedad ($\rho \approx 0{.}05$) y las temperaturas ($|\rho| < 0{.}05$, con signo negativo) resultan prácticamente irrelevantes en el grano semanal.
@@ -562,288 +564,7 @@ La partición temporal quedó documentada en dos niveles consistentes entre sí:
 Este panel, materializado en \texttt{data\_final\_modelo\_cuadrantes\_reales.rds}, constituye el insumo directo para el entrenamiento y la validación de los modelos de la Etapa~5. Su construcción y verificación se documentan en los Apéndices~\ref{app:html-etapa4-01} (\href{\urlEtapaCuatroUno}{informe HTML}), \ref{app:html-etapa4-02} (\href{\urlEtapaCuatroDos}{informe HTML}) y~\ref{app:html-asociacion-cuanti} (\href{\urlasociaciondepuracioncuanti}{informe HTML}).
 
 
-\section{Etapa 5 – Resultados del modelado predictivo y evaluativo}
-\label{sec:resultados-etapa5}
-
-Los resultados de esta sección corresponden a la re-estimación final de la Etapa~5 (\texttt{Etapa5\_03\_reestimacion\_cierre.R}; Apéndice~\ref{app:codigo-cierre}), que incorpora tres cambios respecto de los informes preliminares: (i)~todas las predictoras observadas en la semana~$s$ entran rezagadas una semana; (ii)~las variables sísmicas se reconstruyeron tras corregir dos errores de integración (Sección~\ref{sec:sismicidad_sgc}); y (iii)~el desempeño se contrasta contra dos pronósticos de referencia. Con el panel original y la especificación original, el código reproduce las cifras de los informes preliminares (por ejemplo, RMSE de $0{.}1666$ para \emph{Pooled} OLS y de $0{.}1340$ para FE de cuadrante en SAIDI), lo que garantiza que las diferencias que se reportan a continuación se deben a esos tres cambios y no a la implementación.
-
-\subsection{Dependencia espacial}
-\label{sec:resultados_moran}
-
-El diagnóstico de dependencia espacial confirmó autocorrelación positiva y significativa en el promedio por cuadrante tanto de SAIDI (índice de Moran $I=0{.}154$; $p<0{.}001$) como de SAIFI ($I=0{.}179$; $p<0{.}001$), y en el corte transversal ponderado ($I=0{.}146$ y $I=0{.}240$, respectivamente; $p<0{.}001$). La magnitud es moderada: la vecindad territorial explica una parte identificable pero no dominante de la variación, lo que justifica incorporar rezagos espaciales y estimar SAR y SEM, sin anticipar que estos dominen a los modelos no espaciales.
-
-\subsection{Pronóstico semanal frente a pronósticos de referencia}
-\label{sec:resultados_pronostico}
-
-Las Tablas~\ref{tab:desempeno_saidi} y~\ref{tab:desempeno_saifi} presentan el desempeño en el conjunto de prueba ($2\,215$ cuadrantes--semana con falla entre el 15 de septiembre y el 29 de diciembre de 2025) de los modelos de panel y de dos pronósticos de referencia: la \textit{persistencia}, que pronostica para cada cuadrante el valor de su semana anterior, y la \textit{media del cuadrante}, que pronostica su promedio histórico en el entrenamiento. El MASE expresa el MAE de cada modelo como fracción del MAE de la persistencia, de modo que valores menores que uno indican mejora sobre ella. El modelo de efectos fijos de cuadrante y semana no es evaluable fuera de muestra, porque las semanas de prueba no tienen efecto fijo estimado (Sección~\ref{sec:validacion_modelo}), y no se incluye en las tablas.
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Desempeño en el conjunto de prueba para SAIDI (escala $\log(1+y)$; $N=2\,215$)}
-\label{tab:desempeno_saidi}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{l r r r r r}
-\toprule
-\textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{MASE} & \makecell[c]{\textbf{$\Delta$RMSE}\\\textbf{vs.}\\\textbf{persistencia}} \\
-\midrule
-Persistencia ($t-1$)            & 0.1278 & 0.0377 & 0.120 & 1.000 & -- \\
-Media del cuadrante             & 0.1021 & 0.0358 & 0.208 & 0.948 & $-20{.}1$~\% \\
-\emph{Pooled} OLS               & 0.1016 & 0.0374 & 0.196 & 0.991 & $-20{.}5$~\% \\
-FE cuadrante                    & \textbf{0.1013} & 0.0376 & \textbf{0.216} & 0.996 & $-20{.}7$~\% \\
-Random Forest (valores por defecto) & 0.1236 & 0.0576 & 0.192 & 1.528 & $-3{.}2$~\% \\
-Random Forest ajustado          & 0.1143 & 0.0536 & 0.192 & 1.422 & $-10{.}6$~\% \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Desempeño en el conjunto de prueba para SAIFI (escala $\log(1+y)$; $N=2\,215$)}
-\label{tab:desempeno_saifi}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{l r r r r r}
-\toprule
-\textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} & \textbf{MASE} & \makecell[c]{\textbf{$\Delta$RMSE}\\\textbf{vs.}\\\textbf{persistencia}} \\
-\midrule
-Persistencia ($t-1$)            & 0.00324 & 0.00081 & 0.085 & 1.000 & -- \\
-Media del cuadrante             & \textbf{0.00237} & \textbf{0.00071} & \textbf{0.261} & \textbf{0.880} & $-26{.}9$~\% \\
-\emph{Pooled} OLS               & 0.00243 & 0.00077 & 0.218 & 0.959 & $-25{.}0$~\% \\
-FE cuadrante                    & 0.00239 & 0.00073 & 0.257 & 0.908 & $-26{.}3$~\% \\
-Random Forest (valores por defecto) & 0.00273 & 0.00109 & 0.224 & 1.348 & $-15{.}7$~\% \\
-Random Forest ajustado          & 0.00255 & 0.00105 & 0.218 & 1.304 & $-21{.}3$~\% \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
-
-Tres resultados se desprenden de las tablas y se confirman con la prueba de Diebold--Mariano sobre los errores cuadráticos (Tabla~\ref{tab:diebold_mariano}). Primero, los modelos lineales superan con claridad a la persistencia: el RMSE se reduce entre un $20$ y un $27$~\%, y la diferencia es significativa para FE de cuadrante en ambos indicadores ($p<0{.}001$). Segundo, ninguno de ellos supera de forma significativa a la media histórica del cuadrante: para SAIDI, FE de cuadrante reduce el RMSE en un $0{.}8$~\% ($p=0{.}11$), y para SAIFI la media del cuadrante es incluso marginalmente mejor ($p=0{.}03$). Tercero, Random Forest es inferior a FE de cuadrante en ambos indicadores ($p<0{.}001$), aun después del ajuste de hiperparámetros, y su MASE mayor que uno indica que, en error absoluto medio, no mejora siquiera a la persistencia.
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Prueba de Diebold--Mariano sobre los errores cuadráticos de prueba (horizonte de una semana)}
-\label{tab:diebold_mariano}
-\begin{tabular}{l r r r r}
-\toprule
-& \multicolumn{2}{c}{\textbf{SAIDI}} & \multicolumn{2}{c}{\textbf{SAIFI}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-\textbf{Comparación} & \textbf{DM} & \textbf{valor $p$} & \textbf{DM} & \textbf{valor $p$} \\
-\midrule
-FE cuadrante vs. persistencia        & $-3{.}30$ & $<0{.}001$ & $-3{.}38$ & $<0{.}001$ \\
-FE cuadrante vs. media del cuadrante & $-1{.}61$ & $0{.}108$  & $2{.}15$  & $0{.}032$ \\
-Random Forest ajustado vs. FE cuadrante & $4{.}32$ & $<0{.}001$ & $5{.}11$ & $<0{.}001$ \\
-\bottomrule
-\end{tabular}
-
-\vspace{2pt}
-\noindent\footnotesize\textit{Nota:} un estadístico negativo indica que el primer modelo tiene menor error cuadrático que el segundo.
-\end{table}
-
-La lectura conjunta es consistente: casi toda la capacidad predictiva semanal proviene del \textit{nivel propio de cada cuadrante}. El $R^2$ \emph{within} del modelo FE, que mide la variación explicada dentro de cada cuadrante a lo largo del tiempo, es de apenas $0{.}023$ para SAIDI y $0{.}003$ para SAIFI. Una vez conocido el nivel típico de afectación del cuadrante, las variables que cambian de semana a semana ---clima rezagado, NDVI, sismicidad y rezago de los vecinos--- aportan muy poca información adicional sobre la magnitud de la semana siguiente. El único término dinámico con efecto robusto es el rezago propio de SAIDI ($\hat\gamma=0{.}044$; $p<0{.}001$ con errores agrupados por cuadrante y $p=0{.}009$ con errores de Driscoll--Kraay); ninguna variable climática, de vegetación o sísmica rezagada resulta significativa en ninguno de los dos indicadores. Este resultado precisa la pregunta de investigación: la parte pronosticable de la afectación es territorial y estable, y la variación semanal alrededor de ese nivel se comporta, con la información disponible, como esencialmente impredecible.
-
-Los diagnósticos de supuestos respaldan el uso de errores estándar robustos en esta inferencia. La prueba de Breusch--Pagan rechaza la homocedasticidad en ambos indicadores (estadísticos de $1\,473$ y $825$; $p<0{.}001$), por lo que todos los contrastes se basan en errores agrupados por cuadrante y en errores de Driscoll--Kraay, que además toleran correlación serial y espacial contemporánea. Los residuos del modelo FE de SAIDI conservan una autocorrelación de primer orden pequeña pero significativa ($0{.}051$; $p<0{.}001$), mientras que los de SAIFI no la presentan ($-0{.}005$; $p=0{.}59$). Los factores de inflación de varianza del modelo agrupado son altos para el par \texttt{prop\_estrato\_1}--\texttt{prop\_estrato\_2} ($31$ y $29$) y moderados para \texttt{n\_elementos} y \texttt{longitud\_red\_km} ($17$ y $16$); ninguna variable con efecto semanal significativo tiene un VIF superior a $2$, de modo que la colinealidad no explica la ausencia de significancia de las variables dinámicas, aunque sí obliga a leer con cautela los coeficientes individuales de estrato.
-
-El bajo desempeño de Random Forest tiene una explicación coherente con lo anterior. La búsqueda de hiperparámetros (Tabla~\ref{tab:tuning_rf} y Figura~\ref{fig:tuning_rf}) seleccionó en ambos indicadores el valor mínimo de \texttt{mtry} ($2$) y nodos terminales grandes ($20$ observaciones para SAIDI y $50$ para SAIFI), es decir, la configuración más regularizada de la grilla. Ese patrón es el esperado cuando la señal es débil y el modelo tiende a ajustar ruido. Además, Random Forest es sensible a la cola de la distribución: al recortar la respuesta de entrenamiento en su percentil $99{.}5$, que afecta a $65$ cuadrantes--semana ($0{.}49$~\% de las semanas con falla), su RMSE de prueba en SAIDI baja de $0{.}1143$ a $0{.}1014$, al nivel de los modelos lineales (Sección~\ref{sec:sintesis_eda}).
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Ajuste de hiperparámetros del Random Forest: mejores configuraciones según la validación temporal interna}
-\label{tab:tuning_rf}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{l r r r r}
-\toprule
-\textbf{Indicador} & \textbf{\texttt{mtry}} & \textbf{Tamaño mínimo de nodo} & \textbf{RMSE OOB} & \textbf{RMSE validación interna} \\
-\midrule
-SAIDI & 2 & 20 & 0.1098 & 0.1251 \\
-      & 2 & 50 & 0.1101 & 0.1253 \\
-      & 2 & 5  & 0.1099 & 0.1258 \\
-\addlinespace
-SAIFI & 2 & 50 & 0.00276 & 0.00257 \\
-      & 6 & 50 & 0.00278 & 0.00263 \\
-      & 4 & 50 & 0.00277 & 0.00264 \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-
-\vspace{2pt}
-\noindent\footnotesize\textit{Nota:} grilla de $6\times4$ combinaciones ($\texttt{mtry}\in\{2,4,6,9,13,18\}$; tamaño mínimo de nodo $\in\{5,10,20,50\}$), estimadas con \texttt{ranger} ($500$ árboles) sobre el entrenamiento hasta el 2 de junio de 2025 y evaluadas en las semanas de entrenamiento posteriores. El conjunto de prueba no interviene en el ajuste.
-\end{table}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.80\textwidth]{img/fig_tuning_rf_SAIDI.pdf}
-    \caption{RMSE de validación interna del Random Forest de SAIDI según \texttt{mtry} y tamaño mínimo de nodo. La figura de SAIFI, con el mismo patrón, se incluye en el informe de la Etapa~5.}
-    \label{fig:tuning_rf}
-\end{figure}
-
-La estabilidad del resultado se verificó con validación de origen móvil en cuatro cortes sucesivos (diciembre de 2024, marzo, junio y septiembre de 2025), cada uno evaluado sobre las doce semanas siguientes (Tabla~\ref{tab:origen_movil}). FE de cuadrante supera a la persistencia en los cuatro cortes y en ambos indicadores. Frente a Random Forest, FE es mejor en tres de los cuatro cortes para SAIFI y en dos de los cuatro para SAIDI, con un RMSE medio menor en ambos casos. La dispersión entre cortes es del mismo orden que las diferencias entre modelos, lo que confirma que la ventaja de FE sobre Random Forest es estable pero pequeña, y que la ventaja de ambos sobre la persistencia es la única diferencia grande y sistemática.
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Validación de origen móvil: RMSE medio (desviación estándar) en cuatro cortes, escala $\log(1+y)$}
-\label{tab:origen_movil}
-\begin{tabular}{l c c}
-\toprule
-\textbf{Modelo} & \textbf{SAIDI} & \textbf{SAIFI} \\
-\midrule
-Persistencia ($t-1$)     & $0{.}132$ ($0{.}028$) & $0{.}00308$ ($0{.}00040$) \\
-FE cuadrante             & $0{.}107$ ($0{.}017$) & $0{.}00231$ ($0{.}00022$) \\
-Random Forest ajustado   & $0{.}111$ ($0{.}020$) & $0{.}00249$ ($0{.}00029$) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Pronóstico de la ocurrencia de falla}
-\label{sec:resultados_ocurrencia}
-
-Los modelos anteriores pronostican la magnitud \textit{condicional} a que ocurra al menos una falla. Para completar el esquema en dos partes señalado en la Sección~\ref{sec:segmentacion_analitica}, se estimó un clasificador Random Forest de la ocurrencia de falla (\texttt{hubo\_falla}) sobre el panel completo, con las mismas predictoras \emph{ex ante} más el indicador de falla de la semana anterior. En el conjunto de prueba alcanza un área bajo la curva ROC de $0{.}838$, frente a $0{.}720$ de la regla de persistencia ("habrá falla si la hubo la semana anterior"). A diferencia de la magnitud, la ocurrencia sí es pronosticable con una precisión útil para la operación: permite ordenar los cuadrantes según su probabilidad de registrar una falla la semana siguiente. Combinando ambas partes, el valor esperado incondicional $\mathbb{E}[Y]=P(\text{falla})\times\mathbb{E}[Y\mid\text{falla}]$ ordena las observaciones de prueba con una correlación de Spearman de $0{.}46$ para SAIDI y $0{.}39$ para SAIFI.
-
-\subsection{Explicación estructural en corte transversal}
-\label{sec:resultados_corte_transversal}
-
-Para la explicación del patrón territorial se agregó cada indicador como promedio ponderado por cuadrante a lo largo de 2024--2025 ($N=343$ cuadrantes) y se estimaron OLS, SAR y SEM. La Tabla~\ref{tab:espaciales} resume la comparación. Para SAIDI, las pruebas de multiplicadores de Lagrange robustas favorecen la especificación de rezago (RLM$_{\text{lag}}$: $p<0{.}001$) y SAR mejora el AIC del OLS en $39$ unidades, con un parámetro $\hat\rho=-0{.}32$ ($p<0{.}001$). Para SAIFI, la evidencia favorece débilmente al error espacial (RLM$_{\text{err}}$: $p=0{.}030$): SEM mejora el AIC en menos de dos unidades, con $\hat\lambda=-0{.}21$ ($p=0{.}049$). En ambos casos los residuos del OLS no presentan autocorrelación espacial significativa (Moran de residuos: $p=0{.}37$ y $p=0{.}91$).
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Modelos de corte transversal ($N=343$): comparación OLS, SAR y SEM}
-\label{tab:espaciales}
-\begin{adjustbox}{max width=\linewidth}
-\begin{tabular}{l r r}
-\toprule
-& \textbf{SAIDI} & \textbf{SAIFI} \\
-\midrule
-AIC OLS & $-1265{.}8$ & $-4266{.}0$ \\
-AIC SAR & $\mathbf{-1305{.}2}$ & $-4264{.}1$ \\
-AIC SEM & $-1263{.}9$ & $\mathbf{-4267{.}9}$ \\
-$\hat\rho$ (SAR) & $-0{.}315$ ($p<0{.}001$) & $-0{.}003$ ($p=0{.}96$) \\
-$\hat\lambda$ (SEM) & $-0{.}035$ ($p=0{.}77$) & $-0{.}210$ ($p=0{.}049$) \\
-Moran de residuos OLS & $-0{.}007$ ($p=0{.}37$) & $-0{.}054$ ($p=0{.}91$) \\
-$R^2$ OLS (en muestra) & $0{.}901$ & $0{.}838$ \\
-$R^2$ validación cruzada espacial (5 bloques) & $0{.}419$ & $0{.}762$ \\
-$R^2$ con control de $\log(1+\text{usuarios del cuadrante})$ & $0{.}912$ & $0{.}838$ \\
-Caída de $R^2$ al excluir \texttt{n\_elementos} & $0{.}252$ & $0{.}181$ \\
-Prueba de permutación ($500$ réplicas) & $p<0{.}002$ & $p<0{.}002$ \\
-\bottomrule
-\end{tabular}
-\end{adjustbox}
-\end{table}
-
-El signo negativo de los parámetros espaciales requiere interpretación, porque el índice de Moran de la respuesta es positivo. Las dos afirmaciones son compatibles: los cuadrantes vecinos se parecen entre sí principalmente porque comparten infraestructura y exposición, y una vez que las covariables absorben esa similitud, el remanente espacial es negativo. Una explicación plausible, no verificada con los datos disponibles, es la forma en que se asignan los eventos: cada interrupción se atribuye íntegramente al cuadrante del elemento fallado, aunque sus usuarios afectados se distribuyan sobre cuadrantes vecinos del mismo circuito, lo que concentra la afectación en un cuadrante y la sustrae de los adyacentes.
-
-El ajuste dentro de muestra es alto ($R^2=0{.}90$ para SAIDI y $0{.}84$ para SAIFI), significativo frente a la prueba de permutación y robusto al control por el número de usuarios del cuadrante. Dos verificaciones adicionales matizan su lectura. Primero, el ajuste descansa en buena medida en una sola variable: excluir \texttt{n\_elementos} reduce el $R^2$ en $0{.}25$ (SAIDI) y $0{.}18$ (SAIFI). Segundo, al predecir cada bloque de cuadrantes con un modelo estimado sobre los demás (validación cruzada espacial por franjas de latitud), el $R^2$ desciende a $0{.}42$ para SAIDI y se mantiene en $0{.}76$ para SAIFI. El patrón territorial de SAIFI es, por tanto, transferible entre zonas; el de SAIDI lo es solo en parte, lo que es coherente con que la duración dependa además de factores locales de accesibilidad y capacidad de respuesta que el modelo no observa. Las Tablas~\ref{tab:cross_section_saidi} y~\ref{tab:cross_section_saifi} presentan los coeficientes de las especificaciones seleccionadas por AIC paso a paso.
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Corte transversal de SAIDI promedio por cuadrante, modelo \emph{stepwise} ($N=343$; $R^2=0{.}900$)}
-\label{tab:cross_section_saidi}
-\begin{tabular}{l r r}
-\toprule
-\textbf{Predictor} & \textbf{Coeficiente} & \textbf{valor $p$} \\
-\midrule
-n\_elementos                    & $4{.}48\times10^{-4}$  & $<0{.}001$ \\
-longitud\_red\_km               & $-9{.}14\times10^{-4}$ & $<0{.}001$ \\
-edad\_activo\_mas\_viejo\_anios & $-2{.}65\times10^{-2}$ & $<0{.}001$ \\
-ndvi\_promedio                  & $7{.}25\times10^{-2}$  & $0{.}007$ \\
-prop\_no\_residencial           & $-1{.}27\times10^{-1}$ & $0{.}029$ \\
-PROM\_CANT\_MODIFICACIONES      & $1{.}67\times10^{-2}$  & $0{.}078$ \\
-prop\_estrato\_2                & $1{.}09\times10^{-2}$  & $0{.}095$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[!htbp]
-\centering
-\small
-\caption{Corte transversal de SAIFI promedio por cuadrante, modelo \emph{stepwise} ($N=343$; $R^2=0{.}837$)}
-\label{tab:cross_section_saifi}
-\begin{tabular}{l r r}
-\toprule
-\textbf{Predictor} & \textbf{Coeficiente} & \textbf{valor $p$} \\
-\midrule
-n\_elementos                    & $3{.}65\times10^{-6}$  & $<0{.}001$ \\
-longitud\_red\_km               & $-3{.}99\times10^{-6}$ & $0{.}018$ \\
-dist\_sismo\_prom\_km           & $7{.}49\times10^{-6}$  & $0{.}011$ \\
-edad\_activo\_mas\_viejo\_anios & $-1{.}13\times10^{-4}$ & $0{.}058$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Variables más relevantes: triangulación entre modelos}
-\label{sec:resultados_triangulacion}
-
-La Tabla~\ref{tab:triangulacion} reúne, para cada variable, la evidencia de las tres fuentes previstas en la Sección~\ref{sec:interpretacion_resultados_etapa5}: la importancia por permutación del Random Forest ajustado (Figura~\ref{fig:saidi_rf_imp} y Figura~\ref{fig:saifi_rf_imp}), los coeficientes del modelo FE del panel semanal y los del corte transversal. Una variable se considera relevante si aparece en al menos dos de ellas: entre las seis primeras por importancia en el Random Forest, con coeficiente significativo al $5$~\% en el modelo FE, o retenida y significativa al $5$~\% en el corte transversal.
-
-\begin{table}[!htbp]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\caption{Triangulación de la relevancia de las variables entre modelos}
-\label{tab:triangulacion}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm} c c c c c c >{\raggedright\arraybackslash}p{2.0cm}@{}}
-\toprule
-& \multicolumn{2}{c}{\textbf{RF (rango)}} & \multicolumn{2}{c}{\textbf{FE semanal}} & \multicolumn{2}{c}{\textbf{Corte transversal}} & \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-\textbf{Variable} & SAIDI & SAIFI & SAIDI & SAIFI & SAIDI & SAIFI & \textbf{Veredicto} \\
-\midrule
-\texttt{n\_elementos}            & 2 & 1 & abs. & abs. & $+$*** & $+$*** & Relevante \\
-\texttt{longitud\_red\_km}       & 1 & 2 & abs. & abs. & $-$*** & $-$* & Relevante \\
-\texttt{prop\_estrato\_1}, \texttt{\_2} & 3--4 & 3--4 & n.s. & n.s. & $+$\textsuperscript{.} & no ret. & Parcial \\
-\texttt{prop\_no\_residencial}   & 5 & 6 & n.s. & n.s. & $-$* & no ret. & Relevante (SAIDI) \\
-\texttt{ndvi} (propio y vecinos) & 6--7 & 7--8 & n.s. & n.s. & $+$** & no ret. & Relevante (SAIDI) \\
-\texttt{edad\_activo\_mas\_viejo\_anios} & 11 & 10 & n.s. & n.s. & $-$*** & $-$\textsuperscript{.} & Solo corte transversal \\
-Exposición sísmica               & 17--18 & \textgreater{}10 & n.s. & n.s. & no ret. & $+$* & Débil (SAIFI) \\
-Clima rezagado                   & 8--16 & \textgreater{}8 & n.s. & n.s. & no ret. & no ret. & No relevante \\
-Rezago propio ($t-1$)            & 13 & \textgreater{}10 & $+$*** & n.s. & -- & -- & Solo SAIDI semanal \\
-Rezago de vecinos ($t-1$)        & 14 & 5 & $+$* & n.s. & -- & -- & Débil \\
-\bottomrule
-\end{tabular}
-
-\vspace{2pt}
-\noindent\footnotesize\textit{Nota:} rango de importancia por permutación entre $18$ predictoras. FE semanal con errores agrupados por cuadrante; ``abs.'': variable constante en el tiempo, absorbida por el efecto fijo. Corte transversal: modelo seleccionado paso a paso (Tablas~\ref{tab:cross_section_saidi} y~\ref{tab:cross_section_saifi}); ``no ret.'': no retenida por el AIC. *** $p<0{.}001$; ** $p<0{.}01$; * $p<0{.}05$; \textsuperscript{.} $p<0{.}10$; n.s.: no significativa.
-\end{table}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{img/fig_importancia_rf_SAIDI.pdf}
-    \caption{Importancia por permutación de las predictoras en el Random Forest ajustado de SAIDI.}
-    \label{fig:saidi_rf_imp}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{img/fig_importancia_rf_SAIFI.pdf}
-    \caption{Importancia por permutación de las predictoras en el Random Forest ajustado de SAIFI.}
-    \label{fig:saifi_rf_imp}
-\end{figure}
-
-La convergencia se limita a las variables de \textit{tamaño y forma de la red}: el número de elementos y la longitud de red son las dos primeras en importancia en ambos Random Forest y las más significativas en ambos cortes transversales. Para SAIDI se suman la vegetación (NDVI) y la proporción de clientes no residenciales. La antigüedad del activo más viejo solo es significativa en el corte transversal, y con signo negativo. Las variables que cambian de semana a semana (clima, NDVI y sismicidad rezagados) no resultan significativas en ningún modelo de panel, lo que es coherente con el bajo $R^2$ \emph{within} documentado arriba. Las proporciones de estrato ocupan posiciones altas en el Random Forest pero no son significativas en los modelos lineales; como son atributos fijos de cada cuadrante, es probable que el bosque las use como identificadores del cuadrante, es decir, como sustituto del efecto fijo, más que como un efecto socioeconómico propiamente dicho.
-
-Dos signos merecen comentario porque podrían leerse como contraintuitivos. El coeficiente de \texttt{longitud\_red\_km} es negativo, pese a que una red más extensa expone más activos a falla. Condicionada al número de elementos, la longitud deja de medir exposición y pasa a aproximar el carácter rural y disperso del cuadrante: a igual número de activos, mayor longitud implica menor densidad de usuarios y, por tanto, menor contribución a un indicador ponderado por usuarios afectados. El coeficiente negativo de \texttt{edad\_activo\_mas\_viejo\_anios} no puede leerse como un efecto de la antigüedad. La variable se construye sobre la última fecha de modificación registrada, y el $67$~\% de esas fechas corresponde a 2026, posterior al periodo de estudio, de modo que la ``edad'' es negativa en el $93{.}2$~\% de las filas (Apéndice~\ref{app:catalogo}). Lo que mide es la distancia temporal a la última intervención registrada: un valor más negativo indica un cuadrante intervenido más recientemente, lo que puede reflejar que las intervenciones se dirigen a las zonas con más fallas. Con esta lectura, el signo negativo es coherente, pero la variable no permite concluir nada sobre el efecto del envejecimiento de la red. Ambas interpretaciones son plausibles pero no se verifican con los datos disponibles, y se señalan como hipótesis para trabajo posterior.
-
-Las Figuras~\ref{fig:saidi_pred_obs} y~\ref{fig:saifi_pred_obs} contrastan los valores observados y pronosticados por FE de cuadrante en el conjunto de prueba. La nube se concentra en una banda estrecha de valores pronosticados para cada cuadrante, mientras los valores observados se dispersan en todo el rango: es la expresión gráfica de que el modelo anticipa el nivel del cuadrante, pero no la magnitud de la semana concreta.
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.62\textwidth]{img/fig_pred_obs_SAIDI.pdf}
-    \caption{SAIDI observado frente a pronosticado por FE de cuadrante en el conjunto de prueba (escala $\log(1+y)$).}
-    \label{fig:saidi_pred_obs}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.62\textwidth]{img/fig_pred_obs_SAIFI.pdf}
-    \caption{SAIFI observado frente a pronosticado por FE de cuadrante en el conjunto de prueba (escala $\log(1+y)$).}
-    \label{fig:saifi_pred_obs}
-\end{figure}
-
-En síntesis: \textbf{para el pronóstico semanal de la magnitud, FE de cuadrante es el modelo de mejor desempeño en ambos indicadores}, superior a la persistencia y a Random Forest, pero estadísticamente equivalente a pronosticar el promedio histórico de cada cuadrante; \textbf{la ocurrencia de falla sí es pronosticable} (AUC de $0{.}84$); y \textbf{para la explicación del patrón territorial, SAR (SAIDI) y SEM (SAIFI) son los modelos preferidos por AIC}, con un ajuste alto dominado por el tamaño de la red y transferible entre zonas en el caso de SAIFI.
+\input{chapters/resultados_etapa5}
 
 
 \section{Etapa 6 – Síntesis general y cierre frente a los objetivos}
@@ -861,10 +582,10 @@ El proyecto recorrió las seis etapas metodológicas descritas en el Capítulo~\
 \textbf{Etapa} & \textbf{Resultado principal} \\
 \midrule
 Etapa 1 & Seis fuentes consolidadas (BRAE, OMS SPARD/SP7, GIS, NASA POWER); $95\,280$ eventos depurados y $83{.}5$ millones de registros climáticos. \\
-Etapa 2 & Panel activo--día ($N=87\,007\,074$) y panel cuadrante--semana ($N_{\mathrm{agr}}=90\,128$); detección de un sesgo sistemático de emparejamiento 2021--2023 que delimitó el dataset de modelado $D_{\mathrm{mod}}$ (2024--2025). \\
+Etapa 2 & Panel activo--día ($N=87\,007\,074$) y panel cuadrante--semana ($N_{\mathrm{agr}}=90\,128$); detección de un sesgo sistemático de emparejamiento 2021--2023 que delimitó el conjunto de modelado $D_{\mathrm{mod}}$ (2024--2025). \\
 Etapa 3 & Sin datos faltantes en la tabla agregada; redundancia identificada entre severidad y frecuencia; señal climática contemporánea débil; multicolinealidad climática corregida (VIF máximo de $43{.}92$ a $7{.}21$). \\
-Etapa 4 & Panel analítico final con partición explícita de columnas: $2$ respuestas ($\mathrm{SAIDI}$, $\mathrm{SAIFI}$ en escala $\log(1+y)$), $18$ predictoras \emph{ex ante} seleccionadas de $44$ candidatas, llaves de identificación y un bloque de exclusiones deliberadas (impacto posterior y respuesta cruzada contemporánea); rezagos temporales y espaciales de vecinos construidos sin fuga de información. \\
-Etapa 5 & FE de cuadrante como mejor modelo de pronóstico semanal en ambos indicadores: $20$--$26$~\% menos RMSE que la persistencia, pero estadísticamente equivalente a la media histórica del cuadrante; ocurrencia de falla pronosticable (AUC $=0{.}84$); SAR (SAIDI) y SEM (SAIFI) preferidos por AIC en el corte transversal ($R^2$ de $0{.}90$ y $0{.}84$; $0{.}42$ y $0{.}76$ en validación cruzada espacial); autocorrelación espacial significativa en ambos indicadores. \\
+Etapa 4 & Panel analítico final con partición explícita de columnas: $2$ respuestas ($\mathrm{SAIDI}$, $\mathrm{SAIFI}$ en escala $\log(1+y)$), $16$ predictoras \emph{ex ante} seleccionadas de $44$ candidatas, llaves de identificación y un bloque de exclusiones deliberadas (impacto posterior y respuesta cruzada contemporánea); rezagos temporales y espaciales de vecinos construidos sin fuga de información. \\
+Etapa 5 & Magnitud condicional: FE de cuadrante con el menor error en SAIDI y media del cuadrante en SAIFI, $21$--$26$~\% menos RMSE que la persistencia, sin mejora demostrada sobre la media histórica del cuadrante; ocurrencia de falla pronosticable (AUC $=0{.}84$), pero no mejor que la tasa histórica del cuadrante; pronóstico incondicional de dos partes $15{.}8$~\% mejor que la media del cuadrante en SAIDI; SAR (SAIDI) con las ocho matrices de vecindad y OLS (SAIFI) en el corte transversal ($R^2$ de $0{.}89$ y $0{.}84$; $0{.}40$ y $0{.}75$ en validación espacial); diferencias territoriales del SAIDI asociadas a la frecuencia y el alcance de los eventos; priorización validada fuera de muestra (el top~10 de 2024 capturó el $59{.}6$~\% del SAIDI operativo de 2025). \\
 Etapa 6 & Documentación reproducible de las seis etapas en informes HTML con URL estable (Apéndice~\ref{app:informes-html}) y código fuente de extracción e integración (Apéndice~\ref{app:codigo}), con trazabilidad verificable entre cada afirmación del documento y su evidencia computacional. \\
 \bottomrule
 \end{tabular}
@@ -884,9 +605,9 @@ La Tabla~\ref{tab:cierre_objetivos} articula estos resultados con los tres objet
 1. Consolidar las fuentes de datos relevantes, documentando cobertura, calidad y limitaciones mediante un catálogo de datos y métricas de integridad. &
 Tabla de linaje de datos (Tabla~\ref{tab:data_lineage}) con las seis fuentes, sus reglas de depuración y su resultado; diagnóstico de completitud sin valores faltantes; identificación y documentación explícita del sesgo de cobertura 2021--2023 como limitación conocida (Sección~\ref{sec:resultados-etapa2}). \\
 2. Determinar qué variables operativas, técnicas y climáticas son más relevantes para predecir SAIDI y SAIFI mediante modelos estadísticos o de Machine Learning. &
-Triangulación entre la importancia del Random Forest, los coeficientes del panel FE y los del corte transversal (Tabla~\ref{tab:triangulacion}): las variables técnicas de tamaño y forma de la red (número de elementos y longitud de red) son las más relevantes para ambos indicadores; la vegetación (NDVI) y la proporción de clientes no residenciales lo son además para SAIDI. Las variables climáticas rezagadas no resultan relevantes, y la única variable operativa con efecto semanal robusto es el historial reciente de SAIDI del propio cuadrante. \\
+Triangulación entre la importancia del Random Forest, los coeficientes del panel FE y los del corte transversal (Tabla~\ref{tab:triangulacion}): las variables técnicas de tamaño y forma de la red (número de elementos y longitud de red) son las más relevantes para ambos indicadores; la vegetación (NDVI) lo es además para SAIDI. Las variables climáticas rezagadas no resultan relevantes, y la única variable operativa con efecto semanal robusto es el historial reciente de SAIDI del propio cuadrante. Las variables de antigüedad y mantenimiento de activos se excluyeron por usar fechas posteriores al periodo. \\
 3. Evaluar el desempeño de diferentes métodos estadísticos o de Machine Learning para predecir SAIDI y SAIFI por circuito o zona. &
-Comparación de cuatro algoritmos de panel (Pooled OLS, FE cuadrante, FE cuadrante+semana, Random Forest ajustado) frente a dos pronósticos de referencia, con RMSE, MAE, $R^2$, MASE, prueba de Diebold--Mariano y validación de origen móvil (Tablas~\ref{tab:desempeno_saidi}--\ref{tab:origen_movil}); clasificador de ocurrencia (Sección~\ref{sec:resultados_ocurrencia}); y modelos espaciales SAR y SEM con validación cruzada espacial (Tabla~\ref{tab:espaciales}). Se identifica el mejor modelo de pronóstico y el mejor modelo estructural para cada indicador, así como el límite de lo pronosticable con los datos disponibles. \\
+Comparación de cuatro algoritmos de panel (Pooled OLS, FE cuadrante, FE cuadrante+semana, Random Forest ajustado) frente a dos pronósticos de referencia, con RMSE, MAE, $r^2$, $R^2$ predictivo, MASE, prueba de Diebold--Mariano semanal con intervalos por bloques y validación de origen móvil anidada (Tablas~\ref{tab:desempeno_saidi}--\ref{tab:origen_movil}); clasificador de ocurrencia (Sección~\ref{sec:resultados_ocurrencia}); y modelos espaciales SAR y SEM con validación cruzada espacial (Tabla~\ref{tab:espaciales}). Se identifica el modelo de menor error y el modelo estructural preferido para cada indicador, así como el límite de lo que se logró pronosticar con los datos disponibles. \\
 \bottomrule
 \end{tabular}
 \end{table}

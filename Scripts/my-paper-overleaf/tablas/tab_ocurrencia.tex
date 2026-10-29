@@ -1,0 +1,17 @@
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Modelo} & \textbf{AUC} & \textbf{AUC-PR} & \textbf{Brier} & \textbf{Log-loss} \\
+\midrule
+Random Forest & 0.835 & 0.773 & 0.1621 & 0.4886 \\
+Regresión logística & 0.822 & 0.747 & 0.1712 & 0.5122 \\
+Tasa histórica del cuadrante & 0.845 & 0.781 & 0.1576 & 0.4763 \\
+Persistencia ($t-1$) & 0.721 & 0.651 & 0.2727 & 2.5118 \\
+\midrule
+\multicolumn{5}{l}{\textit{Diferencias con IC del 95~\% por remuestreo de bloques de semanas}} \\
+\textbf{Comparación} & \multicolumn{2}{c}{\textbf{$\Delta$AUC}} & \multicolumn{2}{c}{\textbf{$\Delta$Brier}} \\
+\midrule
+Random Forest vs.\ tasa histórica del cuadrante & \multicolumn{2}{c}{$-0{.}010$ $[-0{.}027;\ -0{.}002]$} & \multicolumn{2}{c}{$0{.}0045$ $[0{.}0001;\ 0{.}0134]$} \\
+Regresión logística vs.\ tasa histórica del cuadrante & \multicolumn{2}{c}{$-0{.}024$ $[-0{.}042;\ -0{.}017]$} & \multicolumn{2}{c}{$0{.}0136$ $[0{.}0095;\ 0{.}0205]$} \\
+Random Forest vs.\ regresión logística & \multicolumn{2}{c}{$0{.}014$ $[0{.}006;\ 0{.}022]$} & \multicolumn{2}{c}{$-0{.}0091$ $[-0{.}0131;\ -0{.}0052]$} \\
+\bottomrule
+\end{tabular}

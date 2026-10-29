@@ -1,0 +1,17 @@
+\begin{tabular}{l l r r r}
+\toprule
+\textbf{Indicador} & \textbf{Modelo} & \textbf{RMSE} & \textbf{MAE} & \textbf{Spearman} \\
+\midrule
+SAIDI & Cero & 0.1194 & 0.0153 & -- \\
+ & Persistencia & 0.1439 & 0.0228 & 0.523 \\
+ & Media del cuadrante & 0.1285 & 0.0222 & 0.584 \\
+ & Dos partes (RF $\times$ FE, Duan) & \textbf{0.1081} & 0.0197 & 0.527 \\
+ & Tweedie & 0.1155 & 0.0201 & 0.451 \\
+\addlinespace
+SAIFI & Cero & 0.00180 & 0.00025 & -- \\
+ & Persistencia & 0.00215 & 0.00036 & 0.511 \\
+ & Media del cuadrante & 0.00155 & 0.00031 & 0.571 \\
+ & Dos partes (RF $\times$ FE, Duan) & \textbf{0.00154} & 0.00030 & 0.435 \\
+ & Tweedie & 0.00170 & 0.00033 & 0.423 \\
+\bottomrule
+\end{tabular}
